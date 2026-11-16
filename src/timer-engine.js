@@ -295,7 +295,11 @@ export class TimerEngine {
   skip() {
     if (this.state !== "running" && this.state !== "paused") return this._reject("skip");
     const now = this.now();
+    const previousIndex = this.index;
     if (this.state === "running") this._advance(now);
+    // If the active phase expired just before this command, do not apply the
+    // same Skip press to the newly-started phase.
+    if (this.index !== previousIndex) return this.snapshot(now);
     if ((this.state !== "running" && this.state !== "paused") ||
         !this._current()?.allowSkip || this._current()?.type === "countup") {
       return this._reject("skip");
