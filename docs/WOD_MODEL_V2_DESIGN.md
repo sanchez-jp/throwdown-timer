@@ -1,6 +1,6 @@
 # WOD Semantic Model — Version 2 Design
 
-**Status:** Proposed design; not yet implemented.  
+**Status:** Semantic v2 contract and explicit migration implemented; editor and progress UI remain pending.  
 **Scope:** Separate the meaning and scoring structure of a workout from the timer plan that measures it.
 
 ## 1. Why a new version is needed
@@ -30,7 +30,7 @@ The workout structure describes what the athlete must complete. The timer plan d
 - Introduce schema v2 as a separate contract and schema file.
 - New v2 records use `schemaVersion: 2`.
 - Existing v1 records remain readable and executable without migration being required immediately.
-- Add an explicit, tested v1-to-v2 migration only after the v2 shape and UI are stable. Migration must preserve the original source text, movement text, timer plan, IDs, and timestamps.
+- Provide an explicit, tested v1-to-v2 migration. It preserves source text, movement text, timer plan, record ID, and timestamps; ambiguous structures are marked for review rather than guessed.
 - Repository validation must dispatch by schema version rather than silently accepting a v2 record as v1.
 
 ## 4. Proposed v2 workout shape
@@ -141,7 +141,7 @@ The exact compatibility matrix should live alongside the JSON Schema and be cove
 1. Review and freeze the v2 semantic vocabulary.
 2. Add `schemas/wod-v2.schema.json` and canonical contract examples.
 3. Add version-aware domain validation and repository round-trip tests.
-4. Add v1-to-v2 migration tests; retain v1 compatibility.
+4. Add explicit v1-to-v2 migration tests; retain v1 compatibility. (Implemented.)
 5. Extend the editor to display and edit structure without flattening it.
 6. Add explicit progress tracking as a separate feature.
 7. Only then connect AI interpretation to the stable v2 contract.
