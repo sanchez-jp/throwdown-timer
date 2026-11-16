@@ -1,4 +1,5 @@
 import { TimerEngine } from "./timer-engine.js";
+import { validateWodV2 } from "./wod-validator.js";
 
 const DATABASE_NAME = "throwdown-timer";
 const DATABASE_VERSION = 1;
@@ -21,15 +22,23 @@ function validateWorkout(wod) {
   if (!wod || typeof wod !== "object" || Array.isArray(wod)) {
     throw new WorkoutRepositoryError("INVALID_WOD", "El WOD debe ser un objeto.");
   }
-  if (wod.schemaVersion !== 1) {
-    throw new WorkoutRepositoryError("UNSUPPORTED_SCHEMA", "Solo se pueden guardar WODs con schemaVersion 1.");
+  if (![1, 2].includes(wod.schemaVersion)) {
+    throw new WorkoutRepositoryError("UNSUPPORTED_SCHEMA", "La versión del contrato WOD no está soportada.");
+  }
+  if (wod.schemaVersion === 2) {
+    try {
+      validateWodV2(wod);
+    } catch (error) {
+      throw new WorkoutRepositoryError(error.code || "INVALID_WOD_V2", error.message);
+    }
   }
   if (typeof wod.title !== "string" || !wod.title.trim()) {
     throw new WorkoutRepositoryError("INVALID_TITLE", "El WOD necesita un título.");
   }
   if (!wod.workout || typeof wod.workout !== "object" ||
-      typeof wod.workout.format !== "string" || !Array.isArray(wod.workout.movements)) {
-    throw new WorkoutRepositoryError("INVALID_WORKOUT", "La descripción y los movimientos del WOD no son válidos.");
+      typeof wod.workout.format !== "string" || !Array.isArray(wod.workout.movements) ||
+      (wod.schemaVersion === 2 && !wod.workout.structure)) {
+    throw new WorkoutRepositoryError("INVALID_WORKOUT", "La descripción, estructura o movimientos del WOD no son válidos.");
   }
   if (!wod.interpretation || !["ready", "needs_review", "invalid"].includes(wod.interpretation.status) ||
       !Array.isArray(wod.interpretation.issues)) {
