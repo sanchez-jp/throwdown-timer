@@ -250,6 +250,14 @@ async function toggleFullscreen() {
   updateFullscreenButton();
 }
 
+function toggleWorkoutDetails() {
+  const panel = $("timerPanel");
+  const button = $("workoutDetailsButton");
+  const open = panel.classList.toggle("description-open");
+  button.setAttribute("aria-expanded", String(open));
+  button.textContent = open ? "CERRAR WOD" : "VER WOD";
+}
+
 function renderTimerDescription(workout) {
   const panel = $("timerDescription");
   panel.replaceChildren();
@@ -369,7 +377,7 @@ $("resetButton").addEventListener("click", async () => {
 });
 $("skipButton").addEventListener("click",()=>{if(!engine)return;const snap=engine.skip();processEvents();lastCountdownCue=null;renderTimer(snap);if(snap.state==="running")startDisplayLoop();});
 $("finishButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.finish();processEvents();renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
-$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.remove("timer-immersive");updateFullscreenButton();$("timerPanel").classList.add("hidden");$(returnView==="library"?"libraryPanel":"setupPanel").classList.remove("hidden");});
+$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.remove("timer-immersive","description-open");$("workoutDetailsButton").setAttribute("aria-expanded","false");$("workoutDetailsButton").textContent="VER WOD";updateFullscreenButton();$("timerPanel").classList.add("hidden");$(returnView==="library"?"libraryPanel":"setupPanel").classList.remove("hidden");});
 $("soundButton").addEventListener("click", async () => {
   const enabled = $("soundButton").getAttribute("aria-pressed") !== "true";
   $("soundButton").setAttribute("aria-pressed", String(enabled));
@@ -382,6 +390,7 @@ $("soundButton").addEventListener("click", async () => {
   }
 });
 $("fullscreenButton").addEventListener("click",toggleFullscreen);
+$("workoutDetailsButton").addEventListener("click",toggleWorkoutDetails);
 document.addEventListener("fullscreenchange",updateFullscreenButton);
 updateFullscreenButton();
 document.addEventListener("visibilitychange",async()=>{
