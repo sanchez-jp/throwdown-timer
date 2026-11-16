@@ -74,7 +74,10 @@ async function unlockAudio() {
 async function playTone(frequency=880, duration=.13) {
   if ($("soundButton").getAttribute("aria-pressed") !== "true") return;
   try {
-    const context = await unlockAudio();
+    // Once audio has been unlocked by a real user gesture, schedule tones
+    // synchronously. Re-awaiting resume() for every cue can lose timing and
+    // is unreliable on iOS Safari.
+    const context = audioContext?.state === "running" ? audioContext : await unlockAudio();
     const now = context.currentTime;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
@@ -88,7 +91,8 @@ async function playTone(frequency=880, duration=.13) {
     oscillator.start(now);
     oscillator.stop(now + duration + .02);
   } catch (error) {
-    $("statusMessage").textContent = "No se ha podido reproducir el sonido. Comprueba los permisos y el volumen del dispositivo.";
+    $("soundButton").textContent = "SONIDO: ERROR";
+    $("statusMessage").textContent = "No se ha podido reproducir el sonido. Pulsa SONIDO para volver a activarlo y comprueba el volumen.";
     console.warn("Throwdown Timer audio:", error);
   }
 }
@@ -210,18 +214,47 @@ async function releaseWakeLock() {
   try { await wakeLock.release(); } catch {}
   wakeLock=null;
 }
+function isIOSDevice() {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+}
 function updateFullscreenButton() {
-  const active=!!document.fullscreenElement;
-  $("fullscreenButton").textContent=active?"SALIR PANTALLA COMPLETA":"PANTALLA COMPLETA";
-  $("fullscreenButton").setAttribute("aria-pressed",String(active));
+  const button = $("fullscreenButton");
+  const hint = $("fullscreenHint");
+  const active = !!document.fullscreenElement;
+  if (isIOSDevice() && isStandaloneApp()) {
+    button.textContent = "MODO APP ACTIVO";
+    button.disabled = true;
+    button.setAttribute("aria-pressed", "true");
+    hint.classList.add("hidden");
+    return;
+  }
+  if (isIOSDevice()) {
+    button.textContent = "AÑADIR A INICIO";
+    button.disabled = false;
+    button.setAttribute("aria-pressed", "false");
+    hint.classList.remove("hidden");
+    return;
+  }
+  button.disabled = false;
+  button.textContent = active ? "SALIR PANTALLA COMPLETA" : "PANTALLA COMPLETA";
+  button.setAttribute("aria-pressed", String(active));
+  hint.classList.add("hidden");
 }
 async function toggleFullscreen() {
+  if (isIOSDevice()) {
+    $("fullscreenHint").classList.remove("hidden");
+    return;
+  }
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
     else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-    else $("statusMessage").textContent="La pantalla completa no está disponible en este navegador.";
+    else $("statusMessage").textContent = "La pantalla completa no está disponible en este navegador.";
   } catch {
-    $("statusMessage").textContent="No se ha podido activar la pantalla completa en este dispositivo.";
+    $("statusMessage").textContent = "No se ha podido activar la pantalla completa en este dispositivo.";
   }
   updateFullscreenButton();
 }
@@ -306,6 +339,7 @@ $("soundButton").addEventListener("click", async () => {
 });
 $("fullscreenButton").addEventListener("click",toggleFullscreen);
 document.addEventListener("fullscreenchange",updateFullscreenButton);
+updateFullscreenButton();
 document.addEventListener("visibilitychange",async()=>{
   if(!engine)return;
   if(document.visibilityState==="visible"){
