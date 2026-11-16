@@ -32,7 +32,9 @@ test("pause and resume preserve elapsed time", () => {
 test("count-up can finish manually", () => {
   const c = clock();
   const timer = new TimerEngine(plan({type:"countup",label:"For Time",timeCapSeconds:null,rounds:5}), {now:c.now});
+  assert.equal(timer.snapshot().round, null, "target rounds are not live round progress");
   timer.start(); c.advance(12345);
+  assert.equal(timer.snapshot().round, null);
   const result = timer.finish();
   assert.equal(result.state, "completed");
   assert.equal(result.completionReason, "user_finished");
