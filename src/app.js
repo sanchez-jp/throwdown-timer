@@ -227,7 +227,9 @@ async function releaseWakeLock() {
 function updateFullscreenButton() {
   const button = $("fullscreenButton");
   const active = $("timerPanel").classList.contains("timer-immersive");
-  button.textContent = active ? "SALIR DE PANTALLA COMPLETA" : "PANTALLA COMPLETA";
+  button.textContent = active ? "×" : "⛶";
+  button.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa");
+  button.title = active ? "Salir de pantalla completa" : "Activar pantalla completa";
   button.setAttribute("aria-pressed", String(active));
 }
 
@@ -371,7 +373,9 @@ $("backButton").addEventListener("click",async()=>{stopDisplayLoop();await relea
 $("soundButton").addEventListener("click", async () => {
   const enabled = $("soundButton").getAttribute("aria-pressed") !== "true";
   $("soundButton").setAttribute("aria-pressed", String(enabled));
-  $("soundButton").textContent = enabled ? "SONIDO: ON" : "SONIDO: OFF";
+  $("soundButton").textContent = enabled ? "◖))" : "◖×";
+  $("soundButton").setAttribute("aria-label", enabled ? "Desactivar sonido" : "Activar sonido");
+  $("soundButton").title = enabled ? "Desactivar sonido" : "Activar sonido";
   if (enabled) {
     try { await unlockAudio(); await playTone(880, .16); }
     catch (error) { $("statusMessage").textContent = "No se ha podido activar el audio en este navegador."; }
