@@ -16,7 +16,7 @@ function clone(value) {
  * Returns editable top-level blocks without flattening nested repeat groups.
  * The editor can therefore round-trip the original grouping structure.
  */
-export function flattenTimerPlan(plan) {
+export function copyTimerPlanBlocks(plan) {
   if (plan == null) return [];
   if (!plan || plan.type !== "sequence" || !Array.isArray(plan.blocks)) {
     throw new TimerPlanBuilderError("UNSUPPORTED_PLAN", "El plan guardado no tiene una secuencia válida.");
