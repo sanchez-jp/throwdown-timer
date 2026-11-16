@@ -49,18 +49,64 @@
 .structure-step-row .structure-item-row{background:#101925}
 .fullscreen-hint{margin:9px 0 0;padding:11px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:11px;line-height:1.5}.tool-button:disabled{opacity:.65;cursor:default}
 
-/* Immersive timer mode: focus on the clock and essential controls. */
-.app-shell.timer-immersive{width:100%;max-width:none;min-height:100vh;min-height:100dvh;padding:18px 22px;justify-content:center}
-.timer-immersive .topbar,.timer-immersive>footer{display:none}
-.timer-immersive .timer-panel{width:100%;max-width:900px;margin:auto;display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - 36px);min-height:calc(100dvh - 36px)}
-.timer-immersive .timer-topline{display:none}
-.timer-immersive .timer-label{margin-top:0;font-size:clamp(12px,2vw,18px)}
-.timer-immersive .clock{font-size:clamp(110px,25vw,230px);letter-spacing:-.055em;margin:12px 0}
-.timer-immersive .progress-track{margin:24px 0}
-.timer-immersive .stats-row,.timer-immersive #soundButton,.timer-immersive .compact,.timer-immersive #statusMessage{display:none}
-.timer-immersive .timer-tools{display:flex;justify-content:center;margin-top:20px}
-.timer-immersive #fullscreenButton{width:min(100%,360px);min-height:48px;border-color:var(--lime);color:var(--lime);background:#111a25;font-size:11px}
-.timer-immersive .timer-controls{width:100%;max-width:620px;margin:0 auto}
-.timer-immersive .timer-controls .primary-button{font-size:14px;min-height:58px}
-.timer-immersive .timer-controls .secondary-button,.timer-immersive .timer-controls .finish-button{min-height:58px}
-@media(max-width:420px){.timer-immersive .app-shell{padding:12px}.timer-immersive .clock{font-size:clamp(100px,27vw,150px);letter-spacing:-.06em}.timer-immersive .progress-track{margin:18px 0}}
+
+/* Fullscreen timer layout inspired by Throwdown Tracker. */
+.timer-main{display:contents}
+.timer-description{display:none}
+.timer-panel.timer-immersive{
+  position:fixed;inset:0;z-index:10000;width:100vw;height:100vh;height:100dvh;
+  max-width:none;margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display:grid;grid-template-rows:minmax(0,1.08fr) minmax(0,.92fr);gap:0;
+  overflow:hidden;background:#0b1018;
+}
+.timer-immersive .timer-main{
+  min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:clamp(12px,3vw,30px);overflow:hidden;
+  background:radial-gradient(ellipse at 50% 45%,#1b3038 0,transparent 60%),#0b1018;
+  border-bottom:1px solid var(--line);
+}
+.timer-immersive .timer-topline{width:100%;max-width:900px}
+.timer-immersive .timer-label{margin-top:clamp(8px,2vh,20px);font-size:clamp(10px,1.6vw,15px)}
+.timer-immersive .clock{font-size:clamp(72px,18vw,170px);letter-spacing:-.06em;line-height:1;margin:5px 0}
+.timer-immersive .phase-label{font-size:clamp(11px,1.8vw,16px)}
+.timer-immersive .progress-track{width:min(100%,760px);margin:clamp(8px,1.8vh,18px) 0}
+.timer-immersive .stats-row{width:min(100%,760px);gap:8px}
+.timer-immersive .stats-row>div{padding:8px 12px}
+.timer-immersive .stats-row strong{font-size:clamp(15px,2.5vw,22px)}
+.timer-immersive .timer-tools{width:min(100%,760px);margin-top:10px}
+.timer-immersive .timer-controls{width:min(100%,760px);margin-top:0}
+.timer-immersive .timer-controls .primary-button,
+.timer-immersive .timer-controls .secondary-button,
+.timer-immersive .timer-controls .finish-button{margin-top:10px;min-height:48px}
+.timer-immersive .workout-preview,.timer-immersive #statusMessage{display:none}
+.timer-immersive .timer-description{
+  display:block;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:clamp(14px,3vw,28px) clamp(18px,4vw,42px);background:#111a25;
+}
+.timer-description-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.timer-description-heading h2{font-size:clamp(18px,3vw,28px);line-height:1.15;margin:0}
+.timer-description-summary{font-size:clamp(12px,2vw,16px);color:var(--muted);margin:8px 0 16px}
+.timer-description h3{font-size:10px;letter-spacing:1.5px;color:var(--cyan);margin:14px 0 8px}
+.timer-description-list{padding-left:1.2em;margin:8px 0}
+.timer-description-list li{font-size:clamp(13px,2vw,18px);line-height:1.35;margin:0 0 7px;color:var(--white)}
+.timer-description-notes{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+@media (orientation:landscape) and (min-width:600px){
+  .timer-panel.timer-immersive{grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);grid-template-rows:1fr}
+  .timer-immersive .timer-main{border-bottom:0;border-right:1px solid var(--line);padding:clamp(12px,2vw,26px)}
+  .timer-immersive .clock{font-size:clamp(64px,12vw,180px)}
+  .timer-immersive .timer-label{margin-top:8px}
+  .timer-immersive .progress-track{margin:10px 0}
+  .timer-immersive .timer-controls .primary-button,
+  .timer-immersive .timer-controls .secondary-button,
+  .timer-immersive .timer-controls .finish-button{min-height:44px}
+  .timer-immersive .timer-description{align-self:stretch}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .timer-immersive .timer-topline{margin-bottom:4px}
+  .timer-immersive .timer-label{margin-top:0}
+  .timer-immersive .clock{font-size:clamp(58px,10vw,120px)}
+  .timer-immersive .timer-tools{margin-top:5px}
+  .timer-immersive .timer-controls .primary-button,
+  .timer-immersive .timer-controls .secondary-button,
+  .timer-immersive .timer-controls .finish-button{min-height:38px;margin-top:5px}
+}
