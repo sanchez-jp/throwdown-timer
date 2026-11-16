@@ -92,28 +92,31 @@
     </section>
 
     <section class="timer-panel hidden" id="timerPanel" aria-live="polite">
-      <div class="timer-topline"><button class="text-button" id="backButton">← VOLVER</button><span class="tag" id="timerFormat">AMRAP</span></div>
-      <div class="timer-label" id="timerLabel">TIME REMAINING</div>
-      <div class="clock" id="clock">12:00</div>
-      <div class="phase-label" id="phaseLabel">PREPARADO</div>
-      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="stats-row">
-        <div><small>RONDA / INTERVALO</small><strong id="roundValue">—</strong></div>
-        <div><small id="totalLabel">TIEMPO RESTANTE</small><strong id="totalValue">12:00</strong></div>
+      <div class="timer-main">
+        <div class="timer-topline"><button class="text-button" id="backButton">← VOLVER</button><span class="tag" id="timerFormat">AMRAP</span></div>
+        <div class="timer-label" id="timerLabel">TIME REMAINING</div>
+        <div class="clock" id="clock">12:00</div>
+        <div class="phase-label" id="phaseLabel">PREPARADO</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="stats-row">
+          <div><small>RONDA / INTERVALO</small><strong id="roundValue">—</strong></div>
+          <div><small id="totalLabel">TIEMPO RESTANTE</small><strong id="totalValue">12:00</strong></div>
+        </div>
+        <div class="timer-tools"><button class="tool-button" id="soundButton" type="button" aria-pressed="true">SONIDO: ON</button><button class="tool-button" id="fullscreenButton" type="button" aria-pressed="false">PANTALLA COMPLETA</button></div>
+        <div class="timer-controls">
+          <button class="primary-button" id="pauseButton">INICIAR</button>
+          <button class="secondary-button" id="resetButton" aria-label="Reiniciar cronómetro">↻</button>
+          <button class="secondary-button hidden" id="skipButton">SALTAR →</button>
+          <button class="finish-button hidden" id="finishButton">FINALIZAR</button>
+        </div>
+        <div class="workout-preview compact">
+          <div class="preview-heading"><span>WORKOUT</span></div>
+          <h2 id="timerWorkoutName">12' AMRAP</h2>
+          <div class="movement-list" id="timerMovements"></div>
+        </div>
+        <p class="disclaimer" id="statusMessage">El cronómetro está listo.</p>
       </div>
-      <div class="timer-tools"><button class="tool-button" id="soundButton" type="button" aria-pressed="true">SONIDO: ON</button><button class="tool-button" id="fullscreenButton" type="button" aria-pressed="false">PANTALLA COMPLETA</button></div>
-      <div class="timer-controls">
-        <button class="primary-button" id="pauseButton">INICIAR</button>
-        <button class="secondary-button" id="resetButton" aria-label="Reiniciar cronómetro">↻</button>
-        <button class="secondary-button hidden" id="skipButton">SALTAR →</button>
-        <button class="finish-button hidden" id="finishButton">FINALIZAR</button>
-      </div>
-      <div class="workout-preview compact">
-        <div class="preview-heading"><span>WORKOUT</span></div>
-        <h2 id="timerWorkoutName">12' AMRAP</h2>
-        <div class="movement-list" id="timerMovements"></div>
-      </div>
-      <p class="disclaimer" id="statusMessage">El cronómetro está listo.</p>
+      <aside class="timer-description hidden" id="timerDescription" aria-label="Descripción del WOD"></aside>
     </section>
     <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
   </main>
