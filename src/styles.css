@@ -210,3 +210,10 @@
   .timer-immersive .timer-controls .timer-icon-button{min-width:42px;width:42px}
   .timer-immersive .timer-controls #pauseButton{width:42px;flex-basis:42px}
 }
+
+/* Keep the available timer actions grouped as equal square controls. */
+.timer-controls{display:flex;justify-content:center;align-items:center;gap:9px}
+.timer-controls .timer-icon-button{flex:0 0 48px}
+.timer-controls #pauseButton{flex:0 0 48px}
+.timer-controls .timer-icon-button:disabled{opacity:.3;cursor:default}
+@media(max-width:420px){.timer-immersive .timer-controls .timer-icon-button,.timer-immersive .timer-controls #pauseButton{flex-basis:42px;width:42px;min-width:42px}}
