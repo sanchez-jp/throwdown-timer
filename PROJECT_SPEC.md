@@ -181,11 +181,11 @@ Do not send sensitive/private workout data to a provider without reviewing the a
 
 ### Phase 1 — Frontend foundation
 - [x] Establish app shell and responsive visual system.
-- [ ] Create home screen and navigation.
-- [ ] Create WOD library screen and empty states.
+- [x] Create initial home screen navigation.
+- [x] Create WOD library screen and empty states.
 - [x] Add PWA manifest and service worker baseline.
 
-The PWA baseline precaches the app shell and falls back to cached HTML for offline navigation. The local WOD library is not available yet, so offline persistence of workouts remains pending. Real-device installation and offline validation are still outstanding.
+The PWA baseline precaches the app shell and falls back to cached HTML for offline navigation. The initial IndexedDB library is integrated into the UI for saving and reusing demo WODs. Real-device installation and offline validation are still outstanding.
 
 ### Phase 2 — Timer engine (no AI dependency)
 - [ ] Implement timestamp-based clock.
@@ -198,7 +198,8 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 
 ### Phase 3 — WOD library
 - [x] Implement IndexedDB repository (list/get/create/update/duplicate/delete/restore API).
-- [ ] Add create, edit, duplicate, delete, and restore/undo behavior.
+- [x] Add save-from-demo, duplicate, delete, and restore/undo behavior.
+- [ ] Add WOD editing and full create/review flow.
 - [ ] Verify offline access and schema migrations.
 
 ### Phase 4 — AI interpretation
