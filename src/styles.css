@@ -310,3 +310,28 @@
     max-height:48px !important;
   }
 }
+
+
+/* Final fullscreen alignment: timer actions first, utility actions second.
+   Keep every icon control at the same 48px square size in portrait and landscape. */
+.timer-immersive .timer-controls{order:1 !important}
+.timer-immersive .timer-tools{order:2 !important}
+.timer-immersive .timer-controls > button.timer-icon-button,
+.timer-immersive .timer-controls > #pauseButton{
+  flex:0 0 48px !important;
+  width:48px !important;
+  min-width:48px !important;
+  max-width:48px !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+}
+.timer-immersive .timer-tools > .tool-button.timer-icon-button{
+  flex:0 0 48px !important;
+  width:48px !important;
+  min-width:48px !important;
+  max-width:48px !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+}
