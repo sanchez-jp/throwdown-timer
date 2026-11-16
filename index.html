@@ -69,6 +69,15 @@
         <textarea class="editor-input" id="editDescription" name="description" rows="3" maxlength="1000"></textarea>
         <div class="movement-editor-heading"><h2>Movimientos</h2><button class="text-button" id="addMovementButton" type="button">+ AÑADIR</button></div>
         <div id="movementEditorList" class="movement-editor-list"></div>
+        <section class="semantic-structure-editor" id="semanticStructureEditor" aria-labelledby="semanticStructureHeading">
+          <div class="movement-editor-heading"><h2 id="semanticStructureHeading">Estructura del WOD</h2></div>
+          <p class="timer-plan-help">Define el orden y la organización real del entrenamiento. Esta estructura no modifica el temporizador ni registra automáticamente el progreso.</p>
+          <label class="field-label" for="structureType">Tipo de estructura</label>
+          <select class="editor-input" id="structureType">
+            <option value="sequence">Secuencia</option><option value="rounds">Rondas</option><option value="chipper">Chipper</option><option value="ladder">Ladder</option><option value="sections">Secciones</option>
+          </select>
+          <div id="structureSettings" class="structure-settings"></div>
+        </section>
         <section class="timer-plan-editor" aria-labelledby="timerPlanHeading">
           <div class="movement-editor-heading"><h2 id="timerPlanHeading">Temporizador</h2><button class="text-button" id="addTimerBlockButton" type="button">+ AÑADIR BLOQUE</button></div>
           <p class="timer-plan-help">Añade bloques en orden o crea grupos de rondas repetidas. RFT y Ladder usan cuenta ascendente; el cronómetro no cuenta repeticiones automáticamente.</p>
