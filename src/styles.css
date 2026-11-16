@@ -110,3 +110,43 @@
   .timer-immersive .timer-controls .secondary-button,
   .timer-immersive .timer-controls .finish-button{min-height:38px;margin-top:5px}
 }
+
+
+/* Prioridad visual al reloj en el modo de pantalla completa. */
+.timer-immersive .timer-main{gap:clamp(2px,.8vh,8px);padding:clamp(8px,1.8vw,20px)}
+.timer-immersive .timer-topline{flex:0 0 auto;min-height:24px}
+.timer-immersive .timer-topline .text-button{font-size:10px;padding:4px 0}
+.timer-immersive .timer-topline .tag{font-size:9px;padding:4px 8px}
+.timer-immersive .timer-label{font-size:clamp(9px,1.2vw,12px);margin:2px 0}
+.timer-immersive .clock{
+  font-size:clamp(112px,34vw,270px);
+  line-height:.88;letter-spacing:-.075em;margin:clamp(2px,.7vh,8px) 0;
+  flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;
+  white-space:nowrap;
+}
+.timer-immersive .phase-label{font-size:clamp(10px,1.25vw,13px);margin:0}
+.timer-immersive .progress-track{height:5px;margin:clamp(4px,.8vh,9px) 0;flex:0 0 auto}
+.timer-immersive .stats-row{gap:6px;flex:0 0 auto}
+.timer-immersive .stats-row>div{padding:5px 8px;border-radius:10px}
+.timer-immersive .stats-row small{font-size:8px;letter-spacing:1px}
+.timer-immersive .stats-row strong{font-size:clamp(13px,1.8vw,17px)}
+.timer-immersive .timer-tools{margin-top:4px;flex:0 0 auto}
+.timer-immersive .timer-tools .tool-button{min-height:30px;padding:5px 10px;font-size:9px}
+.timer-immersive .timer-controls{flex:0 0 auto;display:flex;gap:7px}
+.timer-immersive .timer-controls .primary-button,
+.timer-immersive .timer-controls .secondary-button,
+.timer-immersive .timer-controls .finish-button{min-height:36px;margin-top:4px;padding:7px 10px;font-size:10px}
+@media (orientation:landscape) and (min-width:600px){
+  .timer-immersive .timer-main{gap:clamp(2px,.6vh,7px);padding:clamp(8px,1.3vw,18px)}
+  .timer-immersive .clock{font-size:clamp(92px,15vw,250px)}
+  .timer-immersive .timer-label{font-size:10px}
+  .timer-immersive .progress-track{height:4px;margin:5px 0}
+  .timer-immersive .stats-row>div{padding:4px 7px}
+  .timer-immersive .timer-tools .tool-button{min-height:26px}
+  .timer-immersive .timer-controls .primary-button,
+  .timer-immersive .timer-controls .secondary-button,
+  .timer-immersive .timer-controls .finish-button{min-height:32px;margin-top:2px}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .timer-immersive .clock{font-size:clamp(82px,13vw,180px)}
+}
