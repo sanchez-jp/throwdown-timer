@@ -128,8 +128,12 @@ function renderTimer(snapshot) {
   $("pauseButton").textContent = snapshot.state==="running" ? "Ⅱ" : snapshot.state==="completed" || snapshot.state==="capped" ? "✓" : "▶";
   $("pauseButton").setAttribute("aria-label", pauseAction);
   $("pauseButton").title = pauseAction;
-  $("pauseButton").disabled = ["completed","capped"].includes(snapshot.state);
-  $("pauseButton").style.opacity = $("pauseButton").disabled ? ".45" : "1";
+  const terminal = ["completed","capped"].includes(snapshot.state);
+  $("pauseButton").classList.toggle("hidden", terminal);
+  $("pauseButton").disabled = terminal;
+  $("resetButton").disabled = snapshot.state === "idle";
+  $("resetButton").setAttribute("aria-label", "Reiniciar cronómetro");
+  $("resetButton").title = "Reiniciar cronómetro";
   $("skipButton").classList.toggle("hidden",!snapshot.can.skip);
   $("finishButton").classList.toggle("hidden",!snapshot.can.finish);
   $("statusMessage").textContent = snapshot.state==="capped" ? "Se ha alcanzado el Time Cap." : snapshot.state==="completed" ? "WOD finalizado." : snapshot.state==="paused" ? "Cronómetro pausado." : snapshot.state==="running" ? "Entrenamiento en curso." : "El cronómetro está listo.";
@@ -160,7 +164,8 @@ function renderPrestart(remainingMs = prestartRemainingMs) {
   $("pauseButton").setAttribute("aria-label", prestartState === "running" ? "Pausar cuenta atrás" : "Continuar cuenta atrás");
   $("pauseButton").title = prestartState === "running" ? "Pausar cuenta atrás" : "Continuar cuenta atrás";
   $("pauseButton").disabled = false;
-  $("pauseButton").style.opacity = "1";
+  $("pauseButton").classList.remove("hidden");
+  $("resetButton").disabled = false;
   $("skipButton").classList.add("hidden");
   $("finishButton").classList.add("hidden");
   $("statusMessage").textContent = prestartState === "paused" ? "Cuenta atrás pausada." : "Prepárate para comenzar.";
