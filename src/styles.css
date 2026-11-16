@@ -756,3 +756,66 @@
     height:34px !important;min-height:34px !important;max-height:34px !important;
   }
 }
+
+
+/* Final portrait/landscape polish: align transport controls with the stats cards
+   and force a fully opaque, effect-free surface in iOS immersive mode. */
+@media (orientation:landscape) and (min-width:600px){
+  .timer-immersive .stats-row{
+    width:min(100%,680px) !important;
+    max-width:680px !important;
+    align-self:center !important;
+  }
+  .timer-immersive .timer-controls{
+    width:min(100%,680px) !important;
+    max-width:680px !important;
+    align-self:center !important;
+    justify-content:space-between !important;
+    gap:10px !important;
+    padding:0 !important;
+  }
+}
+@media (orientation:portrait){
+  .timer-panel.timer-immersive{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+    height:100dvh !important;
+    background:#0b1018 !important;
+    background-image:none !important;
+    isolation:isolate !important;
+    overflow:hidden !important;
+  }
+  .timer-immersive .timer-main{
+    background:#0b1018 !important;
+    background-color:#0b1018 !important;
+    background-image:none !important;
+    box-shadow:none !important;
+    filter:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    text-shadow:none !important;
+  }
+  .timer-immersive::before,
+  .timer-immersive::after,
+  .timer-immersive .timer-main::before,
+  .timer-immersive .timer-main::after,
+  .timer-immersive .clock::before,
+  .timer-immersive .clock::after{
+    content:none !important;
+    display:none !important;
+    background:none !important;
+    box-shadow:none !important;
+    filter:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+  .timer-immersive .timer-main,
+  .timer-immersive .timer-main *{
+    text-shadow:none !important;
+    filter:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+}
