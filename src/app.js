@@ -1,5 +1,6 @@
 import { TimerEngine } from "./timer-engine.js";
 import { createWorkoutRepository } from "./workout-repository.js";
+import { buildTimerPlan, flattenTimerPlan, timerPlanRequiredIssue } from "./timer-plan-builder.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -36,6 +37,7 @@ let deletedWorkout = null;
 let editingWorkoutId = null;
 let creatingWorkout = false;
 let editorReturnView = "library";
+let timerPlanLoadError = false;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -323,6 +325,7 @@ async function openEditor(id) {
     $("editFormat").value = record.workout.format;
     $("editDescription").value = record.workout.description || "";
     $("movementEditorList").replaceChildren(...record.workout.movements.map(createMovementEditorRow));
+    renderTimerBlocks(record.timer);
     $("editorStatus").textContent = "";
     $("libraryPanel").classList.add("hidden");
     $("editorPanel").classList.remove("hidden");
@@ -337,6 +340,7 @@ async function openNewEditor(sourceView = "library") {
   $("editFormat").value = "custom";
   $("editDescription").value = "";
   $("movementEditorList").replaceChildren(createMovementEditorRow());
+  renderTimerBlocks(null);
   $("editorHeading").innerHTML = 'Crear WOD<span>.</span>';
   $("editorIntro").textContent = "Añade los movimientos y guarda el WOD. Después podrás configurar su temporizador.";
   $("saveEditorButton").textContent = "CREAR WOD";
@@ -346,6 +350,226 @@ async function openNewEditor(sourceView = "library") {
   $("editorPanel").classList.remove("hidden");
   $("editTitle").focus();
 }
+const timerBlockTypes = [
+  ["countdown", "Cuenta atrás"],
+  ["countup", "For Time · Cuenta ascendente"],
+  ["emom", "EMOM / E2MOM"],
+  ["intervals", "Intervalos · Trabajo / descanso"],
+  ["rest", "Descanso"]
+];
+const timerBlockLabels = {
+  countdown: "Bloque de trabajo", countup: "For Time", emom: "EMOM",
+  intervals: "Intervalos", rest: "Descanso"
+};
+function timeParts(seconds) {
+  if (!Number.isInteger(seconds)) return ["", ""];
+  return [String(Math.floor(seconds / 60)), String(seconds % 60)];
+}
+function timerField(fields, name, label, value = "", options = {}) {
+  const wrap = document.createElement("div");
+  if (options.wide) wrap.classList.add("wide-field");
+  const caption = document.createElement("label");
+  caption.className = "field-label";
+  caption.textContent = label;
+  const input = document.createElement("input");
+  input.className = "editor-input";
+  input.name = name;
+  input.type = options.type || "number";
+  input.value = value;
+  input.placeholder = options.placeholder || "";
+  if (input.type === "number") {
+    input.min = options.min ?? "0";
+    input.step = "1";
+    input.inputMode = "numeric";
+  } else input.maxLength = 80;
+  caption.htmlFor = "timer-" + name + "-" + Math.random().toString(36).slice(2, 8);
+  input.id = caption.htmlFor;
+  wrap.append(caption, input);
+  fields.append(wrap);
+  return input;
+}
+function timerCheckbox(fields, name, label, checked = false) {
+  const wrap = document.createElement("label");
+  wrap.className = "checkbox-field";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.name = name;
+  input.checked = checked;
+  const text = document.createElement("span");
+  text.textContent = label;
+  wrap.append(input, text);
+  fields.append(wrap);
+}
+function renderTimerBlockFields(row, block = {}) {
+  const fields = row.querySelector(".timer-block-fields");
+  fields.replaceChildren();
+  const type = row.querySelector('[name="blockType"]').value;
+  const label = timerField(fields, "label", "Nombre del bloque", block.label || timerBlockLabels[type], { type: "text", wide: true });
+  label.required = true;
+  const addTime = (prefix, caption, seconds, required = true) => {
+    const [minutes, rest] = timeParts(seconds);
+    timerField(fields, prefix + "Minutes", caption + " · minutos", minutes, { placeholder: required ? "Obligatorio" : "Sin límite" });
+    timerField(fields, prefix + "Seconds", caption + " · segundos", rest, { placeholder: required ? "0–59" : "Opcional" });
+  };
+  if (type === "countdown" || type === "rest") {
+    addTime("duration", "Duración", block.durationSeconds);
+    if (type === "countdown") timerCheckbox(fields, "allowSkip", "Permitir saltar este bloque", block.allowSkip === true);
+    else timerCheckbox(fields, "allowSkip", "Permitir saltar el descanso", block.allowSkip === true);
+  } else if (type === "countup") {
+    addTime("cap", "Time Cap", block.timeCapSeconds ?? null, false);
+    timerField(fields, "rounds", "Rondas objetivo (opcional)", block.rounds ?? "", { placeholder: "Sin objetivo" });
+  } else if (type === "emom") {
+    addTime("duration", "Duración total", block.durationSeconds);
+    addTime("interval", "Duración de cada intervalo", block.intervalSeconds);
+    const rounds = block.rounds ? String(block.rounds) + " intervalos" : "Se calcularán al guardar";
+    const hint = document.createElement("div");
+    hint.className = "timer-plan-help wide-field";
+    hint.textContent = "Número de intervalos: " + rounds + ". La duración total debe ser múltiplo del intervalo.";
+    fields.append(hint);
+    timerCheckbox(fields, "allowSkip", "Permitir saltar intervalos", block.allowSkip === true);
+  } else if (type === "intervals") {
+    timerField(fields, "rounds", "Número de rondas", block.rounds ?? "", { placeholder: "Obligatorio" });
+    addTime("work", "Tiempo de trabajo", block.workSeconds);
+    addTime("rest", "Tiempo de descanso (escribe 0 si no hay)", block.restSeconds, true);
+    timerCheckbox(fields, "startWithRest", "Comenzar descansando", block.startWithRest === true);
+    timerCheckbox(fields, "allowSkip", "Permitir saltar fases", block.allowSkip === true);
+  }
+}
+function createTimerBlockRow(block = {}) {
+  const row = document.createElement("article");
+  row.className = "timer-block-card";
+  const top = document.createElement("div");
+  top.className = "timer-block-top";
+  const select = document.createElement("select");
+  select.className = "editor-input";
+  select.name = "blockType";
+  for (const [value, label] of timerBlockTypes) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    select.append(option);
+  }
+  select.value = block.type || "countdown";
+  const controls = document.createElement("div");
+  controls.className = "timer-block-controls";
+  const move = (label, title, direction) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "timer-block-move";
+    button.textContent = label;
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.addEventListener("click", () => {
+      if (direction < 0 && row.previousElementSibling) row.parentElement.insertBefore(row, row.previousElementSibling);
+      if (direction > 0 && row.nextElementSibling) row.parentElement.insertBefore(row.nextElementSibling, row);
+    });
+    controls.append(button);
+  };
+  move("↑", "Subir bloque", -1);
+  move("↓", "Bajar bloque", 1);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "timer-block-remove";
+  remove.textContent = "×";
+  remove.setAttribute("aria-label", "Eliminar bloque");
+  remove.addEventListener("click", () => { row.remove(); updateTimerBlockEmptyState(); });
+  controls.append(remove);
+  top.append(select, controls);
+  const fields = document.createElement("div");
+  fields.className = "timer-block-fields";
+  row.append(top, fields);
+  select.addEventListener("change", () => renderTimerBlockFields(row));
+  renderTimerBlockFields(row, block);
+  return row;
+}
+function updateTimerBlockEmptyState() {
+  const list = $("timerBlockList");
+  const empty = list.querySelector(".timer-block-empty");
+  if (!list.querySelector(".timer-block-card") && !empty) {
+    const message = document.createElement("div");
+    message.className = "timer-block-empty";
+    message.textContent = "Todavía no hay bloques. Añade uno para configurar el cronómetro o guarda el WOD como borrador.";
+    list.append(message);
+  } else if (list.querySelector(".timer-block-card") && empty) empty.remove();
+}
+function renderTimerBlocks(plan) {
+  timerPlanLoadError = false;
+  const list = $("timerBlockList");
+  list.replaceChildren();
+  try {
+    const blocks = flattenTimerPlan(plan);
+    list.replaceChildren(...blocks.map(createTimerBlockRow));
+    $("timerPlanStatus").textContent = "";
+    $("timerPlanStatus").classList.remove("timer-plan-status-error");
+    updateTimerBlockEmptyState();
+  } catch (error) {
+    timerPlanLoadError = true;
+    $("timerPlanStatus").textContent = error.message + " No guardaremos cambios hasta que puedas revisar este plan.";
+    $("timerPlanStatus").classList.add("timer-plan-status-error");
+  }
+}
+function readTimerSeconds(row, prefix, options = {}) {
+  const rawMinutes = row.querySelector('[name="' + prefix + 'Minutes"]').value.trim();
+  const rawSeconds = row.querySelector('[name="' + prefix + 'Seconds"]').value.trim();
+  if (!rawMinutes && !rawSeconds) {
+    if (options.optional) return null;
+    throw new Error(options.message || "Completa " + options.label + ".");
+  }
+  const minutes = rawMinutes === "" ? 0 : Number(rawMinutes);
+  const seconds = rawSeconds === "" ? 0 : Number(rawSeconds);
+  if (!Number.isInteger(minutes) || minutes < 0 || !Number.isInteger(seconds) || seconds < 0 || seconds > 59) {
+    throw new Error(options.label + ": introduce minutos y segundos válidos (0–59 segundos).");
+  }
+  const total = minutes * 60 + seconds;
+  if (options.allowZero ? total < 0 : total <= 0) throw new Error(options.label + " debe ser mayor que cero.");
+  return total;
+}
+function collectTimerBlocks() {
+  return [...$("timerBlockList").querySelectorAll(".timer-block-card")].map((row, index) => {
+    const value = name => row.querySelector('[name="' + name + '"]')?.value.trim() ?? "";
+    const checked = name => row.querySelector('[name="' + name + '"]')?.checked === true;
+    const type = value("blockType");
+    const label = value("label");
+    if (!label) throw new Error("Indica un nombre para el bloque " + (index + 1) + ".");
+    const block = { type, label };
+    if (type === "countdown" || type === "rest") {
+      block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración" });
+      if (type === "countdown" || type === "rest") block.allowSkip = checked("allowSkip");
+    } else if (type === "countup") {
+      block.timeCapSeconds = readTimerSeconds(row, "cap", { label: "El Time Cap", optional: true });
+      const rounds = value("rounds");
+      if (rounds && (!Number.isInteger(Number(rounds)) || Number(rounds) <= 0)) throw new Error("Las rondas objetivo deben ser un entero mayor que cero.");
+      block.rounds = rounds ? Number(rounds) : null;
+    } else if (type === "emom") {
+      block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración total" });
+      block.intervalSeconds = readTimerSeconds(row, "interval", { label: "La duración del intervalo" });
+      if (block.durationSeconds % block.intervalSeconds !== 0) throw new Error("En un EMOM, la duración total debe ser múltiplo exacto del intervalo.");
+      block.rounds = block.durationSeconds / block.intervalSeconds;
+      block.allowSkip = checked("allowSkip");
+    } else if (type === "intervals") {
+      const rounds = value("rounds");
+      if (!rounds || !Number.isInteger(Number(rounds)) || Number(rounds) <= 0) throw new Error("Indica un número de rondas válido para los intervalos.");
+      block.rounds = Number(rounds);
+      block.workSeconds = readTimerSeconds(row, "work", { label: "El tiempo de trabajo" });
+      block.restSeconds = readTimerSeconds(row, "rest", { label: "El tiempo de descanso", allowZero: true });
+      block.startWithRest = checked("startWithRest");
+      block.allowSkip = checked("allowSkip");
+    }
+    return block;
+  });
+}
+function collectTimerPlan(title) {
+  if (timerPlanLoadError) throw new Error("No se ha podido cargar la configuración temporal guardada. No se han aplicado cambios.");
+  return buildTimerPlan(title, collectTimerBlocks());
+}
+$("addTimerBlockButton").addEventListener("click", () => {
+  const empty = $("timerBlockList").querySelector(".timer-block-empty");
+  if (empty) empty.remove();
+  const row = createTimerBlockRow();
+  $("timerBlockList").append(row);
+  row.querySelector('[name="label"]').focus();
+});
+
 function collectEditedMovements() {
   return [...$("movementEditorList").querySelectorAll(".movement-editor-row")].map(row => {
     const value = name => row.querySelector('[name="' + name + '"]').value.trim();
@@ -379,6 +603,16 @@ $("workoutEditor").addEventListener("submit", async event => {
     $("editorStatus").textContent = "Añade al menos un movimiento y completa su nombre.";
     return;
   }
+  let timer;
+  try {
+    timer = collectTimerPlan(title);
+    $("timerPlanStatus").textContent = timer ? "Configuración temporal válida." : "Se guardará sin temporizador y quedará pendiente de configurar.";
+    $("timerPlanStatus").classList.remove("timer-plan-status-error");
+  } catch (error) {
+    $("timerPlanStatus").textContent = error.message;
+    $("timerPlanStatus").classList.add("timer-plan-status-error");
+    return;
+  }
   const save = $("saveEditorButton");
   save.disabled = true;
   save.textContent = "GUARDANDO…";
@@ -388,26 +622,13 @@ $("workoutEditor").addEventListener("submit", async event => {
       description: $("editDescription").value.trim(),
       movements
     };
+    const interpretation = timer
+      ? { status: "ready", issues: [] }
+      : { status: "needs_review", issues: [timerPlanRequiredIssue()] };
     if (creatingWorkout) {
-      await repository.create({
-        schemaVersion: 1,
-        title,
-        sourceText: null,
-        workout,
-        timer: null,
-        interpretation: {
-          status: "needs_review",
-          issues: [{
-            severity: "blocking",
-            code: "TIMER_PLAN_REQUIRED",
-            message: "Configura el temporizador antes de iniciar este WOD.",
-            fieldPath: "timer",
-            question: "¿Qué formato y duración debe tener el temporizador?"
-          }]
-        }
-      });
+      await repository.create({ schemaVersion: 1, title, sourceText: null, workout, timer, interpretation });
     } else {
-      await repository.update(editingWorkoutId, { title, workout });
+      await repository.update(editingWorkoutId, { title, workout, timer, interpretation });
     }
     creatingWorkout = false;
     editingWorkoutId = null;
