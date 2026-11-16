@@ -69,6 +69,12 @@
         <textarea class="editor-input" id="editDescription" name="description" rows="3" maxlength="1000"></textarea>
         <div class="movement-editor-heading"><h2>Movimientos</h2><button class="text-button" id="addMovementButton" type="button">+ AÑADIR</button></div>
         <div id="movementEditorList" class="movement-editor-list"></div>
+        <section class="timer-plan-editor" aria-labelledby="timerPlanHeading">
+          <div class="movement-editor-heading"><h2 id="timerPlanHeading">Temporizador</h2><button class="text-button" id="addTimerBlockButton" type="button">+ AÑADIR BLOQUE</button></div>
+          <p class="timer-plan-help">Añade los segmentos en el orden en que deben ejecutarse. Los tiempos no se rellenan automáticamente.</p>
+          <div id="timerBlockList" class="timer-block-list"></div>
+          <div id="timerPlanStatus" class="editor-status" role="status"></div>
+        </section>
         <div id="editorStatus" class="editor-status" role="status"></div>
         <button class="primary-button" id="saveEditorButton" type="submit">GUARDAR CAMBIOS</button>
       </form>
