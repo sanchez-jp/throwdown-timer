@@ -136,3 +136,52 @@ test("ready WODs cannot contain blocking interpretation issues", async () => {
     interpretation: { status: "ready", issues: [{ severity: "blocking", message: "Conflicto" }] }
   })), error => error.code === "BLOCKING_ISSUES");
 });
+
+test("v1 and v2 records coexist and v2 semantic structure survives repository round-trip", async () => {
+  const { repository } = setup();
+  const legacy = await repository.create(wod());
+  const semanticWod = {
+    schemaVersion: 2,
+    title: "Ladder irregular",
+    sourceText: "2-5-9 burpees",
+    workout: {
+      format: "ladder",
+      description: "2, 5 y 9 burpees",
+      movements: [{ id: "m1", name: "Burpee", prescription: null, load: null, notes: null }],
+      structure: {
+        type: "ladder",
+        direction: "custom",
+        steps: [
+          { label: "2 reps", items: [{ type: "movement", movementId: "m1", prescription: "2 reps" }] },
+          { label: "5 reps", items: [{ type: "movement", movementId: "m1", prescription: "5 reps" }] },
+          { label: "9 reps", items: [{ type: "movement", movementId: "m1", prescription: "9 reps" }] }
+        ]
+      }
+    },
+    timer: { type: "sequence", label: "Ladder", blocks: [{ type: "countup", label: "Ladder", timeCapSeconds: 600, rounds: null }] },
+    interpretation: { status: "ready", issues: [] }
+  };
+  const saved = await repository.create(semanticWod);
+  const loaded = await repository.get(saved.id);
+  assert.equal(legacy.schemaVersion, 1);
+  assert.equal(loaded.schemaVersion, 2);
+  assert.deepEqual(loaded.workout.structure, semanticWod.workout.structure);
+  assert.deepEqual((await repository.list()).map(item => item.schemaVersion).sort(), [1, 2]);
+});
+
+test("repository rejects invalid v2 semantic references", async () => {
+  const { repository } = setup();
+  const invalid = {
+    schemaVersion: 2,
+    title: "Broken RFT",
+    workout: {
+      format: "rounds_for_time",
+      description: "5 rounds",
+      movements: [{ id: "m1", name: "Deadlift", prescription: "10 reps", load: null, notes: null }],
+      structure: { type: "rounds", count: 5, items: [{ type: "movement", movementId: "missing" }] }
+    },
+    timer: { type: "sequence", label: "RFT", blocks: [{ type: "countup", label: "RFT", timeCapSeconds: 600, rounds: 5 }] },
+    interpretation: { status: "ready", issues: [] }
+  };
+  await assert.rejects(repository.create(invalid), error => error.code === "UNKNOWN_MOVEMENT_REFERENCE");
+});
