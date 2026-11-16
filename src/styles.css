@@ -43,3 +43,7 @@
 .structure-add-button{justify-self:start;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:7px;background:#101925;color:var(--lime);font-size:10px;font-weight:800}
 .structure-count{max-width:180px}
 @media(max-width:480px){.structure-item-row{grid-template-columns:1fr 1fr auto}.structure-step-row{grid-template-columns:1fr 1fr auto}.structure-step-row input[name="stepLabel"]{grid-column:1/-1}.structure-section-row{grid-template-columns:1fr auto}}
+
+.structure-step-row{grid-template-columns:1fr auto}
+.structure-step-row .structure-items,.structure-step-row .structure-add-button{grid-column:1/-1}
+.structure-step-row .structure-item-row{background:#101925}
