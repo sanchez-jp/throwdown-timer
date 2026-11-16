@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sanchez-jp.github.io/throwdown-timer/schemas/wod-v1.schema.json",
+  "title": "Throwdown Timer WOD Interpretation",
+  "description": "Normalized AI interpretation payload. Application-owned IDs and timestamps are deliberately excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "title",
+    "workout",
+    "timer",
+    "interpretation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "description",
+        "movements"
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "amrap",
+            "for_time",
+            "emom",
+            "e2mom",
+            "tabata",
+            "intervals",
+            "rounds_for_time",
+            "chipper",
+            "ladder",
+            "death_by",
+            "strength_plus_wod",
+            "custom"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "movements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "prescription",
+              "load",
+              "notes"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "prescription": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "load": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "timer": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/plan"
+        }
+      ]
+    },
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "issues"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "ready",
+            "needs_review",
+            "invalid"
+          ]
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "code",
+        "message",
+        "fieldPath",
+        "question"
+      ],
+      "properties": {
+        "severity": {
+          "enum": [
+            "blocking",
+            "warning"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fieldPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "question": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "blocks"
+      ],
+      "properties": {
+        "type": {
+          "const": "sequence"
+        },
+        "label": {
+          "type": "string"
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      }
+    },
+    "block": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/countdown"
+        },
+        {
+          "$ref": "#/$defs/countup"
+        },
+        {
+          "$ref": "#/$defs/emom"
+        },
+        {
+          "$ref": "#/$defs/intervals"
+        },
+        {
+          "$ref": "#/$defs/rest"
+        },
+        {
+          "$ref": "#/$defs/repeat"
+        },
+        {
+          "$ref": "#/$defs/sequence"
+        }
+      ]
+    },
+    "common": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        }
+      }
+    },
+    "countdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "durationSeconds"
+      ],
+      "properties": {
+        "type": {
+          "const": "countdown"
+        },
+        "label": {
+          "type": "string"
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "instructions": {
+          "type": "string"
+        }
+      }
+    },
+    "countup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "timeCapSeconds",
+        "rounds"
+      ],
+      "properties": {
+        "type": {
+          "const": "countup"
+        },
+        "label": {
+          "type": "string"
+        },
+        "timeCapSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "rounds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "instructions": {
+          "type": "string"
+        }
+      }
+    },
+    "emom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "durationSeconds",
+        "intervalSeconds",
+        "rounds"
+      ],
+      "properties": {
+        "type": {
+          "const": "emom"
+        },
+        "label": {
+          "type": "string"
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "intervalSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rounds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "instructions": {
+          "type": "string"
+        }
+      }
+    },
+    "intervals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "rounds",
+        "workSeconds",
+        "restSeconds",
+        "startWithRest"
+      ],
+      "properties": {
+        "type": {
+          "const": "intervals"
+        },
+        "label": {
+          "type": "string"
+        },
+        "rounds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "workSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "restSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "startWithRest": {
+          "type": "boolean"
+        },
+        "instructions": {
+          "type": "string"
+        }
+      }
+    },
+    "rest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "durationSeconds"
+      ],
+      "properties": {
+        "type": {
+          "const": "rest"
+        },
+        "label": {
+          "type": "string"
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "repeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "repeatCount",
+        "blocks"
+      ],
+      "properties": {
+        "type": {
+          "const": "repeat"
+        },
+        "label": {
+          "type": "string"
+        },
+        "repeatCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      }
+    },
+    "sequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "label",
+        "blocks"
+      ],
+      "properties": {
+        "type": {
+          "const": "sequence"
+        },
+        "label": {
+          "type": "string"
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      }
+    }
+  }
+}

@@ -175,9 +175,9 @@ Do not send sensitive/private workout data to a provider without reviewing the a
 ### Phase 0 — Product contract and architecture
 - [x] Create independent public repository.
 - [x] Record product requirements and technical direction.
-- [ ] Define the formal WOD JSON schema and examples.
+- [x] Define the formal WOD JSON schema and canonical examples (see `schemas/wod-v1.schema.json` and `docs/WOD_CONTRACT.md`).
 - [ ] Define timer state machine and segment transition rules.
-- [ ] Define interpretation validation and review rules.
+- [x] Define interpretation validation and review rules at the contract level; implement executable validators in a later phase.
 
 ### Phase 1 — Frontend foundation
 - [ ] Establish app shell and responsive visual system.
