@@ -38,6 +38,7 @@ let editingWorkoutId = null;
 let creatingWorkout = false;
 let editorReturnView = "library";
 let timerPlanLoadError = false;
+let editingSchemaVersion = 2;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -285,6 +286,7 @@ function makeLibraryCard(record) {
 function createMovementEditorRow(movement = {}) {
   const row = document.createElement("div");
   row.className = "movement-editor-row";
+  row.dataset.movementId = movement.id || "";
   const fields = [
     ["name", "Movimiento", movement.name || "", true],
     ["prescription", "Reps / series", movement.prescription || "", false],
@@ -318,6 +320,7 @@ async function openEditor(id) {
     const record = await repository.get(id);
     if (!record) throw new Error("No se ha encontrado el WOD.");
     editingWorkoutId = id;
+    editingSchemaVersion = record.schemaVersion;
     $("editorHeading").innerHTML = 'Editar WOD<span>.</span>';
     $("editorIntro").textContent = "Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.";
     $("saveEditorButton").textContent = "GUARDAR CAMBIOS";
@@ -325,6 +328,9 @@ async function openEditor(id) {
     $("editFormat").value = record.workout.format;
     $("editDescription").value = record.workout.description || "";
     $("movementEditorList").replaceChildren(...record.workout.movements.map(createMovementEditorRow));
+    record.workout.movements.forEach((movement, index) => { $("movementEditorList").children[index].dataset.movementId = movement.id || "legacy-movement-" + (index + 1); });
+    setStructureEditorVisible(record.schemaVersion === 2);
+    if (record.schemaVersion === 2) configureStructureEditor(record.workout.format, record.workout.structure);
     renderTimerBlocks(record.timer);
     $("editorStatus").textContent = "";
     $("libraryPanel").classList.add("hidden");
@@ -334,12 +340,16 @@ async function openEditor(id) {
 }
 async function openNewEditor(sourceView = "library") {
   creatingWorkout = true;
+  editingSchemaVersion = 2;
   editorReturnView = sourceView;
   editingWorkoutId = null;
   $("editTitle").value = "";
   $("editFormat").value = "custom";
   $("editDescription").value = "";
   $("movementEditorList").replaceChildren(createMovementEditorRow());
+  $("movementEditorList").firstElementChild.dataset.movementId = "movement-1";
+  setStructureEditorVisible(true);
+  configureStructureEditor("custom");
   renderTimerBlocks(null);
   $("editorHeading").innerHTML = 'Crear WOD<span>.</span>';
   $("editorIntro").textContent = "Añade los movimientos y guarda el WOD. Después podrás configurar su temporizador.";
@@ -610,10 +620,221 @@ $("addTimerBlockButton").addEventListener("click", () => {
   row.querySelector('[name="label"]').focus();
 });
 
+
+const structureFormats = {
+  rounds_for_time: ["rounds"],
+  chipper: ["chipper"],
+  ladder: ["ladder"],
+  strength_plus_wod: ["sections"],
+  for_time: ["sequence", "rounds", "chipper", "sections"],
+  amrap: ["sequence", "rounds", "sections"],
+  emom: ["sequence", "sections"],
+  e2mom: ["sequence", "sections"],
+  tabata: ["sequence", "sections"],
+  intervals: ["sequence", "sections"],
+  death_by: ["sequence", "ladder", "sections"],
+  custom: ["sequence", "rounds", "chipper", "ladder", "sections"]
+};
+const structureLabels = { sequence: "Secuencia", rounds: "Rondas", chipper: "Chipper", ladder: "Ladder", sections: "Secciones" };
+function currentMovementOptions() {
+  return [...$("movementEditorList").querySelectorAll(".movement-editor-row")].map((row, index) => ({
+    id: row.dataset.movementId || "movement-" + (index + 1),
+    name: row.querySelector('[name="name"]').value.trim() || "Movimiento " + (index + 1)
+  }));
+}
+function movementSelect(selectedId = "") {
+  const select = document.createElement("select");
+  select.className = "editor-input";
+  select.name = "movementId";
+  const options = currentMovementOptions();
+  for (const item of options) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name;
+    option.selected = item.id === selectedId;
+    select.append(option);
+  }
+  return select;
+}
+function structureRemoveButton(label, onRemove) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "remove-movement-button";
+  button.textContent = "×";
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", onRemove);
+  return button;
+}
+function createStructureItemRow(item = {}) {
+  const row = document.createElement("div");
+  row.className = "structure-item-row";
+  row.append(movementSelect(item.movementId || currentMovementOptions()[0]?.id));
+  const prescription = document.createElement("input");
+  prescription.className = "editor-input";
+  prescription.name = "prescription";
+  prescription.placeholder = "Prescripción opcional";
+  prescription.value = item.prescription || "";
+  row.append(prescription);
+  row.append(structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove()));
+  return row;
+}
+function createLadderStepRow(step = {}) {
+  const row = document.createElement("div");
+  row.className = "structure-step-row";
+  const label = document.createElement("input");
+  label.className = "editor-input";
+  label.name = "stepLabel";
+  label.placeholder = "Peldaño (ej. 10 reps)";
+  label.value = step.label || "";
+  row.append(label, movementSelect(step.items?.[0]?.movementId || currentMovementOptions()[0]?.id));
+  const prescription = document.createElement("input");
+  prescription.className = "editor-input";
+  prescription.name = "prescription";
+  prescription.placeholder = "Reps / carga";
+  prescription.value = step.items?.[0]?.prescription || "";
+  row.append(prescription);
+  row.append(structureRemoveButton("Eliminar peldaño", () => row.remove()));
+  return row;
+}
+function createSectionRow(section = {}) {
+  const row = document.createElement("div");
+  row.className = "structure-section-row";
+  const name = document.createElement("input");
+  name.className = "editor-input";
+  name.name = "sectionName";
+  name.placeholder = "Nombre de la sección";
+  name.value = section.name || "";
+  const remove = structureRemoveButton("Eliminar sección", () => row.remove());
+  row.append(name, remove);
+  const children = document.createElement("div");
+  children.className = "structure-section-items";
+  const childItems = section.structure?.items || [];
+  (childItems.length ? childItems : [{}]).forEach(item => children.append(createStructureItemRow(item)));
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "structure-add-button";
+  add.textContent = "+ AÑADIR MOVIMIENTO";
+  add.addEventListener("click", () => children.append(createStructureItemRow()));
+  children.append(add);
+  row.append(children);
+  return row;
+}
+function renderStructureSettings(structure = null) {
+  const type = $("structureType").value;
+  const settings = $("structureSettings");
+  settings.replaceChildren();
+  if (type === "rounds") {
+    const label = document.createElement("label");
+    label.className = "field-label";
+    label.textContent = "Número de rondas";
+    const count = document.createElement("input");
+    count.className = "editor-input structure-count";
+    count.type = "number";
+    count.name = "roundCount";
+    count.min = "1";
+    count.step = "1";
+    count.value = structure?.count || 5;
+    label.append(count);
+    settings.append(label);
+  }
+  if (type === "sequence" || type === "rounds" || type === "chipper") {
+    const list = document.createElement("div");
+    list.className = "structure-items";
+    const items = structure?.items || [{}];
+    items.forEach(item => list.append(createStructureItemRow(item)));
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "structure-add-button";
+    add.textContent = "+ AÑADIR MOVIMIENTO";
+    add.addEventListener("click", () => list.append(createStructureItemRow()));
+    settings.append(list, add);
+  } else if (type === "ladder") {
+    const direction = document.createElement("select");
+    direction.className = "editor-input";
+    direction.name = "ladderDirection";
+    for (const [value, label] of [["ascending","Ascendente"],["descending","Descendente"],["alternating","Alterna"],["custom","Personalizada"]]) {
+      const option = document.createElement("option");
+      option.value = value; option.textContent = label;
+      option.selected = (structure?.direction || "custom") === value;
+      direction.append(option);
+    }
+    const list = document.createElement("div");
+    list.className = "structure-steps";
+    (structure?.steps || [{ label: "", items: [{}] }]).forEach(step => list.append(createLadderStepRow(step)));
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "structure-add-button";
+    add.textContent = "+ AÑADIR PELDAÑO";
+    add.addEventListener("click", () => list.append(createLadderStepRow()));
+    settings.append(direction, list, add);
+  } else if (type === "sections") {
+    const list = document.createElement("div");
+    list.className = "structure-sections";
+    (structure?.sections || [{ name: "", structure: { type: "sequence", items: [{}] } }]).forEach(section => list.append(createSectionRow(section)));
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "structure-add-button";
+    add.textContent = "+ AÑADIR SECCIÓN";
+    add.addEventListener("click", () => list.append(createSectionRow()));
+    settings.append(list, add);
+  }
+}
+function setStructureEditorVisible(visible) {
+  $("semanticStructureEditor").classList.toggle("hidden", !visible);
+}
+function configureStructureEditor(format, structure = null) {
+  const allowed = structureFormats[format] || ["sequence", "rounds", "chipper", "ladder", "sections"];
+  const select = $("structureType");
+  select.replaceChildren(...allowed.map(type => {
+    const option = document.createElement("option");
+    option.value = type; option.textContent = structureLabels[type];
+    return option;
+  }));
+  select.value = structure && allowed.includes(structure.type) ? structure.type : allowed[0];
+  renderStructureSettings(structure && structure.type === select.value ? structure : null);
+}
+function collectSemanticStructure() {
+  const type = $("structureType").value;
+  const movementItems = container => [...container.querySelectorAll(":scope > .structure-item-row")].map(row => ({
+    type: "movement",
+    movementId: row.querySelector('[name="movementId"]').value,
+    ...(row.querySelector('[name="prescription"]').value.trim() ? { prescription: row.querySelector('[name="prescription"]').value.trim() } : {})
+  }));
+  if (["sequence", "rounds", "chipper"].includes(type)) {
+    const items = movementItems($("structureSettings").querySelector(".structure-items"));
+    if (!items.length) throw new Error("Añade al menos un movimiento a la estructura.");
+    return type === "rounds"
+      ? { type, count: Number($("structureSettings").querySelector('[name="roundCount"]').value), items }
+      : { type, items };
+  }
+  if (type === "ladder") {
+    const steps = [...$("structureSettings").querySelectorAll(".structure-step-row")].map(row => ({
+      label: row.querySelector('[name="stepLabel"]').value.trim(),
+      items: [{
+        type: "movement",
+        movementId: row.querySelector('[name="movementId"]').value,
+        ...(row.querySelector('[name="prescription"]').value.trim() ? { prescription: row.querySelector('[name="prescription"]').value.trim() } : {})
+      }]
+    }));
+    if (!steps.length || steps.some(step => !step.label)) throw new Error("Cada peldaño de la ladder necesita una etiqueta.");
+    return { type, direction: $("structureSettings").querySelector('[name="ladderDirection"]').value, steps };
+  }
+  const sections = [...$("structureSettings").querySelectorAll(".structure-section-row")].map((row, index) => ({
+    id: "section-" + (index + 1),
+    name: row.querySelector('[name="sectionName"]').value.trim(),
+    structure: { type: "sequence", items: movementItems(row.querySelector(".structure-section-items")) }
+  }));
+  if (!sections.length || sections.some(section => !section.name || !section.structure.items.length)) {
+    throw new Error("Cada sección necesita un nombre y al menos un movimiento.");
+  }
+  return { type: "sections", sections };
+}
+
 function collectEditedMovements() {
   return [...$("movementEditorList").querySelectorAll(".movement-editor-row")].map(row => {
     const value = name => row.querySelector('[name="' + name + '"]').value.trim();
     return {
+      id: row.dataset.movementId || "movement-" + (row.parentElement ? [...row.parentElement.children].indexOf(row) + 1 : 1),
       name: value("name"),
       prescription: value("prescription") || null,
       load: value("load") || null,
@@ -625,8 +846,15 @@ $("editorBackButton").addEventListener("click", () => {
   $("editorPanel").classList.add("hidden");
   $(editorReturnView === "home" ? "setupPanel" : "libraryPanel").classList.remove("hidden");
 });
+$("structureType").addEventListener("change", () => renderStructureSettings());
+$("editFormat").addEventListener("change", () => {
+  if (editingSchemaVersion === 2) configureStructureEditor($("editFormat").value);
+});
 $("addMovementButton").addEventListener("click", () => {
-  $("movementEditorList").append(createMovementEditorRow());
+  const row = createMovementEditorRow();
+  row.dataset.movementId = "movement-" + ( $("movementEditorList").children.length + 1 );
+  $("movementEditorList").append(row);
+  if (!$("semanticStructureEditor").classList.contains("hidden")) renderStructureSettings();
   $("movementEditorList").lastElementChild.querySelector('[name="name"]').focus();
 });
 $("workoutEditor").addEventListener("submit", async event => {
@@ -657,16 +885,24 @@ $("workoutEditor").addEventListener("submit", async event => {
   save.disabled = true;
   save.textContent = "GUARDANDO…";
   try {
+    const format = $("editFormat").value;
     const workout = {
-      format: $("editFormat").value,
+      format,
       description: $("editDescription").value.trim(),
-      movements
+      movements: editingSchemaVersion === 2 ? movements.map((movement, index) => ({
+        id: movement.id || "movement-" + (index + 1),
+        name: movement.name,
+        prescription: movement.prescription,
+        load: movement.load,
+        notes: movement.notes
+      })) : movements
     };
+    if (editingSchemaVersion === 2) workout.structure = collectSemanticStructure();
     const interpretation = timer
       ? { status: "ready", issues: [] }
       : { status: "needs_review", issues: [timerPlanRequiredIssue()] };
     if (creatingWorkout) {
-      await repository.create({ schemaVersion: 1, title, sourceText: null, workout, timer, interpretation });
+      await repository.create({ schemaVersion: editingSchemaVersion, title, sourceText: null, workout, timer, interpretation });
     } else {
       await repository.update(editingWorkoutId, { title, workout, timer, interpretation });
     }
