@@ -33,6 +33,7 @@ let wakeLock = null;
 let repository = null;
 let returnView = "home";
 let deletedWorkout = null;
+let editingWorkoutId = null;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -247,6 +248,11 @@ function makeLibraryCard(record) {
     $("libraryPanel").classList.add("hidden");
     showTimer(record, "library");
   });
+  const edit = document.createElement("button");
+  edit.className = "secondary-button";
+  edit.type = "button";
+  edit.textContent = "EDITAR";
+  edit.addEventListener("click", () => openEditor(record.id));
   const duplicate = document.createElement("button");
   duplicate.className = "secondary-button";
   duplicate.type = "button";
@@ -267,10 +273,112 @@ function makeLibraryCard(record) {
       await renderLibrary();
     } catch (error) { showLibraryError(error); }
   });
-  actions.append(open, duplicate, remove);
+  actions.append(open, edit, duplicate, remove);
   card.append(top, description, meta, actions);
   return card;
 }
+
+function createMovementEditorRow(movement = {}) {
+  const row = document.createElement("div");
+  row.className = "movement-editor-row";
+  const fields = [
+    ["name", "Movimiento", movement.name || "", true],
+    ["prescription", "Reps / series", movement.prescription || "", false],
+    ["load", "Carga", movement.load || "", false],
+    ["notes", "Notas", movement.notes || "", false]
+  ];
+  for (const [name, placeholder, value, required] of fields) {
+    const input = document.createElement("input");
+    input.className = "editor-input movement-field";
+    input.name = name;
+    input.placeholder = placeholder;
+    input.value = value;
+    input.maxLength = 160;
+    input.setAttribute("aria-label", placeholder);
+    if (required) input.required = true;
+    row.append(input);
+  }
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "remove-movement-button";
+  remove.textContent = "×";
+  remove.setAttribute("aria-label", "Eliminar movimiento");
+  remove.addEventListener("click", () => row.remove());
+  row.append(remove);
+  return row;
+}
+async function openEditor(id) {
+  try {
+    const record = await repository.get(id);
+    if (!record) throw new Error("No se ha encontrado el WOD.");
+    editingWorkoutId = id;
+    $("editTitle").value = record.title;
+    $("editFormat").value = record.workout.format;
+    $("editDescription").value = record.workout.description || "";
+    $("movementEditorList").replaceChildren(...record.workout.movements.map(createMovementEditorRow));
+    $("editorStatus").textContent = "";
+    $("libraryPanel").classList.add("hidden");
+    $("editorPanel").classList.remove("hidden");
+    $("editTitle").focus();
+  } catch (error) { showLibraryError(error); }
+}
+function collectEditedMovements() {
+  return [...$("movementEditorList").querySelectorAll(".movement-editor-row")].map(row => {
+    const value = name => row.querySelector('[name="' + name + '"]').value.trim();
+    return {
+      name: value("name"),
+      prescription: value("prescription") || null,
+      load: value("load") || null,
+      notes: value("notes") || null
+    };
+  });
+}
+$("editorBackButton").addEventListener("click", () => {
+  $("editorPanel").classList.add("hidden");
+  $("libraryPanel").classList.remove("hidden");
+});
+$("addMovementButton").addEventListener("click", () => {
+  $("movementEditorList").append(createMovementEditorRow());
+  $("movementEditorList").lastElementChild.querySelector('[name="name"]').focus();
+});
+$("workoutEditor").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!repository || !editingWorkoutId) return;
+  const title = $("editTitle").value.trim();
+  const movements = collectEditedMovements();
+  if (!title) {
+    $("editorStatus").textContent = "Escribe un nombre para el WOD.";
+    $("editTitle").focus();
+    return;
+  }
+  if (!movements.length || movements.some(movement => !movement.name)) {
+    $("editorStatus").textContent = "Añade al menos un movimiento y completa su nombre.";
+    return;
+  }
+  const save = $("saveEditorButton");
+  save.disabled = true;
+  save.textContent = "GUARDANDO…";
+  try {
+    await repository.update(editingWorkoutId, {
+      title,
+      workout: {
+        format: $("editFormat").value,
+        description: $("editDescription").value.trim(),
+        movements
+      }
+    });
+    $("editorStatus").textContent = "Cambios guardados.";
+    $("editorPanel").classList.add("hidden");
+    $("libraryPanel").classList.remove("hidden");
+    await renderLibrary();
+  } catch (error) {
+    $("editorStatus").textContent = error.message || "No se han podido guardar los cambios.";
+  } finally {
+    save.disabled = false;
+    save.textContent = "GUARDAR CAMBIOS";
+  }
+});
+
 function showLibraryError(error) {
   $("libraryStatus").textContent = error?.message || "No se ha podido acceder a la biblioteca.";
   $("libraryStatus").classList.add("error");
