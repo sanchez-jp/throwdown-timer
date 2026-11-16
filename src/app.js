@@ -233,7 +233,7 @@ function updateFullscreenButton() {
     return;
   }
   if (isIOSDevice()) {
-    button.textContent = "AÑADIR A INICIO";
+    button.textContent = "PANTALLA COMPLETA";
     button.disabled = false;
     button.setAttribute("aria-pressed", "false");
     hint.classList.remove("hidden");
