@@ -185,3 +185,27 @@ test("repository rejects invalid v2 semantic references", async () => {
   };
   await assert.rejects(repository.create(invalid), error => error.code === "UNKNOWN_MOVEMENT_REFERENCE");
 });
+
+test("migrateToV2 updates a saved v1 record in place and preserves timestamps and timer", async () => {
+  const { repository } = setup();
+  const created = await repository.create(wod());
+  const migrated = await repository.migrateToV2(created.id);
+  assert.equal(migrated.id, created.id);
+  assert.equal(migrated.schemaVersion, 2);
+  assert.equal(migrated.createdAt, created.createdAt);
+  assert.equal(migrated.updatedAt, created.updatedAt);
+  assert.deepEqual(migrated.timer, created.timer);
+  assert.equal((await repository.get(created.id)).schemaVersion, 2);
+});
+
+test("migrateToV2 refuses v2 records and leaves them untouched", async () => {
+  const { repository } = setup();
+  const saved = await repository.create({
+    schemaVersion: 2, title: "Simple WOD",
+    workout: { format: "amrap", description: "AMRAP", movements: [{ id: "m1", name: "Burpee", prescription: "10", load: null, notes: null }], structure: { type: "sequence", items: [{ type: "movement", movementId: "m1" }] } },
+    timer: { type: "sequence", label: "AMRAP", blocks: [{ type: "countdown", label: "AMRAP", durationSeconds: 600 }] },
+    interpretation: { status: "ready", issues: [] }
+  });
+  await assert.rejects(repository.migrateToV2(saved.id), error => error.code === "MIGRATION_SOURCE_UNSUPPORTED");
+  assert.equal((await repository.get(saved.id)).schemaVersion, 2);
+});
