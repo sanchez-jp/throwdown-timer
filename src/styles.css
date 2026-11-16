@@ -217,3 +217,40 @@
 .timer-controls #pauseButton{flex:0 0 48px}
 .timer-controls .timer-icon-button:disabled{opacity:.3;cursor:default}
 @media(max-width:420px){.timer-immersive .timer-controls .timer-icon-button,.timer-immersive .timer-controls #pauseButton{flex-basis:42px;width:42px;min-width:42px}}
+
+
+/* Final override: all timer actions are compact square icon buttons. */
+.timer-controls{
+  display:flex !important;
+  grid-template-columns:none !important;
+  justify-content:center !important;
+  align-items:center !important;
+  gap:9px !important;
+}
+.timer-controls > button.timer-icon-button{
+  box-sizing:border-box !important;
+  display:inline-flex !important;
+  flex:0 0 48px !important;
+  width:48px !important;
+  min-width:48px !important;
+  max-width:48px !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  padding:0 !important;
+  margin:16px 0 0 !important;
+  border-radius:9px !important;
+  aspect-ratio:1 / 1 !important;
+  font-size:22px !important;
+  line-height:1 !important;
+}
+.timer-controls > #pauseButton{font-size:23px !important;width:48px !important;flex-basis:48px !important}
+.timer-controls > #finishButton{color:#ff8c8c !important}
+.timer-controls > button.hidden{display:none !important}
+@media(max-width:420px){
+  .timer-immersive .timer-controls > button.timer-icon-button,
+  .timer-immersive .timer-controls > #pauseButton{
+    flex-basis:42px !important;width:42px !important;min-width:42px !important;max-width:42px !important;
+    height:42px !important;min-height:42px !important;max-height:42px !important;
+  }
+}
