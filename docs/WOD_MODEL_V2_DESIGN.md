@@ -106,7 +106,7 @@ A structure node never contains timer durations or time caps. Those stay in the 
 }
 ```
 
-This example intentionally stores the stated steps rather than deriving them from a start/increment/end formula. The UI may offer a helper to generate steps, but the saved contract contains the explicit result.
+This is the accepted approach: store the stated steps explicitly and in order, rather than deriving them from a start/increment/end formula. The UI may offer a helper to generate steps, but the saved contract always contains the explicit result. This supports ascending, descending, alternating, and irregular ladders without losing the source prescription.
 
 ## 5. Progress tracking is a separate capability
 
