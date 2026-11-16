@@ -30,6 +30,10 @@ let engine = null;
 let displayFrame = null;
 let audioContext = null;
 let lastCountdownCue = null;
+let prestartState = null;
+let prestartStartedAt = 0;
+let prestartRemainingMs = 10000;
+let lastPrestartCue = 11;
 let wakeLock = null;
 let repository = null;
 let returnView = "home";
@@ -58,21 +62,34 @@ function renderPreset() {
   $("movementList").replaceChildren(...w.movements.map(m => {const s=document.createElement("span");s.textContent=m;return s;}));
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("selected",b.dataset.preset===selected));
 }
-function playTone(frequency=880, duration=.12) {
-  if (!$("soundButton").getAttribute("aria-pressed") || $("soundButton").getAttribute("aria-pressed")==="false") return;
+async function unlockAudio() {
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) throw new Error("Este navegador no admite Web Audio.");
+  if (!audioContext || audioContext.state === "closed") audioContext = new Audio();
+  if (audioContext.state !== "running") await audioContext.resume();
+  if (audioContext.state !== "running") throw new Error("El navegador no ha permitido activar el audio.");
+  return audioContext;
+}
+async function playTone(frequency=880, duration=.13) {
+  if ($("soundButton").getAttribute("aria-pressed") !== "true") return;
   try {
-    const Audio = window.AudioContext || window.webkitAudioContext;
-    if (!Audio) return;
-    audioContext ||= new Audio();
-    if (audioContext.state === "suspended") audioContext.resume();
-    const oscillator=audioContext.createOscillator(), gain=audioContext.createGain();
-    oscillator.frequency.value=frequency;
-    gain.gain.setValueAtTime(.0001,audioContext.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.07,audioContext.currentTime+.012);
-    gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+duration);
-    oscillator.connect(gain);gain.connect(audioContext.destination);
-    oscillator.start();oscillator.stop(audioContext.currentTime+duration+.02);
-  } catch {}
+    const context = await unlockAudio();
+    const now = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(.0001, now);
+    gain.gain.exponentialRampToValueAtTime(.35, now + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + duration + .02);
+  } catch (error) {
+    $("statusMessage").textContent = "No se ha podido reproducir el sonido. Comprueba los permisos y el volumen del dispositivo.";
+    console.warn("Throwdown Timer audio:", error);
+  }
 }
 function processEvents() {
   if (!engine) return;
@@ -120,13 +137,62 @@ function updateCountdownCue(snapshot) {
   }
 }
 function stopDisplayLoop() { if(displayFrame!==null) cancelAnimationFrame(displayFrame); displayFrame=null; }
+function renderPrestart(remainingMs = prestartRemainingMs) {
+  const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  $("clock").textContent = formatTime(seconds * 1000);
+  $("clock").classList.remove("countup", "urgent");
+  $("timerLabel").textContent = "PREPARACIÓN";
+  $("phaseLabel").textContent = "LA SESIÓN COMIENZA EN BREVE";
+  $("roundValue").textContent = "—";
+  $("totalLabel").textContent = "INICIO EN";
+  $("totalValue").textContent = formatTime(seconds * 1000);
+  $("progressFill").style.width = `${Math.min(100, Math.max(0, (10000 - remainingMs) / 10000 * 100))}%`;
+  $("pauseButton").textContent = prestartState === "running" ? "PAUSAR" : "CONTINUAR";
+  $("pauseButton").disabled = false;
+  $("pauseButton").style.opacity = "1";
+  $("skipButton").classList.add("hidden");
+  $("finishButton").classList.add("hidden");
+  $("statusMessage").textContent = prestartState === "paused" ? "Cuenta atrás pausada." : "Prepárate para comenzar.";
+}
+function beginPrestart() {
+  prestartState = "running";
+  prestartRemainingMs = 10000;
+  prestartStartedAt = performance.now();
+  lastPrestartCue = 11;
+  renderPrestart();
+  requestWakeLock();
+  playTone(660, .12);
+  startDisplayLoop();
+}
 function displayLoop() {
-  if(!engine) return;
-  const snapshot=engine.tick();
+  if (!engine) return;
+  if (prestartState === "running") {
+    prestartRemainingMs = Math.max(0, 10000 - (performance.now() - prestartStartedAt));
+    const second = Math.ceil(prestartRemainingMs / 1000);
+    if (second >= 1 && second <= 3 && second !== lastPrestartCue) {
+      lastPrestartCue = second;
+      playTone(880, .13);
+    }
+    if (prestartRemainingMs <= 0) {
+      prestartState = null;
+      prestartRemainingMs = 10000;
+      lastCountdownCue = null;
+      playTone(1040, .5);
+      const started = engine.start();
+      processEvents();
+      renderTimer(started);
+      startDisplayLoop();
+      return;
+    }
+    renderPrestart(prestartRemainingMs);
+    displayFrame = requestAnimationFrame(displayLoop);
+    return;
+  }
+  const snapshot = engine.tick();
   processEvents();
   updateCountdownCue(snapshot);
   renderTimer(snapshot);
-  if(snapshot.state==="running") displayFrame=requestAnimationFrame(displayLoop);
+  if (snapshot.state === "running") displayFrame = requestAnimationFrame(displayLoop);
   else { stopDisplayLoop(); releaseWakeLock(); }
 }
 function startDisplayLoop() { stopDisplayLoop(); displayFrame=requestAnimationFrame(displayLoop); }
@@ -172,30 +238,62 @@ function showTimer(w = presets[selected], sourceView = "home") {
   renderTimer(engine.snapshot());
 }
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.preset;renderPreset();$("saveWorkoutButton").disabled=false;$("saveWorkoutButton").textContent="GUARDAR ESTE WOD";}));
-$("startButton").addEventListener("click",async()=>{
+$("startButton").addEventListener("click", async () => {
   showTimer();
-  if ($("soundButton").getAttribute("aria-pressed")==="true") {
-    try { const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audioContext ||= new Audio();await audioContext.resume();} } catch {}
+  if ($("soundButton").getAttribute("aria-pressed") === "true") {
+    try { await unlockAudio(); }
+    catch (error) { $("statusMessage").textContent = "El cronómetro puede funcionar, pero no se ha podido activar el audio."; }
   }
-  const snap=engine.start();processEvents();renderTimer(snap);
-  await requestWakeLock();startDisplayLoop();
+  beginPrestart();
 });
-$("pauseButton").addEventListener("click",async()=>{
-  if(!engine)return;
-  const state=engine.snapshot().state;
-  const result=state==="running"?engine.pause():state==="paused"?engine.resume():state==="idle"?engine.start():engine.snapshot();
-  processEvents();renderTimer(result);
-  if(result.state==="running"){await requestWakeLock();startDisplayLoop();}else{stopDisplayLoop();await releaseWakeLock();}
+$("pauseButton").addEventListener("click", async () => {
+  if (!engine) return;
+  if (prestartState === "running") {
+    prestartRemainingMs = Math.max(0, 10000 - (performance.now() - prestartStartedAt));
+    prestartState = "paused";
+    stopDisplayLoop();
+    await releaseWakeLock();
+    renderPrestart(prestartRemainingMs);
+    return;
+  }
+  if (prestartState === "paused") {
+    prestartState = "running";
+    prestartStartedAt = performance.now() - (10000 - prestartRemainingMs);
+    await requestWakeLock();
+    renderPrestart(prestartRemainingMs);
+    startDisplayLoop();
+    return;
+  }
+  const state = engine.snapshot().state;
+  const result = state === "running" ? engine.pause() : state === "paused" ? engine.resume() : engine.snapshot();
+  processEvents();
+  renderTimer(result);
+  if (result.state === "running") { await requestWakeLock(); startDisplayLoop(); }
+  else { stopDisplayLoop(); await releaseWakeLock(); }
 });
-$("resetButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.reset();processEvents();lastCountdownCue=null;renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
+$("resetButton").addEventListener("click", async () => {
+  if (!engine) return;
+  prestartState = null;
+  prestartRemainingMs = 10000;
+  lastPrestartCue = 11;
+  const snap = engine.reset();
+  processEvents();
+  lastCountdownCue = null;
+  renderTimer(snap);
+  stopDisplayLoop();
+  await releaseWakeLock();
+});
 $("skipButton").addEventListener("click",()=>{if(!engine)return;const snap=engine.skip();processEvents();lastCountdownCue=null;renderTimer(snap);if(snap.state==="running")startDisplayLoop();});
 $("finishButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.finish();processEvents();renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
 $("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.add("hidden");$(returnView==="library"?"libraryPanel":"setupPanel").classList.remove("hidden");});
-$("soundButton").addEventListener("click",async()=>{
-  const enabled=$("soundButton").getAttribute("aria-pressed")!=="true";
-  $("soundButton").setAttribute("aria-pressed",String(enabled));
-  $("soundButton").textContent=enabled?"SONIDO: ON":"SONIDO: OFF";
-  if(enabled){try{const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audioContext ||= new Audio();await audioContext.resume();playTone(880,.1);}}catch{}}
+$("soundButton").addEventListener("click", async () => {
+  const enabled = $("soundButton").getAttribute("aria-pressed") !== "true";
+  $("soundButton").setAttribute("aria-pressed", String(enabled));
+  $("soundButton").textContent = enabled ? "SONIDO: ON" : "SONIDO: OFF";
+  if (enabled) {
+    try { await unlockAudio(); await playTone(880, .16); }
+    catch (error) { $("statusMessage").textContent = "No se ha podido activar el audio en este navegador."; }
+  }
 });
 $("fullscreenButton").addEventListener("click",toggleFullscreen);
 document.addEventListener("fullscreenchange",updateFullscreenButton);
