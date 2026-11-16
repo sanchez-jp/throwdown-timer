@@ -21,3 +21,7 @@
 .timer-block-empty{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:11px;text-align:center}
 .timer-plan-status-error{color:#ff9999}
 @media(max-width:420px){.timer-block-fields{grid-template-columns:1fr 1fr}}
+
+.timer-block-controls{display:flex;gap:4px}
+.timer-block-move{height:40px;min-width:34px;margin:0;border:1px solid var(--line);border-radius:7px;background:#101925;color:var(--muted);font-weight:800}
+.timer-block-move:active{border-color:var(--lime);color:var(--lime)}
