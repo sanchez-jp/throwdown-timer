@@ -125,7 +125,7 @@ function renderTimer(snapshot) {
   const progress = duration ? Math.min(100,Math.max(0,(snapshot.phaseElapsedMs/duration)*100)) : 0;
   $("progressFill").style.width = `${progress}%`;
   const pauseAction = snapshot.state==="running" ? "Pausar" : snapshot.state==="paused" ? "Reanudar" : snapshot.state==="idle" ? "Iniciar" : "Finalizado";
-  $("pauseButton").textContent = snapshot.state==="running" ? "Ⅱ" : snapshot.state==="completed" || snapshot.state==="capped" ? "✓" : "▶";
+  $("pauseButton").textContent = snapshot.state==="running" ? "Ⅱ" : snapshot.state==="completed" || snapshot.state==="capped" ? "✓" : "▶︎";
   $("pauseButton").setAttribute("aria-label", pauseAction);
   $("pauseButton").title = pauseAction;
   const terminal = ["completed","capped"].includes(snapshot.state);
@@ -160,7 +160,7 @@ function renderPrestart(remainingMs = prestartRemainingMs) {
   $("totalLabel").textContent = "INICIO EN";
   $("totalValue").textContent = formatTime(seconds * 1000);
   $("progressFill").style.width = `${Math.min(100, Math.max(0, (10000 - remainingMs) / 10000 * 100))}%`;
-  $("pauseButton").textContent = prestartState === "running" ? "Ⅱ" : "▶";
+  $("pauseButton").textContent = prestartState === "running" ? "Ⅱ" : "▶︎";
   $("pauseButton").setAttribute("aria-label", prestartState === "running" ? "Pausar cuenta atrás" : "Continuar cuenta atrás");
   $("pauseButton").title = prestartState === "running" ? "Pausar cuenta atrás" : "Continuar cuenta atrás";
   $("pauseButton").disabled = false;
