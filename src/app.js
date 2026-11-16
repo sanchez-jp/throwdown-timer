@@ -216,29 +216,77 @@ async function releaseWakeLock() {
 }
 function updateFullscreenButton() {
   const button = $("fullscreenButton");
-  const active = document.querySelector(".app-shell").classList.contains("timer-immersive");
-  button.disabled = false;
+  const active = $("timerPanel").classList.contains("timer-immersive");
   button.textContent = active ? "SALIR DE PANTALLA COMPLETA" : "PANTALLA COMPLETA";
   button.setAttribute("aria-pressed", String(active));
 }
 
 async function toggleFullscreen() {
-  const shell = document.querySelector(".app-shell");
-  const active = shell.classList.contains("timer-immersive");
-
+  const panel = $("timerPanel");
+  const active = panel.classList.contains("timer-immersive");
   if (active) {
-    shell.classList.remove("timer-immersive");
+    panel.classList.remove("timer-immersive");
     if (document.fullscreenElement) {
       try { await document.exitFullscreen(); } catch {}
     }
   } else {
-    shell.classList.add("timer-immersive");
-    if (!/iPhone|iPad|iPod/.test(navigator.userAgent) && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-      try { await document.documentElement.requestFullscreen(); } catch {}
+    panel.classList.add("timer-immersive");
+    if (!/iPhone|iPad|iPod/.test(navigator.userAgent) && !document.fullscreenElement && panel.requestFullscreen) {
+      try { await panel.requestFullscreen(); } catch {}
     }
   }
   updateFullscreenButton();
 }
+
+function renderTimerDescription(workout) {
+  const panel = $("timerDescription");
+  panel.replaceChildren();
+  const heading = document.createElement("div");
+  heading.className = "timer-description-heading";
+  const title = document.createElement("h2");
+  title.textContent = workout.title || workout.name || "WOD";
+  heading.append(title);
+  const format = document.createElement("span");
+  format.className = "tag";
+  format.textContent = workout.tag || String(workout.workout?.format || "WOD").replaceAll("_", " ").toUpperCase();
+  heading.append(format);
+  panel.append(heading);
+
+  const descriptionText = workout.description || workout.workout?.description;
+  if (descriptionText) {
+    const description = document.createElement("p");
+    description.className = "timer-description-summary";
+    description.textContent = descriptionText;
+    panel.append(description);
+  }
+
+  const movements = workout.movements || (workout.workout?.movements || []).map(m =>
+    [m.prescription, m.name, m.load].filter(Boolean).join(" · ")
+  );
+  if (movements.length) {
+    const label = document.createElement("h3");
+    label.textContent = "MOVIMIENTOS";
+    panel.append(label);
+    const list = document.createElement("ul");
+    list.className = "timer-description-list";
+    movements.forEach(movement => {
+      const item = document.createElement("li");
+      item.textContent = typeof movement === "string" ? movement : movement.name || "";
+      list.append(item);
+    });
+    panel.append(list);
+  }
+
+  const notesText = workout.notes || workout.workout?.notes;
+  if (notesText) {
+    const notes = document.createElement("p");
+    notes.className = "timer-description-notes";
+    notes.textContent = notesText;
+    panel.append(notes);
+  }
+  panel.classList.remove("hidden");
+}
+
 function showTimer(w = presets[selected], sourceView = "home") {
   returnView = sourceView;
   const plan = w.plan || w.timer;
@@ -248,6 +296,7 @@ function showTimer(w = presets[selected], sourceView = "home") {
   $("timerPanel").classList.remove("hidden");
   $("timerFormat").textContent=w.tag || String(w.workout?.format || "WOD").replaceAll("_"," ").toUpperCase();
   $("timerWorkoutName").textContent=w.name || w.title;
+  renderTimerDescription(w);
   const movements = w.movements || (w.workout?.movements || []).map(m => [m.prescription, m.name, m.load].filter(Boolean).join(" · "));
   $("timerMovements").replaceChildren(...movements.map(m=>{const s=document.createElement("span");s.textContent=m;return s;}));
   lastCountdownCue=null;
