@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { TimerEngine } from "../src/timer-engine.js";
-import { buildTimerPlan, flattenTimerPlan, timerPlanRequiredIssue } from "../src/timer-plan-builder.js";
+import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "../src/timer-plan-builder.js";
 
 test("builds and validates an ordered multi-block plan", () => {
   const plan = buildTimerPlan("Strength + WOD", [
@@ -31,7 +31,7 @@ test("preserves nested repeat groups when loading an existing plan", () => {
       { type: "rest", label: "Rest", durationSeconds: 10 }
     ]}
   ]};
-  const editable = flattenTimerPlan(original);
+  const editable = copyTimerPlanBlocks(original);
   assert.deepEqual(editable, original.blocks);
   assert.notEqual(editable[1], original.blocks[1]);
   editable[1].repeatCount = 2;
