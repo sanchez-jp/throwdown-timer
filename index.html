@@ -93,7 +93,7 @@
 
     <section class="timer-panel hidden" id="timerPanel" aria-live="polite">
       <div class="timer-main">
-        <div class="timer-topline"><button class="text-button" id="backButton">← VOLVER</button><div class="timer-topline-actions"><button class="text-button" id="workoutDetailsButton" type="button" aria-expanded="false">VER WOD</button><span class="tag" id="timerFormat">AMRAP</span></div></div>
+        <div class="timer-topline"><button class="text-button" id="backButton">← VOLVER</button><span class="tag" id="timerFormat">AMRAP</span></div>
         <div class="timer-label" id="timerLabel">TIME REMAINING</div>
         <div class="clock" id="clock">12:00</div>
         <div class="phase-label" id="phaseLabel">PREPARADO</div>
@@ -108,7 +108,7 @@
           <button class="secondary-button timer-icon-button hidden" id="skipButton" aria-label="Saltar intervalo" title="Saltar intervalo">⏭</button>
           <button class="finish-button timer-icon-button hidden" id="finishButton" aria-label="Finalizar entrenamiento" title="Finalizar entrenamiento">■</button>
         </div>
-        <div class="timer-tools" aria-label="Opciones del temporizador"><button class="tool-button timer-icon-button" id="soundButton" type="button" aria-label="Desactivar sonido" title="Desactivar sonido" aria-pressed="true">◖))</button><button class="tool-button timer-icon-button" id="fullscreenButton" type="button" aria-label="Activar pantalla completa" title="Activar pantalla completa" aria-pressed="false">⛶</button></div>
+        <div class="timer-tools" aria-label="Opciones del temporizador"><button class="text-button workout-details-button" id="workoutDetailsButton" type="button" aria-expanded="false">VER WOD</button><button class="tool-button timer-icon-button" id="soundButton" type="button" aria-label="Desactivar sonido" title="Desactivar sonido" aria-pressed="true">◖))</button><button class="tool-button timer-icon-button" id="fullscreenButton" type="button" aria-label="Activar pantalla completa" title="Activar pantalla completa" aria-pressed="false">⛶</button></div>
         <div class="workout-preview compact">
           <div class="preview-heading"><span>WORKOUT</span></div>
           <h2 id="timerWorkoutName">12' AMRAP</h2>
