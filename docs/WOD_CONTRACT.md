@@ -176,3 +176,16 @@ JSON Schema validation is necessary but not sufficient. The application must add
 Version 1 stores movement prescriptions as readable text instead of trying to normalize every possible CrossFit rep scheme. For example, `21-15-9`, `10 reps each round`, `max reps`, and `5 sets x 3 reps` remain explicit text. This avoids losing meaning while the timer engine remains focused on time and sequence behavior.
 
 Later versions may add structured rep schemes, equipment, scaling, athlete/team modes, synchronized work, and scoring. These additions must be versioned and must not break the timer engine's stable block vocabulary.
+
+
+## 8. Manual skip policy
+
+Timed leaf blocks may include the optional boolean `allowSkip`. If omitted, it defaults to `false`.
+
+- On `countdown` and `rest`, Skip advances past the entire current block only when enabled.
+- On `emom`, Skip advances to the next interval boundary, not to the end of the workout.
+- On `intervals`, Skip advances to the next work/rest phase.
+- `countup` is completed with the Finish command; Skip is not a substitute for Finish.
+- Sequence and repeat containers are structural and do not have their own skip flag.
+
+The timer engine must enforce this policy even if the UI accidentally displays a Skip control.

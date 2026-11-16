@@ -15,7 +15,7 @@ Throwdown Timer will turn workout descriptions supplied as text or images into e
 
 ## Project status
 
-**Planning and architecture.** The initial product requirements and technical decisions are documented in [PROJECT_SPEC.md](PROJECT_SPEC.md). The version 1 WOD contract is defined in [docs/WOD_CONTRACT.md](docs/WOD_CONTRACT.md), with its machine-readable [JSON Schema](schemas/wod-v1.schema.json).
+**Planning and architecture.** The initial product requirements and technical decisions are documented in [PROJECT_SPEC.md](PROJECT_SPEC.md). The version 1 WOD contract is defined in [docs/WOD_CONTRACT.md](docs/WOD_CONTRACT.md), with its machine-readable [JSON Schema](schemas/wod-v1.schema.json). Timer execution rules are documented in [docs/TIMER_STATE_MACHINE.md](docs/TIMER_STATE_MACHINE.md).
 
 ## Planned technology
 

@@ -242,6 +242,11 @@
         },
         "instructions": {
           "type": "string"
+        },
+        "allowSkip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the user may manually skip this timed block/phase. Defaults to false."
         }
       }
     },
@@ -277,6 +282,11 @@
         },
         "instructions": {
           "type": "string"
+        },
+        "allowSkip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the user may manually skip this timed block/phase. Defaults to false."
         }
       }
     },
@@ -311,6 +321,11 @@
         },
         "instructions": {
           "type": "string"
+        },
+        "allowSkip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the user may manually skip this timed block/phase. Defaults to false."
         }
       }
     },
@@ -349,6 +364,11 @@
         },
         "instructions": {
           "type": "string"
+        },
+        "allowSkip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the user may manually skip this timed block/phase. Defaults to false."
         }
       }
     },
@@ -370,6 +390,11 @@
         "durationSeconds": {
           "type": "integer",
           "minimum": 1
+        },
+        "allowSkip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the user may manually skip this timed block/phase. Defaults to false."
         }
       }
     },
