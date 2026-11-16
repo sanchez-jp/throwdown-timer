@@ -197,7 +197,7 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 - [ ] Test background/foreground behavior on mobile browsers.
 
 ### Phase 3 — WOD library
-- [ ] Implement IndexedDB repository.
+- [x] Implement IndexedDB repository (list/get/create/update/duplicate/delete/restore API).
 - [ ] Add create, edit, duplicate, delete, and restore/undo behavior.
 - [ ] Verify offline access and schema migrations.
 
