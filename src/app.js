@@ -355,11 +355,12 @@ const timerBlockTypes = [
   ["countup", "For Time · Cuenta ascendente"],
   ["emom", "EMOM / E2MOM"],
   ["intervals", "Intervalos · Trabajo / descanso"],
-  ["rest", "Descanso"]
+  ["rest", "Descanso"],
+  ["repeat", "Grupo de rondas repetidas"]
 ];
 const timerBlockLabels = {
   countdown: "Bloque de trabajo", countup: "For Time", emom: "EMOM",
-  intervals: "Intervalos", rest: "Descanso"
+  intervals: "Intervalos", rest: "Descanso", repeat: "Grupo repetido"
 };
 function timeParts(seconds) {
   if (!Number.isInteger(seconds)) return ["", ""];
@@ -411,7 +412,33 @@ function renderTimerBlockFields(row, block = {}) {
     timerField(fields, prefix + "Minutes", caption + " · minutos", minutes, { placeholder: required ? "Obligatorio" : "Sin límite" });
     timerField(fields, prefix + "Seconds", caption + " · segundos", rest, { placeholder: required ? "0–59" : "Opcional" });
   };
-  if (type === "countdown" || type === "rest") {
+  if (type === "repeat") {
+    timerField(fields, "repeatCount", "Número de rondas del grupo", block.repeatCount ?? 2, { placeholder: "Ej. 3", min: "1" });
+    const hint = document.createElement("div");
+    hint.className = "timer-plan-help wide-field";
+    hint.textContent = "Los bloques interiores se ejecutarán en el orden indicado en cada ronda.";
+    fields.append(hint);
+    const children = document.createElement("div");
+    children.className = "timer-block-list timer-block-children";
+    for (const child of block.blocks || []) children.append(createTimerBlockRow(child));
+    if (!children.children.length) {
+      const empty = document.createElement("div");
+      empty.className = "timer-block-empty";
+      empty.textContent = "Añade al menos un bloque a este grupo.";
+      children.append(empty);
+    }
+    const addChild = document.createElement("button");
+    addChild.type = "button";
+    addChild.className = "text-button timer-group-add";
+    addChild.textContent = "+ AÑADIR BLOQUE AL GRUPO";
+    addChild.addEventListener("click", () => {
+      children.querySelector(".timer-block-empty")?.remove();
+      const child = createTimerBlockRow();
+      children.append(child);
+      child.querySelector("[name=label]")?.focus();
+    });
+    fields.append(children, addChild);
+  } else if (type === "countdown" || type === "rest") {
     addTime("duration", "Duración", block.durationSeconds);
     if (type === "countdown") timerCheckbox(fields, "allowSkip", "Permitir saltar este bloque", block.allowSkip === true);
     else timerCheckbox(fields, "allowSkip", "Permitir saltar el descanso", block.allowSkip === true);
@@ -483,15 +510,15 @@ function createTimerBlockRow(block = {}) {
   renderTimerBlockFields(row, block);
   return row;
 }
-function updateTimerBlockEmptyState() {
-  const list = $("timerBlockList");
-  const empty = list.querySelector(".timer-block-empty");
-  if (!list.querySelector(".timer-block-card") && !empty) {
+function updateTimerBlockEmptyState(list = $("timerBlockList")) {
+  const hasBlocks = [...list.children].some(child => child.classList.contains("timer-block-card"));
+  const empty = [...list.children].find(child => child.classList.contains("timer-block-empty"));
+  if (!hasBlocks && !empty) {
     const message = document.createElement("div");
     message.className = "timer-block-empty";
     message.textContent = "Todavía no hay bloques. Añade uno para configurar el cronómetro o guarda el WOD como borrador.";
     list.append(message);
-  } else if (list.querySelector(".timer-block-card") && empty) empty.remove();
+  } else if (hasBlocks && empty) empty.remove();
 }
 function renderTimerBlocks(plan) {
   timerPlanLoadError = false;
@@ -525,39 +552,47 @@ function readTimerSeconds(row, prefix, options = {}) {
   if (options.allowZero ? total < 0 : total <= 0) throw new Error(options.label + " debe ser mayor que cero.");
   return total;
 }
-function collectTimerBlocks() {
-  return [...$("timerBlockList").querySelectorAll(".timer-block-card")].map((row, index) => {
-    const value = name => row.querySelector('[name="' + name + '"]')?.value.trim() ?? "";
-    const checked = name => row.querySelector('[name="' + name + '"]')?.checked === true;
-    const type = value("blockType");
-    const label = value("label");
-    if (!label) throw new Error("Indica un nombre para el bloque " + (index + 1) + ".");
-    const block = { type, label };
-    if (type === "countdown" || type === "rest") {
-      block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración" });
-      if (type === "countdown" || type === "rest") block.allowSkip = checked("allowSkip");
-    } else if (type === "countup") {
-      block.timeCapSeconds = readTimerSeconds(row, "cap", { label: "El Time Cap", optional: true });
-      const rounds = value("rounds");
-      if (rounds && (!Number.isInteger(Number(rounds)) || Number(rounds) <= 0)) throw new Error("Las rondas objetivo deben ser un entero mayor que cero.");
-      block.rounds = rounds ? Number(rounds) : null;
-    } else if (type === "emom") {
-      block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración total" });
-      block.intervalSeconds = readTimerSeconds(row, "interval", { label: "La duración del intervalo" });
-      if (block.durationSeconds % block.intervalSeconds !== 0) throw new Error("En un EMOM, la duración total debe ser múltiplo exacto del intervalo.");
-      block.rounds = block.durationSeconds / block.intervalSeconds;
-      block.allowSkip = checked("allowSkip");
-    } else if (type === "intervals") {
-      const rounds = value("rounds");
-      if (!rounds || !Number.isInteger(Number(rounds)) || Number(rounds) <= 0) throw new Error("Indica un número de rondas válido para los intervalos.");
-      block.rounds = Number(rounds);
-      block.workSeconds = readTimerSeconds(row, "work", { label: "El tiempo de trabajo" });
-      block.restSeconds = readTimerSeconds(row, "rest", { label: "El tiempo de descanso", allowZero: true });
-      block.startWithRest = checked("startWithRest");
-      block.allowSkip = checked("allowSkip");
-    }
-    return block;
-  });
+function collectTimerBlocks(list = $("timerBlockList")) {
+  return [...list.children]
+    .filter(row => row.classList.contains("timer-block-card"))
+    .map((row, index) => {
+      const value = name => row.querySelector('[name="' + name + '"]')?.value.trim() ?? "";
+      const checked = name => row.querySelector('[name="' + name + '"]')?.checked === true;
+      const type = value("blockType");
+      const label = value("label") || timerBlockLabels[type];
+      const block = { type, label };
+      if (type === "repeat") {
+        const repeatCount = Number(value("repeatCount"));
+        if (!Number.isInteger(repeatCount) || repeatCount < 1 || repeatCount > 1000) throw new Error("El número de rondas del grupo debe estar entre 1 y 1000.");
+        block.repeatCount = repeatCount;
+        const children = row.querySelector(".timer-block-children");
+        block.blocks = collectTimerBlocks(children);
+        if (!block.blocks.length) throw new Error("Añade al menos un bloque dentro de cada grupo repetido.");
+      } else if (type === "countdown" || type === "rest") {
+        block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración" });
+        block.allowSkip = checked("allowSkip");
+      } else if (type === "countup") {
+        block.timeCapSeconds = readTimerSeconds(row, "cap", { label: "El Time Cap", optional: true });
+        const rounds = value("rounds");
+        if (rounds && (!Number.isInteger(Number(rounds)) || Number(rounds) <= 0)) throw new Error("Las rondas objetivo deben ser un entero mayor que cero.");
+        block.rounds = rounds ? Number(rounds) : null;
+      } else if (type === "emom") {
+        block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración total" });
+        block.intervalSeconds = readTimerSeconds(row, "interval", { label: "La duración del intervalo" });
+        if (block.durationSeconds % block.intervalSeconds !== 0) throw new Error("En un EMOM, la duración total debe ser múltiplo exacto del intervalo.");
+        block.rounds = block.durationSeconds / block.intervalSeconds;
+        block.allowSkip = checked("allowSkip");
+      } else if (type === "intervals") {
+        const rounds = value("rounds");
+        if (!rounds || !Number.isInteger(Number(rounds)) || Number(rounds) <= 0) throw new Error("Indica un número de rondas válido para los intervalos.");
+        block.rounds = Number(rounds);
+        block.workSeconds = readTimerSeconds(row, "work", { label: "El tiempo de trabajo" });
+        block.restSeconds = readTimerSeconds(row, "rest", { label: "El tiempo de descanso", allowZero: true });
+        block.startWithRest = checked("startWithRest");
+        block.allowSkip = checked("allowSkip");
+      }
+      return block;
+    });
 }
 function collectTimerPlan(title) {
   if (timerPlanLoadError) throw new Error("No se ha podido cargar la configuración temporal guardada. No se han aplicado cambios.");
