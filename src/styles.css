@@ -821,47 +821,50 @@
 }
 
 
-/* Landscape immersive: move utility actions into the centered top navigation row. */
+/* Landscape immersive: compact utility group, bottom-aligned with the top navigation. */
 @media (orientation:landscape) and (min-width:600px){
-  .timer-immersive .timer-topline{
-    position:relative !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:space-between !important;
-    min-height:38px !important;
-    flex:0 0 38px !important;
-    padding:0 !important;
-  }
   .timer-immersive .timer-tools{
     position:absolute !important;
-    top:clamp(10px,2vh,22px) !important;
+    top:calc(clamp(10px,2vh,22px) + 38px) !important;
     left:50% !important;
     right:auto !important;
     bottom:auto !important;
-    transform:translate(-50%,-50%) !important;
+    transform:translate(-50%,-100%) !important;
     display:flex !important;
     flex-direction:row !important;
     align-items:center !important;
     justify-content:center !important;
-    width:auto !important;
-    height:34px !important;
-    min-height:34px !important;
+    width:max-content !important;
+    max-width:calc(100% - 190px) !important;
+    height:28px !important;
+    min-height:28px !important;
     margin:0 !important;
     padding:0 !important;
-    gap:8px !important;
+    gap:5px !important;
     z-index:6 !important;
+    box-sizing:border-box !important;
   }
   .timer-immersive .timer-tools .workout-details-button{
-    height:34px !important;
-    min-height:34px !important;
-    padding:0 11px !important;
+    flex:0 1 auto !important;
+    width:auto !important;
+    max-width:76px !important;
+    height:28px !important;
+    min-height:28px !important;
+    padding:0 7px !important;
+    font-size:8px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
   }
   .timer-immersive .timer-tools > .tool-button.timer-icon-button{
-    width:34px !important;
-    min-width:34px !important;
-    max-width:34px !important;
-    height:34px !important;
-    min-height:34px !important;
-    max-height:34px !important;
+    flex:0 0 28px !important;
+    width:28px !important;
+    min-width:28px !important;
+    max-width:28px !important;
+    height:28px !important;
+    min-height:28px !important;
+    max-height:28px !important;
+    padding:0 !important;
+    font-size:17px !important;
   }
+  .timer-immersive .timer-tools > #fullscreenButton{font-size:21px !important}
 }
