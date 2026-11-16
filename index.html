@@ -40,7 +40,7 @@
         <div class="movement-list" id="movementList"><span>10 Burpees</span><span>15 Wall Balls</span><span>20 Double Unders</span></div>
       </div>
       <button class="primary-button" id="startButton">INICIAR TIMER <span>→</span></button>
-      <div class="home-actions"><button class="secondary-wide" id="saveWorkoutButton" type="button">GUARDAR ESTE WOD</button><button class="secondary-wide" id="libraryButton" type="button">MIS WODS</button></div>
+      <div class="home-actions"><button class="secondary-wide" id="createWorkoutButton" type="button" disabled>CREAR WOD</button><button class="secondary-wide" id="saveWorkoutButton" type="button">GUARDAR ESTE WOD</button><button class="secondary-wide" id="libraryButton" type="button">MIS WODS</button></div>
       <p class="disclaimer">Guarda tus entrenamientos en este dispositivo para reutilizarlos incluso sin conexión.</p>
     </section>
 
@@ -48,6 +48,7 @@
       <div class="library-topline"><button class="text-button" id="libraryBackButton" type="button">← INICIO</button><span class="tag">BIBLIOTECA LOCAL</span></div>
       <h1>Mis WODs<span>.</span></h1>
       <p class="intro">Tus entrenamientos guardados en este dispositivo.</p>
+      <button class="primary-button library-create-button" id="newWorkoutButton" type="button">+ CREAR WOD</button>
       <div id="libraryStatus" class="library-status" role="status">Cargando biblioteca…</div>
       <div id="workoutLibrary" class="workout-library"></div>
       <div id="undoArea" class="undo-area hidden"><span id="undoMessage">WOD eliminado.</span><button id="undoDeleteButton" class="text-button" type="button">DESHACER</button></div>
@@ -55,8 +56,8 @@
 
     <section class="editor-panel hidden" id="editorPanel">
       <div class="library-topline"><button class="text-button" id="editorBackButton" type="button">← BIBLIOTECA</button><span class="tag">EDITOR DE WOD</span></div>
-      <h1>Editar WOD<span>.</span></h1>
-      <p class="intro">Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.</p>
+      <h1 id="editorHeading">Editar WOD<span>.</span></h1>
+      <p class="intro" id="editorIntro">Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.</p>
       <form id="workoutEditor" novalidate>
         <label class="field-label" for="editTitle">Nombre del WOD</label>
         <input class="editor-input" id="editTitle" name="title" maxlength="100" required>
