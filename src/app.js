@@ -1,4 +1,5 @@
 import { TimerEngine } from "./timer-engine.js";
+import { getCountdownCueSecond } from "./audio-cues.js";
 import { createWorkoutRepository } from "./workout-repository.js";
 import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
 
@@ -127,13 +128,14 @@ function renderTimer(snapshot) {
   $("statusMessage").textContent = snapshot.state==="capped" ? "Se ha alcanzado el Time Cap." : snapshot.state==="completed" ? "WOD finalizado." : snapshot.state==="paused" ? "Cronómetro pausado." : snapshot.state==="running" ? "Entrenamiento en curso." : "El cronómetro está listo.";
 }
 function updateCountdownCue(snapshot) {
-  if (snapshot.state!=="running" || snapshot.blockType==="countup" || snapshot.phaseRemainingMs===null) {
-    lastCountdownCue=null; return;
+  const second = getCountdownCueSecond(snapshot);
+  if (second === null) {
+    lastCountdownCue = null;
+    return;
   }
-  const second=Math.ceil(snapshot.phaseRemainingMs/1000);
-  if (second>=1 && second<=10 && second!==lastCountdownCue) {
-    lastCountdownCue=second;
-    playTone(second<=3?1320:880,.075);
+  if (second !== lastCountdownCue) {
+    lastCountdownCue = second;
+    playTone(second <= 3 ? 1320 : 880, .075);
   }
 }
 function stopDisplayLoop() { if(displayFrame!==null) cancelAnimationFrame(displayFrame); displayFrame=null; }
