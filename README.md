@@ -27,3 +27,10 @@ The initial product requirements and technical decisions are documented in [PROJ
 - Provider adapter to keep the AI provider replaceable.
 
 No API secrets will be stored in the frontend repository.
+
+
+## PWA and offline scope
+
+The manifest and service worker use relative paths so the app can be hosted from a GitHub Pages project path. The service worker precaches the HTML shell, styles, JavaScript modules, manifest, and SVG app icon; navigation is network-first with a cached app-shell fallback. Cache versions are namespaced and older Throwdown Timer shell caches are removed on activation.
+
+This is an app-shell offline baseline only. It does not yet provide offline WOD persistence; that arrives with the IndexedDB library. Service workers require HTTPS (or localhost), and installation/offline behavior still needs validation in supported browsers and on iPhone.
