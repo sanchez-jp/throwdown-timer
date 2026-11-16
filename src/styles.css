@@ -876,3 +876,93 @@
     padding-top:max(34px,calc(env(safe-area-inset-top) + 8px));
   }
 }
+
+/* Responsive foundation shared by browser and installed PWA.
+   Keep layout rules viewport-driven, not platform/user-agent-driven. */
+html{
+  min-width:320px;
+  min-height:100%;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+body{
+  min-width:320px;
+  min-height:100vh;
+  min-height:100svh;
+}
+.app-shell{
+  min-height:100vh;
+  min-height:100svh;
+  padding-top:max(24px,env(safe-area-inset-top));
+  padding-right:max(clamp(14px,4vw,36px),env(safe-area-inset-right));
+  padding-bottom:max(18px,env(safe-area-inset-bottom));
+  padding-left:max(clamp(14px,4vw,36px),env(safe-area-inset-left));
+}
+.setup-panel,.timer-panel,.library-panel,.editor-panel{
+  min-width:0;
+}
+.preset-grid,.home-actions,.stats-row,.timer-tools,.timer-controls,
+.library-card-actions,.movement-editor-row,.timer-block-fields,
+.structure-item-row,.structure-step-row,.structure-section-row{
+  min-width:0;
+}
+.preset,.workout-preview,.library-card,.timer-block-card,
+.movement-editor-row,.structure-item-row,.structure-step-row,.structure-section-row{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.editor-input,.movement-editor-row .editor-input,
+.timer-block-fields .editor-input,
+.structure-item-row .editor-input,.structure-step-row .editor-input,
+.structure-section-row .editor-input{
+  min-width:0;
+  max-width:100%;
+}
+button{
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+@media(max-width:600px){
+  .app-shell{
+    padding-top:max(24px,calc(env(safe-area-inset-top) + 8px));
+    padding-bottom:max(18px,env(safe-area-inset-bottom));
+  }
+  .setup-panel,.library-panel,.editor-panel{
+    margin-top:clamp(24px,5vh,42px);
+  }
+  .intro{
+    line-height:1.5;
+  }
+  .editor-input{
+    font-size:16px;
+  }
+}
+@media(max-width:360px){
+  .app-shell{
+    padding-left:max(12px,env(safe-area-inset-left));
+    padding-right:max(12px,env(safe-area-inset-right));
+  }
+  h1{
+    font-size:clamp(29px,9vw,36px);
+    letter-spacing:-1.3px;
+  }
+  .preset-grid{gap:8px}
+  .preset{padding:11px;min-height:82px}
+  .preset strong{font-size:14px}
+  .preset small{font-size:10px}
+  .workout-preview{padding:13px}
+  .library-card{padding:12px}
+  .library-card-actions{gap:6px}
+  .library-card-actions button{font-size:8px;padding-left:4px;padding-right:4px}
+  .structure-item-row,.structure-step-row{
+    gap:5px;
+    padding:8px;
+  }
+}
+@media(min-width:768px){
+  .app-shell{
+    padding-top:max(28px,env(safe-area-inset-top));
+    padding-bottom:max(24px,env(safe-area-inset-bottom));
+  }
+}
+
