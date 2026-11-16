@@ -25,3 +25,8 @@
 .timer-block-controls{display:flex;gap:4px}
 .timer-block-move{height:40px;min-width:34px;margin:0;border:1px solid var(--line);border-radius:7px;background:#101925;color:var(--muted);font-weight:800}
 .timer-block-move:active{border-color:var(--lime);color:var(--lime)}
+
+/* Nested repeat-group editor */
+.timer-block-children{grid-column:1/-1;margin:0;padding:10px;border:1px dashed var(--line);border-radius:8px;background:#0e1621}
+.timer-block-children .timer-block-card{background:#151d28}
+.timer-group-add{grid-column:1/-1;justify-self:start;margin:0}
