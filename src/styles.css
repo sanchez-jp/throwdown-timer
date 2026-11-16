@@ -868,3 +868,11 @@
   }
   .timer-immersive .timer-tools > #fullscreenButton{font-size:21px !important}
 }
+
+
+/* Keep the home header clear of the translucent iOS status-bar blur. */
+@media (max-width:600px){
+  .app-shell:has(> .setup-panel:not(.hidden)){
+    padding-top:max(34px,calc(env(safe-area-inset-top) + 8px));
+  }
+}
