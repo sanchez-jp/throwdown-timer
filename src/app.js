@@ -34,6 +34,7 @@ let repository = null;
 let returnView = "home";
 let deletedWorkout = null;
 let editingWorkoutId = null;
+let creatingWorkout = false;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -241,7 +242,7 @@ function makeLibraryCard(record) {
   const open = document.createElement("button");
   open.className = "primary-button";
   open.type = "button";
-  open.textContent = record.timer && record.interpretation.status === "ready" ? "ABRIR TIMER" : "REVISAR WOD";
+  open.textContent = record.timer && record.interpretation.status === "ready" ? "ABRIR TIMER" : "PENDIENTE TIMER";
   open.disabled = !record.timer || record.interpretation.status !== "ready";
   open.addEventListener("click", () => {
     if (!record.timer) return;
@@ -322,6 +323,22 @@ async function openEditor(id) {
     $("editTitle").focus();
   } catch (error) { showLibraryError(error); }
 }
+async function openNewEditor() {
+  creatingWorkout = true;
+  editingWorkoutId = null;
+  $("editTitle").value = "";
+  $("editFormat").value = "custom";
+  $("editDescription").value = "";
+  $("movementEditorList").replaceChildren(createMovementEditorRow());
+  $("editorHeading").innerHTML = 'Crear WOD<span>.</span>';
+  $("editorIntro").textContent = "Añade los movimientos y guarda el WOD. Después podrás configurar su temporizador.";
+  $("saveEditorButton").textContent = "CREAR WOD";
+  $("editorStatus").textContent = "Se guardará como borrador hasta que configures el temporizador.";
+  $("libraryPanel").classList.add("hidden");
+  $("setupPanel").classList.add("hidden");
+  $("editorPanel").classList.remove("hidden");
+  $("editTitle").focus();
+}
 function collectEditedMovements() {
   return [...$("movementEditorList").querySelectorAll(".movement-editor-row")].map(row => {
     const value = name => row.querySelector('[name="' + name + '"]').value.trim();
@@ -343,7 +360,7 @@ $("addMovementButton").addEventListener("click", () => {
 });
 $("workoutEditor").addEventListener("submit", async event => {
   event.preventDefault();
-  if (!repository || !editingWorkoutId) return;
+  if (!repository || (!creatingWorkout && !editingWorkoutId)) return;
   const title = $("editTitle").value.trim();
   const movements = collectEditedMovements();
   if (!title) {
@@ -359,15 +376,35 @@ $("workoutEditor").addEventListener("submit", async event => {
   save.disabled = true;
   save.textContent = "GUARDANDO…";
   try {
-    await repository.update(editingWorkoutId, {
-      title,
-      workout: {
-        format: $("editFormat").value,
-        description: $("editDescription").value.trim(),
-        movements
-      }
-    });
-    $("editorStatus").textContent = "Cambios guardados.";
+    const workout = {
+      format: $("editFormat").value,
+      description: $("editDescription").value.trim(),
+      movements
+    };
+    if (creatingWorkout) {
+      await repository.create({
+        schemaVersion: 1,
+        title,
+        sourceText: null,
+        workout,
+        timer: null,
+        interpretation: {
+          status: "needs_review",
+          issues: [{
+            severity: "blocking",
+            code: "TIMER_PLAN_REQUIRED",
+            message: "Configura el temporizador antes de iniciar este WOD.",
+            fieldPath: "timer",
+            question: "¿Qué formato y duración debe tener el temporizador?"
+          }]
+        }
+      });
+    } else {
+      await repository.update(editingWorkoutId, { title, workout });
+    }
+    creatingWorkout = false;
+    editingWorkoutId = null;
+    $("editorStatus").textContent = "WOD guardado.";
     $("editorPanel").classList.add("hidden");
     $("libraryPanel").classList.remove("hidden");
     await renderLibrary();
@@ -375,7 +412,7 @@ $("workoutEditor").addEventListener("submit", async event => {
     $("editorStatus").textContent = error.message || "No se han podido guardar los cambios.";
   } finally {
     save.disabled = false;
-    save.textContent = "GUARDAR CAMBIOS";
+    save.textContent = creatingWorkout ? "CREAR WOD" : "GUARDAR CAMBIOS";
   }
 });
 
@@ -392,7 +429,7 @@ async function renderLibrary() {
   try {
     const records = await repository.list();
     if (!records.length) {
-      status.textContent = "Todavía no tienes WODs guardados. Vuelve al inicio y guarda el WOD seleccionado.";
+      status.textContent = "Todavía no tienes WODs guardados. Crea uno nuevo o guarda un WOD de prueba.";
       return;
     }
     status.textContent = records.length + (records.length === 1 ? " WOD guardado" : " WODs guardados");
@@ -405,10 +442,14 @@ async function initializeRepository() {
     await repository.list();
     $("saveWorkoutButton").disabled = false;
     $("libraryButton").disabled = false;
+    $("createWorkoutButton").disabled = false;
+    $("newWorkoutButton").disabled = false;
   } catch (error) {
     repository = null;
     $("saveWorkoutButton").disabled = true;
     $("libraryButton").disabled = true;
+    $("createWorkoutButton").disabled = true;
+    $("newWorkoutButton").disabled = true;
     $("libraryStatus").textContent = error.message || "El almacenamiento local no está disponible.";
     $("libraryStatus").classList.add("error");
   }
@@ -425,6 +466,8 @@ $("saveWorkoutButton").addEventListener("click", async () => {
     $("libraryStatus").classList.add("error");
   }
 });
+$("createWorkoutButton").addEventListener("click", () => { if (repository) openNewEditor(); });
+$("newWorkoutButton").addEventListener("click", () => { if (repository) openNewEditor(); });
 $("libraryButton").addEventListener("click", () => {
   if (!repository) return;
   $("undoArea").classList.add("hidden");
