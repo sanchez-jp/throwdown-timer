@@ -254,3 +254,7 @@
     height:42px !important;min-height:42px !important;max-height:42px !important;
   }
 }
+
+
+/* Match the reset glyph's visual size to the play/pause control. */
+.timer-controls > #resetButton{font-size:25px !important;line-height:1 !important}
