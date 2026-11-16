@@ -198,3 +198,8 @@ Version 2 adds a semantic structure to the workout while keeping timer blocks in
 The v2 movement catalogue assigns stable IDs to movements. Structure nodes reference those IDs and represent ordered sequences, explicit rounds, chippers, ladders with explicitly stored steps, and named compound sections. The application validates references and format/structure compatibility before persistence.
 
 The repository accepts v1 and v2 records side by side. Existing v1 records are not silently rewritten or migrated. A v2 record marked ready must have a valid timer plan; timer-plan validation remains the timer engine's responsibility. Explicit workout progress tracking is not part of this version.
+
+
+## 10. Explicit v1-to-v2 migration
+
+Saved v1 records can be migrated in place through the repository's explicit `migrateToV2(id)` operation. Migration is never automatic. It preserves record identity, timestamps, source text, movement details, and the original timer plan. Formats whose structure cannot be reconstructed safely are marked `needs_review` and retain their original format in `workout.legacyFormat`. See [WOD_V1_MIGRATION.md](WOD_V1_MIGRATION.md) for the mapping and failure rules.
