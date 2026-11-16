@@ -310,7 +310,13 @@ function createMovementEditorRow(movement = {}) {
   remove.className = "remove-movement-button";
   remove.textContent = "×";
   remove.setAttribute("aria-label", "Eliminar movimiento");
-  remove.addEventListener("click", () => row.remove());
+  remove.addEventListener("click", () => {
+    const movementId = row.dataset.movementId;
+    row.remove();
+    if (movementId) $("semanticStructureEditor")?.querySelectorAll('[name="movementId"]').forEach(select => {
+      select.querySelectorAll("option").forEach(option => { if (option.value === movementId) option.remove(); });
+    });
+  });
   row.append(remove);
   return row;
 }
@@ -855,10 +861,26 @@ $("editFormat").addEventListener("change", () => {
 });
 $("addMovementButton").addEventListener("click", () => {
   const row = createMovementEditorRow();
-  row.dataset.movementId = "movement-" + ( $("movementEditorList").children.length + 1 );
+  row.dataset.movementId = "movement-" + ($("movementEditorList").children.length + 1);
   $("movementEditorList").append(row);
-  if (!$("semanticStructureEditor").classList.contains("hidden")) renderStructureSettings();
+  if (!$("semanticStructureEditor").classList.contains("hidden")) {
+    const option = document.createElement("option");
+    option.value = row.dataset.movementId;
+    option.textContent = row.querySelector('[name="name"]').value.trim() || "Movimiento " + $("movementEditorList").children.length;
+    $("semanticStructureEditor").querySelectorAll('[name="movementId"]').forEach(select => select.append(option.cloneNode(true)));
+  }
   $("movementEditorList").lastElementChild.querySelector('[name="name"]').focus();
+});
+$("movementEditorList").addEventListener("input", event => {
+  if (event.target.name !== "name") return;
+  const row = event.target.closest(".movement-editor-row");
+  const id = row?.dataset.movementId;
+  if (!id) return;
+  const label = event.target.value.trim() || "Movimiento";
+  $("semanticStructureEditor").querySelectorAll('[name="movementId"]').forEach(select => {
+    const option = [...select.options].find(item => item.value === id);
+    if (option) option.textContent = label;
+  });
 });
 $("workoutEditor").addEventListener("submit", async event => {
   event.preventDefault();
