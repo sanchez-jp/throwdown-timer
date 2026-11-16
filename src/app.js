@@ -315,7 +315,8 @@ function createMovementEditorRow(movement = {}) {
     const movementId = row.dataset.movementId;
     row.remove();
     if (movementId) $("semanticStructureEditor")?.querySelectorAll('[name="movementId"]').forEach(select => {
-      select.querySelectorAll("option").forEach(option => { if (option.value === movementId) option.remove(); });
+      if (select.value === movementId) select.closest(".structure-item-row")?.remove();
+      else select.querySelectorAll("option").forEach(option => { if (option.value === movementId) option.remove(); });
     });
   });
   row.append(remove);
