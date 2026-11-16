@@ -34,3 +34,8 @@ No API secrets will be stored in the frontend repository.
 The manifest and service worker use relative paths so the app can be hosted from a GitHub Pages project path. The service worker precaches the HTML shell, styles, JavaScript modules, manifest, and SVG app icon; navigation is network-first with a cached app-shell fallback. Cache versions are namespaced and older Throwdown Timer shell caches are removed on activation.
 
 This is an app-shell offline baseline only. It does not yet provide offline WOD persistence; that arrives with the IndexedDB library. Service workers require HTTPS (or localhost), and installation/offline behavior still needs validation in supported browsers and on iPhone.
+
+
+## Local WOD repository
+
+The first IndexedDB repository is implemented in `src/workout-repository.js`. It stores version-1 WOD records with stable IDs and creation/update timestamps, validates timer plans through the timer engine, and supports list, get, create, update, duplicate, delete, and restore operations. Repository behavior is covered with an in-memory storage adapter in the Node test suite; browser-specific IndexedDB behavior still needs real-browser validation.
