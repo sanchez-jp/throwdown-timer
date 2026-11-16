@@ -40,6 +40,7 @@ let editorReturnView = "library";
 let timerPlanLoadError = false;
 let editingSchemaVersion = 2;
 let editingLegacyFormat = null;
+let editingStructureSupported = true;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -338,7 +339,11 @@ async function openEditor(id) {
     $("movementEditorList").replaceChildren(...record.workout.movements.map(createMovementEditorRow));
     record.workout.movements.forEach((movement, index) => { $("movementEditorList").children[index].dataset.movementId = movement.id || "legacy-movement-" + (index + 1); });
     setStructureEditorVisible(record.schemaVersion === 2);
-    if (record.schemaVersion === 2) configureStructureEditor(record.workout.format, record.workout.structure);
+    if (record.schemaVersion === 2) {
+      configureStructureEditor(record.workout.format, record.workout.structure);
+      editingStructureSupported = isStructureEditorCompatible(record.workout.structure);
+      if (!editingStructureSupported) $("editorStatus").textContent = "Esta estructura contiene nodos anidados que todavía no admite el editor visual. No se guardarán cambios para evitar perder información.";
+    } else editingStructureSupported = true;
     renderTimerBlocks(record.timer);
     $("editorStatus").textContent = "";
     $("libraryPanel").classList.add("hidden");
@@ -695,14 +700,16 @@ function createLadderStepRow(step = {}) {
   label.name = "stepLabel";
   label.placeholder = "Peldaño (ej. 10 reps)";
   label.value = step.label || "";
-  row.append(label, movementSelect(step.items?.[0]?.movementId || currentMovementOptions()[0]?.id));
-  const prescription = document.createElement("input");
-  prescription.className = "editor-input";
-  prescription.name = "prescription";
-  prescription.placeholder = "Reps / carga";
-  prescription.value = step.items?.[0]?.prescription || "";
-  row.append(prescription);
-  row.append(structureRemoveButton("Eliminar peldaño", () => row.remove()));
+  const items = document.createElement("div");
+  items.className = "structure-items";
+  (step.items?.length ? step.items : [{}]).forEach(item => items.append(createStructureItemRow(item)));
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "structure-add-button";
+  add.textContent = "+ MOVIMIENTO";
+  add.addEventListener("click", () => items.append(createStructureItemRow()));
+  const remove = structureRemoveButton("Eliminar peldaño", () => row.remove());
+  row.append(label, items, add, remove);
   return row;
 }
 function createSectionRow(section = {}) {
@@ -788,6 +795,15 @@ function renderStructureSettings(structure = null) {
     settings.append(list, add);
   }
 }
+function isStructureEditorCompatible(structure) {
+  const onlyMovements = items => Array.isArray(items) && items.every(item => item && item.type === "movement");
+  if (!structure) return false;
+  if (["sequence", "rounds", "chipper"].includes(structure.type)) return onlyMovements(structure.items);
+  if (structure.type === "ladder") return Array.isArray(structure.steps) && structure.steps.every(step => onlyMovements(step.items));
+  if (structure.type === "sections") return Array.isArray(structure.sections) && structure.sections.every(section =>
+    section.structure?.type === "sequence" && onlyMovements(section.structure.items));
+  return false;
+}
 function setStructureEditorVisible(visible) {
   $("semanticStructureEditor").classList.toggle("hidden", !visible);
 }
@@ -819,11 +835,7 @@ function collectSemanticStructure() {
   if (type === "ladder") {
     const steps = [...$("structureSettings").querySelectorAll(".structure-step-row")].map(row => ({
       label: row.querySelector('[name="stepLabel"]').value.trim(),
-      items: [{
-        type: "movement",
-        movementId: row.querySelector('[name="movementId"]').value,
-        ...(row.querySelector('[name="prescription"]').value.trim() ? { prescription: row.querySelector('[name="prescription"]').value.trim() } : {})
-      }]
+      items: movementItems(row.querySelector(".structure-items"))
     }));
     if (!steps.length || steps.some(step => !step.label)) throw new Error("Cada peldaño de la ladder necesita una etiqueta.");
     return { type, direction: $("structureSettings").querySelector('[name="ladderDirection"]').value, steps };
@@ -857,7 +869,13 @@ $("editorBackButton").addEventListener("click", () => {
 });
 $("structureType").addEventListener("change", () => renderStructureSettings());
 $("editFormat").addEventListener("change", () => {
-  if (editingSchemaVersion === 2) configureStructureEditor($("editFormat").value);
+  if (editingSchemaVersion !== 2) return;
+  let current = null;
+  try { current = collectSemanticStructure(); } catch {}
+  const allowed = structureFormats[$("editFormat").value] || [];
+  const compatible = current && allowed.includes(current.type) ? current : null;
+  configureStructureEditor($("editFormat").value, compatible);
+  if (current && !compatible) $("editorStatus").textContent = "El formato elegido necesita otra estructura. Revisa los movimientos y la organización antes de guardar.";
 });
 $("addMovementButton").addEventListener("click", () => {
   const row = createMovementEditorRow();
@@ -885,6 +903,10 @@ $("movementEditorList").addEventListener("input", event => {
 $("workoutEditor").addEventListener("submit", async event => {
   event.preventDefault();
   if (!repository || (!creatingWorkout && !editingWorkoutId)) return;
+  if (editingSchemaVersion === 2 && !editingStructureSupported) {
+    $("editorStatus").textContent = "No se puede guardar: esta estructura aún no es editable sin pérdida de información.";
+    return;
+  }
   const title = $("editTitle").value.trim();
   const movements = collectEditedMovements();
   if (!title) {
