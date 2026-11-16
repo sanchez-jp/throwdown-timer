@@ -1,5 +1,5 @@
 import { TimerEngine } from "./timer-engine.js";
-import { createWorkoutRepository, WorkoutRepositoryError } from "./workout-repository.js";
+import { createWorkoutRepository } from "./workout-repository.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -163,7 +163,7 @@ function showTimer(w = presets[selected], sourceView = "home") {
   lastCountdownCue=null;
   renderTimer(engine.snapshot());
 }
-document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.preset;renderPreset();}));
+document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.preset;renderPreset();$("saveWorkoutButton").disabled=false;$("saveWorkoutButton").textContent="GUARDAR ESTE WOD";}));
 $("startButton").addEventListener("click",async()=>{
   showTimer();
   if ($("soundButton").getAttribute("aria-pressed")==="true") {
