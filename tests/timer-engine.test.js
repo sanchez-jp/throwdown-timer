@@ -114,3 +114,23 @@ test("reset returns to idle and clears elapsed time", () => {
   assert.equal(timer.snapshot().state, "idle");
   assert.equal(timer.snapshot().phaseElapsedMs, 0);
 });
+
+
+test("skip at an expired phase boundary does not skip the next block", () => {
+  const c = clock();
+  const timer = new TimerEngine(plan(
+    {type:"countdown",label:"Skippable",durationSeconds:1,allowSkip:true},
+    {type:"countdown",label:"Next",durationSeconds:20,allowSkip:true}
+  ), {now:c.now});
+  timer.start(); c.advance(1000);
+  assert.equal(timer.skip().blockLabel, "Next");
+  assert.equal(timer.snapshot().phaseElapsedMs, 0);
+});
+
+test("finish at or after a count-up cap records cap, not manual finish", () => {
+  const c = clock();
+  const timer = new TimerEngine(plan({type:"countup",label:"For Time",timeCapSeconds:5,rounds:null}), {now:c.now});
+  timer.start(); c.advance(5000);
+  assert.equal(timer.finish().state, "capped");
+  assert.equal(timer.snapshot().completionReason, "time_cap_reached");
+});
