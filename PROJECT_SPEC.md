@@ -180,10 +180,12 @@ Do not send sensitive/private workout data to a provider without reviewing the a
 - [x] Define interpretation validation and review rules at the contract level; implement executable validators in a later phase.
 
 ### Phase 1 — Frontend foundation
-- [ ] Establish app shell and responsive visual system.
+- [x] Establish app shell and responsive visual system.
 - [ ] Create home screen and navigation.
 - [ ] Create WOD library screen and empty states.
-- [ ] Add PWA manifest and service worker baseline.
+- [x] Add PWA manifest and service worker baseline.
+
+The PWA baseline precaches the app shell and falls back to cached HTML for offline navigation. The local WOD library is not available yet, so offline persistence of workouts remains pending. Real-device installation and offline validation are still outstanding.
 
 ### Phase 2 — Timer engine (no AI dependency)
 - [ ] Implement timestamp-based clock.
