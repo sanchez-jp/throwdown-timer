@@ -179,17 +179,26 @@
   display:inline-flex;
   align-items:center;
   justify-content:center;
+  flex:0 0 48px;
   min-width:48px;
   width:48px;
+  height:48px;
+  min-height:48px;
   padding:0;
+  margin:16px 0 0;
+  border-radius:8px;
   font-family:Arial,sans-serif;
   font-size:22px;
   line-height:1;
 }
 .timer-controls #pauseButton{
-  flex:1 1 auto;
-  width:auto;
+  flex:0 0 48px;
+  width:48px;
   font-size:25px;
+}
+.timer-controls .timer-icon-button:disabled{
+  opacity:.3;
+  cursor:default;
 }
 .timer-controls #finishButton{font-size:19px;color:#ff8c8c}
 .timer-controls #skipButton{font-size:20px}
@@ -199,5 +208,5 @@
 }
 @media(max-width:420px){
   .timer-immersive .timer-controls .timer-icon-button{min-width:42px;width:42px}
-  .timer-immersive .timer-controls #pauseButton{width:auto}
+  .timer-immersive .timer-controls #pauseButton{width:42px;flex-basis:42px}
 }
