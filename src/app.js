@@ -39,6 +39,7 @@ let creatingWorkout = false;
 let editorReturnView = "library";
 let timerPlanLoadError = false;
 let editingSchemaVersion = 2;
+let editingLegacyFormat = null;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -321,6 +322,7 @@ async function openEditor(id) {
     if (!record) throw new Error("No se ha encontrado el WOD.");
     editingWorkoutId = id;
     editingSchemaVersion = record.schemaVersion;
+    editingLegacyFormat = record.workout.legacyFormat || null;
     $("editorHeading").innerHTML = 'Editar WOD<span>.</span>';
     $("editorIntro").textContent = "Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.";
     $("saveEditorButton").textContent = "GUARDAR CAMBIOS";
@@ -341,6 +343,7 @@ async function openEditor(id) {
 async function openNewEditor(sourceView = "library") {
   creatingWorkout = true;
   editingSchemaVersion = 2;
+  editingLegacyFormat = null;
   editorReturnView = sourceView;
   editingWorkoutId = null;
   $("editTitle").value = "";
@@ -895,9 +898,12 @@ $("workoutEditor").addEventListener("submit", async event => {
         prescription: movement.prescription,
         load: movement.load,
         notes: movement.notes
-      })) : movements
+      })) : movements.map(({ id, ...movement }) => movement)
     };
-    if (editingSchemaVersion === 2) workout.structure = collectSemanticStructure();
+    if (editingSchemaVersion === 2) {
+      workout.structure = collectSemanticStructure();
+      if (editingLegacyFormat) workout.legacyFormat = editingLegacyFormat;
+    }
     const interpretation = timer
       ? { status: "ready", issues: [] }
       : { status: "needs_review", issues: [timerPlanRequiredIssue()] };
