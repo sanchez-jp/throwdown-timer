@@ -819,3 +819,49 @@
     -webkit-backdrop-filter:none !important;
   }
 }
+
+
+/* Landscape immersive: move utility actions into the centered top navigation row. */
+@media (orientation:landscape) and (min-width:600px){
+  .timer-immersive .timer-topline{
+    position:relative !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    min-height:38px !important;
+    flex:0 0 38px !important;
+    padding:0 !important;
+  }
+  .timer-immersive .timer-tools{
+    position:absolute !important;
+    top:50% !important;
+    left:50% !important;
+    right:auto !important;
+    bottom:auto !important;
+    transform:translate(-50%,-50%) !important;
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:auto !important;
+    height:34px !important;
+    min-height:34px !important;
+    margin:0 !important;
+    padding:0 !important;
+    gap:8px !important;
+    z-index:6 !important;
+  }
+  .timer-immersive .timer-tools .workout-details-button{
+    height:34px !important;
+    min-height:34px !important;
+    padding:0 11px !important;
+  }
+  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
+    width:34px !important;
+    min-width:34px !important;
+    max-width:34px !important;
+    height:34px !important;
+    min-height:34px !important;
+    max-height:34px !important;
+  }
+}
