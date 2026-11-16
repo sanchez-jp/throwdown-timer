@@ -1,4 +1,5 @@
 import { TimerEngine } from "./timer-engine.js";
+import { createWorkoutRepository, WorkoutRepositoryError } from "./workout-repository.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -29,6 +30,9 @@ let displayFrame = null;
 let audioContext = null;
 let lastCountdownCue = null;
 let wakeLock = null;
+let repository = null;
+let returnView = "home";
+let deletedWorkout = null;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -145,14 +149,17 @@ async function toggleFullscreen() {
   }
   updateFullscreenButton();
 }
-function showTimer() {
-  const w=presets[selected];
-  engine=new TimerEngine(w.plan);
+function showTimer(w = presets[selected], sourceView = "home") {
+  returnView = sourceView;
+  const plan = w.plan || w.timer;
+  if (!plan) return;
+  engine=new TimerEngine(plan);
   $("setupPanel").classList.add("hidden");
   $("timerPanel").classList.remove("hidden");
-  $("timerFormat").textContent=w.tag;
-  $("timerWorkoutName").textContent=w.name;
-  $("timerMovements").replaceChildren(...w.movements.map(m=>{const s=document.createElement("span");s.textContent=m;return s;}));
+  $("timerFormat").textContent=w.tag || String(w.workout?.format || "WOD").replaceAll("_"," ").toUpperCase();
+  $("timerWorkoutName").textContent=w.name || w.title;
+  const movements = w.movements || (w.workout?.movements || []).map(m => [m.prescription, m.name, m.load].filter(Boolean).join(" · "));
+  $("timerMovements").replaceChildren(...movements.map(m=>{const s=document.createElement("span");s.textContent=m;return s;}));
   lastCountdownCue=null;
   renderTimer(engine.snapshot());
 }
@@ -175,7 +182,7 @@ $("pauseButton").addEventListener("click",async()=>{
 $("resetButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.reset();processEvents();lastCountdownCue=null;renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
 $("skipButton").addEventListener("click",()=>{if(!engine)return;const snap=engine.skip();processEvents();lastCountdownCue=null;renderTimer(snap);if(snap.state==="running")startDisplayLoop();});
 $("finishButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.finish();processEvents();renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
-$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.add("hidden");$("setupPanel").classList.remove("hidden");});
+$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.add("hidden");$(returnView==="library"?"libraryPanel":"setupPanel").classList.remove("hidden");});
 $("soundButton").addEventListener("click",async()=>{
   const enabled=$("soundButton").getAttribute("aria-pressed")!=="true";
   $("soundButton").setAttribute("aria-pressed",String(enabled));
@@ -191,8 +198,147 @@ document.addEventListener("visibilitychange",async()=>{
     if(snap.state==="running"){await requestWakeLock();startDisplayLoop();}else stopDisplayLoop();
   } else {stopDisplayLoop();await releaseWakeLock();}
 });
+
+function presetAsWod() {
+  const preset = presets[selected];
+  const formatMap = { amrap:"amrap", fortime:"for_time", emom:"emom", tabata:"tabata" };
+  return {
+    schemaVersion: 1,
+    title: preset.name,
+    sourceText: preset.description,
+    workout: {
+      format: formatMap[selected],
+      description: preset.description,
+      movements: preset.movements.map(text => ({ name: text, prescription: null, load: null, notes: null }))
+    },
+    timer: preset.plan,
+    interpretation: { status: "ready", issues: [] }
+  };
+}
+function showLibrary() {
+  $("setupPanel").classList.add("hidden");
+  $("libraryPanel").classList.remove("hidden");
+  renderLibrary();
+}
+function makeLibraryCard(record) {
+  const card = document.createElement("article");
+  card.className = "library-card";
+  const top = document.createElement("div");
+  top.className = "library-card-top";
+  const heading = document.createElement("h2");
+  heading.textContent = record.title;
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = record.workout.format.replaceAll("_", " ").toUpperCase();
+  top.append(heading, tag);
+  const description = document.createElement("p");
+  description.textContent = record.workout.description || record.workout.movements.map(m => m.name).join(" · ");
+  const meta = document.createElement("small");
+  meta.textContent = "Actualizado " + new Date(record.updatedAt).toLocaleDateString("es-ES");
+  const actions = document.createElement("div");
+  actions.className = "library-card-actions";
+  const open = document.createElement("button");
+  open.className = "primary-button";
+  open.type = "button";
+  open.textContent = record.timer && record.interpretation.status === "ready" ? "ABRIR TIMER" : "REVISAR WOD";
+  open.disabled = !record.timer || record.interpretation.status !== "ready";
+  open.addEventListener("click", () => {
+    if (!record.timer) return;
+    $("libraryPanel").classList.add("hidden");
+    showTimer(record, "library");
+  });
+  const duplicate = document.createElement("button");
+  duplicate.className = "secondary-button";
+  duplicate.type = "button";
+  duplicate.textContent = "DUPLICAR";
+  duplicate.addEventListener("click", async () => {
+    try { await repository.duplicate(record.id); await renderLibrary(); }
+    catch (error) { showLibraryError(error); }
+  });
+  const remove = document.createElement("button");
+  remove.className = "secondary-button";
+  remove.type = "button";
+  remove.textContent = "ELIMINAR";
+  remove.addEventListener("click", async () => {
+    try {
+      deletedWorkout = await repository.delete(record.id);
+      $("undoArea").classList.remove("hidden");
+      $("undoMessage").textContent = "“" + record.title + "” eliminado.";
+      await renderLibrary();
+    } catch (error) { showLibraryError(error); }
+  });
+  actions.append(open, duplicate, remove);
+  card.append(top, description, meta, actions);
+  return card;
+}
+function showLibraryError(error) {
+  $("libraryStatus").textContent = error?.message || "No se ha podido acceder a la biblioteca.";
+  $("libraryStatus").classList.add("error");
+}
+async function renderLibrary() {
+  const list = $("workoutLibrary");
+  const status = $("libraryStatus");
+  list.replaceChildren();
+  status.classList.remove("error");
+  status.textContent = "Cargando biblioteca…";
+  try {
+    const records = await repository.list();
+    if (!records.length) {
+      status.textContent = "Todavía no tienes WODs guardados. Vuelve al inicio y guarda el WOD seleccionado.";
+      return;
+    }
+    status.textContent = records.length + (records.length === 1 ? " WOD guardado" : " WODs guardados");
+    list.replaceChildren(...records.map(makeLibraryCard));
+  } catch (error) { showLibraryError(error); }
+}
+async function initializeRepository() {
+  try {
+    repository = createWorkoutRepository();
+    await repository.list();
+    $("saveWorkoutButton").disabled = false;
+    $("libraryButton").disabled = false;
+  } catch (error) {
+    repository = null;
+    $("saveWorkoutButton").disabled = true;
+    $("libraryButton").disabled = true;
+    $("libraryStatus").textContent = error.message || "El almacenamiento local no está disponible.";
+    $("libraryStatus").classList.add("error");
+  }
+}
+$("saveWorkoutButton").addEventListener("click", async () => {
+  if (!repository) return;
+  try {
+    const record = await repository.create(presetAsWod());
+    $("saveWorkoutButton").textContent = "GUARDADO ✓";
+    $("saveWorkoutButton").disabled = true;
+    $("libraryButton").textContent = "MIS WODS · " + (await repository.list()).length;
+  } catch (error) {
+    $("libraryStatus").textContent = error.message;
+    $("libraryStatus").classList.add("error");
+  }
+});
+$("libraryButton").addEventListener("click", () => {
+  if (!repository) return;
+  $("undoArea").classList.add("hidden");
+  showLibrary();
+});
+$("libraryBackButton").addEventListener("click", () => {
+  $("libraryPanel").classList.add("hidden");
+  $("setupPanel").classList.remove("hidden");
+});
+$("undoDeleteButton").addEventListener("click", async () => {
+  if (!repository || !deletedWorkout) return;
+  try {
+    await repository.restore(deletedWorkout);
+    deletedWorkout = null;
+    $("undoArea").classList.add("hidden");
+    await renderLibrary();
+  } catch (error) { showLibraryError(error); }
+});
+
 renderPreset();
 updateFullscreenButton();
+initializeRepository();
 
 
 async function registerServiceWorker() {
