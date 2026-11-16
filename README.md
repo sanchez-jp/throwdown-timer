@@ -15,7 +15,7 @@ Throwdown Timer will turn workout descriptions supplied as text or images into e
 
 ## Project status
 
-**Planning and architecture.** The initial product requirements and technical decisions are documented in [PROJECT_SPEC.md](PROJECT_SPEC.md). The version 1 WOD contract is defined in [docs/WOD_CONTRACT.md](docs/WOD_CONTRACT.md), with its machine-readable [JSON Schema](schemas/wod-v1.schema.json). Timer execution rules are documented in [docs/TIMER_STATE_MACHINE.md](docs/TIMER_STATE_MACHINE.md). The first dependency-free timer engine is in [src/timer-engine.js](src/timer-engine.js), with tests runnable via `npm test`.
+**Early frontend prototype.** A first timer screen now includes AMRAP, For Time, EMOM, and Tabata demos, optional audio cues, fullscreen where supported, and screen-wake requests where supported. It has not yet been browser-tested on real devices. Planning and architecture details are documented in The initial product requirements and technical decisions are documented in [PROJECT_SPEC.md](PROJECT_SPEC.md). The version 1 WOD contract is defined in [docs/WOD_CONTRACT.md](docs/WOD_CONTRACT.md), with its machine-readable [JSON Schema](schemas/wod-v1.schema.json). Timer execution rules are documented in [docs/TIMER_STATE_MACHINE.md](docs/TIMER_STATE_MACHINE.md). The first dependency-free timer engine is in [src/timer-engine.js](src/timer-engine.js), with tests runnable via `npm test`.
 
 ## Planned technology
 
