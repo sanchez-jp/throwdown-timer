@@ -57,7 +57,7 @@
 .timer-immersive .timer-label{margin-top:0;font-size:clamp(12px,2vw,18px)}
 .timer-immersive .clock{font-size:clamp(110px,25vw,230px);letter-spacing:-.055em;margin:12px 0}
 .timer-immersive .progress-track{margin:24px 0}
-.timer-immersive .stats-row,.timer-immersive .sound-control,.timer-immersive .compact,.timer-immersive #statusMessage{display:none}
+.timer-immersive .stats-row,.timer-immersive #soundButton,.timer-immersive .compact,.timer-immersive #statusMessage{display:none}
 .timer-immersive .timer-tools{display:flex;justify-content:center;margin-top:20px}
 .timer-immersive #fullscreenButton{width:min(100%,360px);min-height:48px;border-color:var(--lime);color:var(--lime);background:#111a25;font-size:11px}
 .timer-immersive .timer-controls{width:100%;max-width:620px;margin:0 auto}
