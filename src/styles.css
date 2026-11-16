@@ -172,3 +172,32 @@
     overflow:hidden;
   }
 }
+
+
+/* Compact, consistent icon-only timer controls. */
+.timer-controls .timer-icon-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:48px;
+  width:48px;
+  padding:0;
+  font-family:Arial,sans-serif;
+  font-size:22px;
+  line-height:1;
+}
+.timer-controls #pauseButton{
+  flex:1 1 auto;
+  width:auto;
+  font-size:25px;
+}
+.timer-controls #finishButton{font-size:19px;color:#ff8c8c}
+.timer-controls #skipButton{font-size:20px}
+.timer-controls .timer-icon-button:focus-visible{
+  outline:2px solid var(--lime);
+  outline-offset:3px;
+}
+@media(max-width:420px){
+  .timer-immersive .timer-controls .timer-icon-button{min-width:42px;width:42px}
+  .timer-immersive .timer-controls #pauseButton{width:auto}
+}
