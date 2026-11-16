@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1018">
+  <meta name="description" content="Throwdown Timer — CrossFit workout timer">
+  <title>Throwdown Timer</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Throwdown Timer inicio">
+        <span class="brand-mark">T</span>
+        <span>THROWDOWN <b>TIMER</b></span>
+      </a>
+      <span class="connection"><i></i> TIMER READY</span>
+    </header>
+
+    <section class="setup-panel" id="setupPanel">
+      <div class="eyebrow">WORKOUT TIMER</div>
+      <h1>Prepara tu WOD<span>.</span></h1>
+      <p class="intro">Selecciona un formato para probar el cronómetro.</p>
+      <div class="preset-grid">
+        <button class="preset selected" data-preset="amrap"><span class="preset-code">01</span><strong>AMRAP</strong><small>Cuenta atrás · 12:00</small></button>
+        <button class="preset" data-preset="fortime"><span class="preset-code">02</span><strong>FOR TIME</strong><small>Cuenta ascendente · TC 15:00</small></button>
+        <button class="preset" data-preset="emom"><span class="preset-code">03</span><strong>EMOM</strong><small>10 rondas · 01:00</small></button>
+        <button class="preset" data-preset="tabata"><span class="preset-code">04</span><strong>TABATA</strong><small>8 rondas · 20/10</small></button>
+      </div>
+      <div class="workout-preview">
+        <div class="preview-heading"><span>WOD DE PRUEBA</span><span class="tag" id="formatTag">AMRAP</span></div>
+        <h2 id="workoutName">12' AMRAP</h2>
+        <p id="workoutDescription">Máximas rondas en 12 minutos</p>
+        <div class="movement-list" id="movementList"><span>10 Burpees</span><span>15 Wall Balls</span><span>20 Double Unders</span></div>
+      </div>
+      <button class="primary-button" id="startButton">INICIAR TIMER <span>→</span></button>
+      <p class="disclaimer">WODs de demostración. La biblioteca y la importación llegarán en las siguientes fases.</p>
+    </section>
+
+    <section class="timer-panel hidden" id="timerPanel" aria-live="polite">
+      <div class="timer-topline"><button class="text-button" id="backButton">← VOLVER</button><span class="tag" id="timerFormat">AMRAP</span></div>
+      <div class="timer-label" id="timerLabel">TIME REMAINING</div>
+      <div class="clock" id="clock">12:00</div>
+      <div class="phase-label" id="phaseLabel">PREPARADO</div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="stats-row">
+        <div><small>RONDA / INTERVALO</small><strong id="roundValue">—</strong></div>
+        <div><small>TIEMPO TOTAL</small><strong id="totalValue">12:00</strong></div>
+      </div>
+      <div class="timer-controls">
+        <button class="primary-button" id="pauseButton">INICIAR</button>
+        <button class="secondary-button" id="resetButton" aria-label="Reiniciar cronómetro">↻</button>
+        <button class="secondary-button hidden" id="skipButton">SALTAR →</button>
+        <button class="finish-button hidden" id="finishButton">FINALIZAR</button>
+      </div>
+      <div class="workout-preview compact">
+        <div class="preview-heading"><span>WORKOUT</span></div>
+        <h2 id="timerWorkoutName">12' AMRAP</h2>
+        <div class="movement-list" id="timerMovements"></div>
+      </div>
+      <p class="disclaimer" id="statusMessage">El cronómetro está listo.</p>
+    </section>
+    <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
+  </main>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
