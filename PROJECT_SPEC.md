@@ -201,8 +201,8 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 - [x] Add save-from-demo, duplicate, delete, and restore/undo behavior.
 - [x] Add editing for saved WOD title, format, description, and movement prescriptions.
 - [x] Add manual WOD creation and save new WODs as drafts pending timer configuration.
-- [x] Add a first visual timer-plan editor for ordered countdown, count-up, EMOM/E2MOM, intervals, and rest blocks; validate plans with the timer engine.
-- [ ] Extend the editor with nested repeat/group editing and advanced compound-block semantics.
+- [x] Add a visual timer-plan editor for ordered countdown, count-up, EMOM/E2MOM, intervals, rest blocks, and nested repeat groups; validate plans with the timer engine.
+- [ ] Extend advanced compound-block semantics and add automatic movement/round progress tracking where appropriate.
 - [ ] Verify offline access and schema migrations.
 
 ### Phase 4 — AI interpretation
