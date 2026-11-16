@@ -47,3 +47,4 @@
 .structure-step-row{grid-template-columns:1fr auto}
 .structure-step-row .structure-items,.structure-step-row .structure-add-button{grid-column:1/-1}
 .structure-step-row .structure-item-row{background:#101925}
+\n.fullscreen-hint{margin:9px 0 0;padding:11px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:11px;line-height:1.5}.tool-button:disabled{opacity:.65;cursor:default}\n
