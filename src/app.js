@@ -193,3 +193,15 @@ document.addEventListener("visibilitychange",async()=>{
 });
 renderPreset();
 updateFullscreenButton();
+
+
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+  try {
+    await navigator.serviceWorker.register("./service-worker.js", { scope: "./" });
+  } catch (error) {
+    console.warn("No se ha podido registrar el modo offline de Throwdown Timer.", error);
+  }
+}
+
+registerServiceWorker();
