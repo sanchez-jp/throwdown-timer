@@ -214,47 +214,28 @@ async function releaseWakeLock() {
   try { await wakeLock.release(); } catch {}
   wakeLock=null;
 }
-function isIOSDevice() {
-  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-function isStandaloneApp() {
-  return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-}
 function updateFullscreenButton() {
   const button = $("fullscreenButton");
-  const hint = $("fullscreenHint");
-  const active = !!document.fullscreenElement;
-  if (isIOSDevice() && isStandaloneApp()) {
-    button.textContent = "MODO APP ACTIVO";
-    button.disabled = true;
-    button.setAttribute("aria-pressed", "true");
-    hint.classList.add("hidden");
-    return;
-  }
-  if (isIOSDevice()) {
-    button.textContent = "PANTALLA COMPLETA";
-    button.disabled = false;
-    button.setAttribute("aria-pressed", "false");
-    hint.classList.remove("hidden");
-    return;
-  }
+  const active = document.querySelector(".app-shell").classList.contains("timer-immersive");
   button.disabled = false;
-  button.textContent = active ? "SALIR PANTALLA COMPLETA" : "PANTALLA COMPLETA";
+  button.textContent = active ? "SALIR DE PANTALLA COMPLETA" : "PANTALLA COMPLETA";
   button.setAttribute("aria-pressed", String(active));
-  hint.classList.add("hidden");
 }
+
 async function toggleFullscreen() {
-  if (isIOSDevice()) {
-    $("fullscreenHint").classList.remove("hidden");
-    return;
-  }
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-    else $("statusMessage").textContent = "La pantalla completa no está disponible en este navegador.";
-  } catch {
-    $("statusMessage").textContent = "No se ha podido activar la pantalla completa en este dispositivo.";
+  const shell = document.querySelector(".app-shell");
+  const active = shell.classList.contains("timer-immersive");
+
+  if (active) {
+    shell.classList.remove("timer-immersive");
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch {}
+    }
+  } else {
+    shell.classList.add("timer-immersive");
+    if (!/iPhone|iPad|iPod/.test(navigator.userAgent) && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      try { await document.documentElement.requestFullscreen(); } catch {}
+    }
   }
   updateFullscreenButton();
 }
