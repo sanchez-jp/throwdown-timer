@@ -136,3 +136,36 @@ test("finish at or after a count-up cap records cap, not manual finish", () => {
   assert.equal(timer.finish().state, "capped");
   assert.equal(timer.snapshot().completionReason, "time_cap_reached");
 });
+
+import { getCountdownCueSecond } from "../src/audio-cues.js";
+
+test("Tabata work phase only cues in the final three seconds", () => {
+  const snapshot = { state:"running", blockType:"intervals", phase:"work", phaseRemainingMs:10000 };
+  assert.equal(getCountdownCueSecond(snapshot), null);
+  snapshot.phaseRemainingMs = 3000;
+  assert.equal(getCountdownCueSecond(snapshot), 3);
+  snapshot.phaseRemainingMs = 2000;
+  assert.equal(getCountdownCueSecond(snapshot), 2);
+  snapshot.phaseRemainingMs = 1000;
+  assert.equal(getCountdownCueSecond(snapshot), 1);
+});
+
+test("Tabata rest phase uses the same final-three-second cues", () => {
+  const snapshot = { state:"running", blockType:"rest", phase:"rest", phaseRemainingMs:10000 };
+  assert.equal(getCountdownCueSecond(snapshot), null);
+  snapshot.phaseRemainingMs = 3000;
+  assert.equal(getCountdownCueSecond(snapshot), 3);
+  snapshot.phaseRemainingMs = 2000;
+  assert.equal(getCountdownCueSecond(snapshot), 2);
+  snapshot.phaseRemainingMs = 1000;
+  assert.equal(getCountdownCueSecond(snapshot), 1);
+});
+
+test("non-interval timed phases retain their ten-second countdown", () => {
+  const snapshot = { state:"running", blockType:"countdown", phase:null, phaseRemainingMs:10000 };
+  assert.equal(getCountdownCueSecond(snapshot), 10);
+  snapshot.phaseRemainingMs = 4000;
+  assert.equal(getCountdownCueSecond(snapshot), 4);
+  snapshot.phaseRemainingMs = 3000;
+  assert.equal(getCountdownCueSecond(snapshot), 3);
+});
