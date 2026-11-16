@@ -265,6 +265,13 @@ $("pauseButton").addEventListener("click", async () => {
     return;
   }
   const state = engine.snapshot().state;
+  if (state === "idle") {
+    if ($("soundButton").getAttribute("aria-pressed") === "true") {
+      try { await unlockAudio(); } catch (error) { $("statusMessage").textContent = "El cronómetro puede funcionar, pero no se ha podido activar el audio."; }
+    }
+    beginPrestart();
+    return;
+  }
   const result = state === "running" ? engine.pause() : state === "paused" ? engine.resume() : engine.snapshot();
   processEvents();
   renderTimer(result);
