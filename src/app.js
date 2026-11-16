@@ -35,6 +35,7 @@ let returnView = "home";
 let deletedWorkout = null;
 let editingWorkoutId = null;
 let creatingWorkout = false;
+let editorReturnView = "library";
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -310,9 +311,14 @@ function createMovementEditorRow(movement = {}) {
 }
 async function openEditor(id) {
   try {
+    creatingWorkout = false;
+    editorReturnView = "library";
     const record = await repository.get(id);
     if (!record) throw new Error("No se ha encontrado el WOD.");
     editingWorkoutId = id;
+    $("editorHeading").innerHTML = 'Editar WOD<span>.</span>';
+    $("editorIntro").textContent = "Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.";
+    $("saveEditorButton").textContent = "GUARDAR CAMBIOS";
     $("editTitle").value = record.title;
     $("editFormat").value = record.workout.format;
     $("editDescription").value = record.workout.description || "";
@@ -323,8 +329,9 @@ async function openEditor(id) {
     $("editTitle").focus();
   } catch (error) { showLibraryError(error); }
 }
-async function openNewEditor() {
+async function openNewEditor(sourceView = "library") {
   creatingWorkout = true;
+  editorReturnView = sourceView;
   editingWorkoutId = null;
   $("editTitle").value = "";
   $("editFormat").value = "custom";
@@ -352,7 +359,7 @@ function collectEditedMovements() {
 }
 $("editorBackButton").addEventListener("click", () => {
   $("editorPanel").classList.add("hidden");
-  $("libraryPanel").classList.remove("hidden");
+  $(editorReturnView === "home" ? "setupPanel" : "libraryPanel").classList.remove("hidden");
 });
 $("addMovementButton").addEventListener("click", () => {
   $("movementEditorList").append(createMovementEditorRow());
@@ -466,7 +473,7 @@ $("saveWorkoutButton").addEventListener("click", async () => {
     $("libraryStatus").classList.add("error");
   }
 });
-$("createWorkoutButton").addEventListener("click", () => { if (repository) openNewEditor(); });
+$("createWorkoutButton").addEventListener("click", () => { if (repository) openNewEditor("home"); });
 $("newWorkoutButton").addEventListener("click", () => { if (repository) openNewEditor(); });
 $("libraryButton").addEventListener("click", () => {
   if (!repository) return;
