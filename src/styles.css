@@ -825,7 +825,7 @@
 @media (orientation:landscape) and (min-width:600px){
   .timer-immersive .timer-tools{
     position:absolute !important;
-    top:calc(clamp(10px,2vh,22px) + 38px) !important;
+    top:calc(clamp(10px,2vh,22px) + 28px) !important;
     left:50% !important;
     right:auto !important;
     bottom:auto !important;
