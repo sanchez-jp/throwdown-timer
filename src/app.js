@@ -1,6 +1,6 @@
 import { TimerEngine } from "./timer-engine.js";
 import { createWorkoutRepository } from "./workout-repository.js";
-import { buildTimerPlan, flattenTimerPlan, timerPlanRequiredIssue } from "./timer-plan-builder.js";
+import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -445,6 +445,10 @@ function renderTimerBlockFields(row, block = {}) {
   } else if (type === "countup") {
     addTime("cap", "Time Cap", block.timeCapSeconds ?? null, false);
     timerField(fields, "rounds", "Rondas objetivo (opcional)", block.rounds ?? "", { placeholder: "Sin objetivo" });
+    const hint = document.createElement("div");
+    hint.className = "timer-plan-help wide-field";
+    hint.textContent = "RFT y Ladder usan este cronómetro ascendente. El temporizador no detecta rondas, repeticiones ni peldaños automáticamente.";
+    fields.append(hint);
   } else if (type === "emom") {
     addTime("duration", "Duración total", block.durationSeconds);
     addTime("interval", "Duración de cada intervalo", block.intervalSeconds);
@@ -525,7 +529,7 @@ function renderTimerBlocks(plan) {
   const list = $("timerBlockList");
   list.replaceChildren();
   try {
-    const blocks = flattenTimerPlan(plan);
+    const blocks = copyTimerPlanBlocks(plan);
     list.replaceChildren(...blocks.map(createTimerBlockRow));
     $("timerPlanStatus").textContent = "";
     $("timerPlanStatus").classList.remove("timer-plan-status-error");
