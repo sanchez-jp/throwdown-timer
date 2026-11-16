@@ -200,7 +200,8 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 - [x] Implement IndexedDB repository (list/get/create/update/duplicate/delete/restore API).
 - [x] Add save-from-demo, duplicate, delete, and restore/undo behavior.
 - [x] Add editing for saved WOD title, format, description, and movement prescriptions.
-- [ ] Add full create/review flow and editable timer-plan configuration.
+- [x] Add manual WOD creation and save new WODs as drafts pending timer configuration.
+- [ ] Add full review flow and editable timer-plan configuration.
 - [ ] Verify offline access and schema migrations.
 
 ### Phase 4 — AI interpretation
