@@ -91,3 +91,27 @@ test("rejects For Time inside a group repeated more than once", () => {
     ]}
   ]), /For Time no puede estar dentro de un grupo/);
 });
+
+test("rejects more than one For Time block even when one is nested", () => {
+  assert.throws(() => buildTimerPlan("Two count-ups", [
+    { type: "countup", label: "First", timeCapSeconds: null, rounds: null },
+    { type: "repeat", label: "One group", repeatCount: 1, blocks: [
+      { type: "countup", label: "Second", timeCapSeconds: null, rounds: null }
+    ]}
+  ]), /Solo se permite un bloque For Time/);
+});
+
+test("supports nested repeat groups without losing their execution order", () => {
+  const plan = buildTimerPlan("Nested rounds", [
+    { type: "repeat", label: "2 sets", repeatCount: 2, blocks: [
+      { type: "countdown", label: "Prep", durationSeconds: 5 },
+      { type: "repeat", label: "3 reps", repeatCount: 3, blocks: [
+        { type: "countdown", label: "Work", durationSeconds: 2 }
+      ]}
+    ]}
+  ]);
+  const engine = new TimerEngine(plan, { now: () => 0 });
+  assert.deepEqual(engine.phases.map(phase => phase.label), [
+    "Prep", "Work", "Work", "Work", "Prep", "Work", "Work", "Work"
+  ]);
+});
