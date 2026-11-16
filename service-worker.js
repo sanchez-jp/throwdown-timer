@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "throwdown-timer-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const APP_SHELL = [
   "",
   "index.html",
@@ -7,7 +7,8 @@ const APP_SHELL = [
   "assets/icon.svg",
   "src/styles.css",
   "src/app.js",
-  "src/timer-engine.js"
+  "src/timer-engine.js",
+  "src/timer-plan-builder.js"
 ].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener("install", (event) => {
