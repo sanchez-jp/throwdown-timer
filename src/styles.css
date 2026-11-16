@@ -712,3 +712,47 @@
   display:none !important;
 }
 .timer-immersive .clock{text-shadow:none !important;filter:none !important}
+
+
+/* Final control-row alignment: keep the clock area clear. */
+@media (orientation:portrait){
+  .timer-immersive .workout-details-button{display:none !important}
+}
+@media (orientation:landscape) and (min-width:600px){
+  .timer-immersive .timer-main{padding-bottom:max(14px,env(safe-area-inset-bottom)) !important}
+  .timer-immersive .timer-controls{
+    order:6 !important;
+    flex:0 0 44px !important;
+    width:calc(100% - 136px) !important;
+    max-width:calc(100% - 136px) !important;
+    min-width:0 !important;
+    align-self:flex-start !important;
+    justify-content:center !important;
+    margin:0 !important;
+  }
+  .timer-immersive .timer-tools{
+    position:absolute !important;
+    top:auto !important;
+    right:max(18px,env(safe-area-inset-right)) !important;
+    bottom:max(14px,env(safe-area-inset-bottom)) !important;
+    width:auto !important;
+    min-height:44px !important;
+    height:44px !important;
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:8px !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .timer-immersive .timer-tools .workout-details-button{
+    height:34px !important;
+    min-height:34px !important;
+    padding:0 11px !important;
+  }
+  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
+    width:34px !important;min-width:34px !important;max-width:34px !important;
+    height:34px !important;min-height:34px !important;max-height:34px !important;
+  }
+}
