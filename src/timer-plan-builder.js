@@ -21,6 +21,7 @@ export function flattenTimerPlan(plan) {
       if (!Number.isInteger(block.repeatCount) || block.repeatCount < 1 || !Array.isArray(block.blocks) || !block.blocks.length) {
         throw new TimerPlanBuilderError("INVALID_REPEAT", "El bloque de repetición no es válido.");
       }
+      if (block.repeatCount > 10000) throw new TimerPlanBuilderError("PLAN_TOO_LARGE", "El bloque de repetición supera el límite permitido.");
       for (let i = 0; i < block.repeatCount; i++) block.blocks.forEach(child => visit(child, depth + 1));
       return;
     }
