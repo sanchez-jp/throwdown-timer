@@ -189,9 +189,9 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 
 ### Phase 2 — Timer engine (no AI dependency)
 - [ ] Implement timestamp-based clock.
-- [ ] Implement countdown and count-up modes.
-- [ ] Implement EMOM/E2MOM, Tabata, and configurable intervals.
-- [ ] Implement compound segments, pause/resume/reset, and permitted skip behavior.
+- [x] Implement countdown and count-up modes in the timer engine.
+- [x] Implement EMOM/E2MOM, Tabata, and configurable intervals in the timer engine.
+- [x] Implement ordered compound segments, pause/resume/reset, and permitted skip behavior in the timer engine; visual editor currently edits flat ordered segments.
 - [x] Add audio cues, fullscreen, and screen-wake support where available (browser/device support varies).
 - [ ] Test audio, fullscreen, and Wake Lock behavior on iPhone Safari and supported desktop browsers.
 - [ ] Test background/foreground behavior on mobile browsers.
@@ -201,7 +201,8 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 - [x] Add save-from-demo, duplicate, delete, and restore/undo behavior.
 - [x] Add editing for saved WOD title, format, description, and movement prescriptions.
 - [x] Add manual WOD creation and save new WODs as drafts pending timer configuration.
-- [ ] Add full review flow and editable timer-plan configuration.
+- [x] Add a first visual timer-plan editor for ordered countdown, count-up, EMOM/E2MOM, intervals, and rest blocks; validate plans with the timer engine.
+- [ ] Extend the editor with nested repeat/group editing and advanced compound-block semantics.
 - [ ] Verify offline access and schema migrations.
 
 ### Phase 4 — AI interpretation
