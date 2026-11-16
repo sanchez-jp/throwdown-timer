@@ -258,3 +258,55 @@
 
 /* Match the reset glyph's visual size to the play/pause control. */
 .timer-controls > #resetButton{font-size:25px !important;line-height:1 !important}
+
+
+/* Sound and fullscreen share the timer controls' square dimensions,
+   with the pair anchored to the right edge of the timer panel. */
+.timer-tools{
+  display:flex !important;
+  justify-content:flex-end !important;
+  align-items:center !important;
+  gap:9px !important;
+  margin-top:18px !important;
+}
+.timer-tools > .tool-button.timer-icon-button{
+  box-sizing:border-box !important;
+  display:inline-flex !important;
+  flex:0 0 48px !important;
+  width:48px !important;
+  min-width:48px !important;
+  max-width:48px !important;
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  margin:0 !important;
+  padding:0 !important;
+  border-radius:9px !important;
+  aspect-ratio:1 / 1 !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-family:Arial,sans-serif !important;
+  font-size:19px !important;
+  line-height:1 !important;
+  letter-spacing:0 !important;
+}
+.timer-tools > #fullscreenButton{font-size:25px !important}
+.timer-tools > .tool-button[aria-pressed="true"]{
+  border-color:#55dfc780 !important;
+  color:var(--cyan) !important;
+}
+.timer-tools > .tool-button:focus-visible{
+  outline:2px solid var(--lime);
+  outline-offset:3px;
+}
+@media(max-width:420px){
+  .timer-tools > .tool-button.timer-icon-button{
+    flex-basis:48px !important;
+    width:48px !important;
+    min-width:48px !important;
+    max-width:48px !important;
+    height:48px !important;
+    min-height:48px !important;
+    max-height:48px !important;
+  }
+}
