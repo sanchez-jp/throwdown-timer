@@ -500,7 +500,7 @@ function createTimerBlockRow(block = {}) {
   remove.className = "timer-block-remove";
   remove.textContent = "×";
   remove.setAttribute("aria-label", "Eliminar bloque");
-  remove.addEventListener("click", () => { row.remove(); updateTimerBlockEmptyState(); });
+  remove.addEventListener("click", () => { const parent = row.parentElement; row.remove(); updateTimerBlockEmptyState(parent); });
   controls.append(remove);
   top.append(select, controls);
   const fields = document.createElement("div");
