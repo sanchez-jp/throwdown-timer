@@ -112,7 +112,7 @@ test("missing records are handled explicitly", async () => {
 
 test("invalid and unsupported WODs are rejected", async () => {
   const { repository } = setup();
-  await assert.rejects(repository.create(wod({ schemaVersion: 2 })), error => error.code === "UNSUPPORTED_SCHEMA");
+  await assert.rejects(repository.create(wod({ schemaVersion: 3 })), error => error.code === "UNSUPPORTED_SCHEMA");
   await assert.rejects(repository.create(wod({ title: " " })), error => error.code === "INVALID_TITLE");
   await assert.rejects(repository.create(wod({ timer: null })), error => error.code === "INVALID_READY_WOD");
   await assert.rejects(repository.create(wod({ timer: {
