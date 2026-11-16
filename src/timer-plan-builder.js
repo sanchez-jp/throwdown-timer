@@ -24,13 +24,14 @@ export function flattenTimerPlan(plan) {
   return clone(plan.blocks);
 }
 
-function inspectBlocks(blocks, context = { expandedCount: 0, countup: null }, insideRepeat = false, depth = 0) {
+function inspectBlocks(blocks, depth = 0, insideRepeat = false) {
   if (!Array.isArray(blocks) || blocks.length === 0) {
     throw new TimerPlanBuilderError("EMPTY_SEQUENCE", "Los grupos del temporizador no pueden estar vacíos.");
   }
   if (depth > 12) throw new TimerPlanBuilderError("PLAN_TOO_DEEP", "El plan tiene demasiados niveles.");
 
-  blocks.forEach((block, index) => {
+  const result = { phaseCount: 0, countupIndexes: [] };
+  blocks.forEach(block => {
     if (!block || typeof block !== "object" || !EDITABLE_TYPES.includes(block.type)) {
       throw new TimerPlanBuilderError("UNSUPPORTED_BLOCK", "El plan contiene un tipo de bloque no compatible.");
     }
@@ -38,31 +39,26 @@ function inspectBlocks(blocks, context = { expandedCount: 0, countup: null }, in
       if (!Number.isInteger(block.repeatCount) || block.repeatCount < 1 || block.repeatCount > 1000) {
         throw new TimerPlanBuilderError("INVALID_REPEAT", "El número de repeticiones debe estar entre 1 y 1000.");
       }
-      if (!Array.isArray(block.blocks) || block.blocks.length === 0) {
-        throw new TimerPlanBuilderError("EMPTY_REPEAT", "Añade al menos un bloque dentro del grupo repetido.");
-      }
-      const childContext = { expandedCount: 0, countup: null };
-      inspectBlocks(block.blocks, childContext, true, depth + 1);
-      if (childContext.countup && block.repeatCount > 1) {
+      const child = inspectBlocks(block.blocks, depth + 1, true);
+      if (child.countupIndexes.length && block.repeatCount > 1) {
         throw new TimerPlanBuilderError("COUNTUP_IN_REPEAT", "For Time no puede estar dentro de un grupo que se repite más de una vez.");
       }
-      context.expandedCount += childContext.expandedCount * block.repeatCount;
-      if (childContext.countup) context.countup = { ...childContext.countup, index: context.expandedCount - 1 };
+      if (child.countupIndexes.length) {
+        result.countupIndexes.push(result.phaseCount + child.countupIndexes[0]);
+      }
+      result.phaseCount += child.phaseCount * block.repeatCount;
       return;
     }
-
-    const repetitions = insideRepeat ? 1 : 1;
-    context.expandedCount += repetitions;
-    if (block.type === "countup") {
-      if (context.countup) throw new TimerPlanBuilderError("MULTIPLE_COUNTUP", "Solo se permite un bloque For Time en el plan.");
-      context.countup = { index: context.expandedCount - 1, block };
-    }
+    if (block.type === "countup") result.countupIndexes.push(result.phaseCount);
+    result.phaseCount += 1;
   });
-
-  if (context.countup && context.countup.index !== context.expandedCount - 1) {
+  if (!insideRepeat && result.countupIndexes.length > 1) {
+    throw new TimerPlanBuilderError("MULTIPLE_COUNTUP", "Solo se permite un bloque For Time en el plan.");
+  }
+  if (!insideRepeat && result.countupIndexes.length && result.countupIndexes[0] !== result.phaseCount - 1) {
     throw new TimerPlanBuilderError("COUNTUP_MUST_BE_FINAL", "For Time debe ser el último segmento del WOD.");
   }
-  return context;
+  return result;
 }
 
 export function buildTimerPlan(title, blocks) {
