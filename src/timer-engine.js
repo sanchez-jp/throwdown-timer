@@ -361,7 +361,7 @@ export class TimerEngine {
       phase: phase?.phase ?? null,
       phaseElapsedMs: Math.floor(elapsed),
       phaseRemainingMs: remaining === null ? null : Math.ceil(remaining),
-      totalElapsedMs: Math.floor(this.totalElapsedMs + (this.state === "running" ? elapsed : 0)),
+      totalElapsedMs: Math.floor(this.totalElapsedMs + ((this.state === "running" || this.state === "paused") ? elapsed : 0)),
       totalRemainingMs: remainingTotal === null ? null : Math.ceil(remainingTotal),
       round: rounds,
       completionReason: this.completionReason,
