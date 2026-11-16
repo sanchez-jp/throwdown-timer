@@ -38,3 +38,10 @@ test("reports missing timer configuration with all schema issue fields", () => {
   assert.deepEqual(Object.keys(issue), ["severity", "code", "message", "fieldPath", "question"]);
   assert.equal(issue.severity, "blocking");
 });
+
+test("requires a For Time block to be the final segment in the current editor", () => {
+  assert.throws(() => buildTimerPlan("Compound", [
+    { type: "countup", label: "For Time", timeCapSeconds: null, rounds: null },
+    { type: "rest", label: "Rest", durationSeconds: 60 }
+  ]), /For Time debe ser el último segmento/);
+});
