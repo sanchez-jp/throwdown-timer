@@ -486,7 +486,7 @@
     white-space:nowrap !important;
     text-align:center !important;
     align-content:center !important;
-    font-size:clamp(120px,44vh,340px) !important;
+    font-size:clamp(160px,56vh,360px) !important;
     line-height:.95 !important;
     letter-spacing:-.065em !important;
   }
