@@ -190,7 +190,8 @@ Do not send sensitive/private workout data to a provider without reviewing the a
 - [ ] Implement countdown and count-up modes.
 - [ ] Implement EMOM/E2MOM, Tabata, and configurable intervals.
 - [ ] Implement compound segments, pause/resume/reset, and permitted skip behavior.
-- [ ] Add audio cues, fullscreen, and screen-wake support where available.
+- [x] Add audio cues, fullscreen, and screen-wake support where available (browser/device support varies).
+- [ ] Test audio, fullscreen, and Wake Lock behavior on iPhone Safari and supported desktop browsers.
 - [ ] Test background/foreground behavior on mobile browsers.
 
 ### Phase 3 — WOD library
