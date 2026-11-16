@@ -26,8 +26,9 @@ const presets = {
 let selected = "amrap";
 let engine = null;
 let displayFrame = null;
-let lastBeepSecond = null;
 let audioContext = null;
+let lastCountdownCue = null;
+let wakeLock = null;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -45,6 +46,33 @@ function renderPreset() {
   $("movementList").replaceChildren(...w.movements.map(m => {const s=document.createElement("span");s.textContent=m;return s;}));
   document.querySelectorAll("[data-preset]").forEach(b=>b.classList.toggle("selected",b.dataset.preset===selected));
 }
+function playTone(frequency=880, duration=.12) {
+  if (!$("soundButton").getAttribute("aria-pressed") || $("soundButton").getAttribute("aria-pressed")==="false") return;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return;
+    audioContext ||= new Audio();
+    if (audioContext.state === "suspended") audioContext.resume();
+    const oscillator=audioContext.createOscillator(), gain=audioContext.createGain();
+    oscillator.frequency.value=frequency;
+    gain.gain.setValueAtTime(.0001,audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.07,audioContext.currentTime+.012);
+    gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+duration);
+    oscillator.connect(gain);gain.connect(audioContext.destination);
+    oscillator.start();oscillator.stop(audioContext.currentTime+duration+.02);
+  } catch {}
+}
+function processEvents() {
+  if (!engine) return;
+  for (const event of engine.drainEvents()) {
+    if (event.type === "phase_changed") {
+      lastCountdownCue=null;
+      playTone(1046,.16);
+    } else if (event.type === "time_cap_reached" || event.type === "timer_completed") {
+      playTone(440,.45);
+    }
+  }
+}
 function renderTimer(snapshot) {
   const phase = engine.phases[snapshot.blockIndex ?? 0];
   const countup = snapshot.blockType === "countup";
@@ -53,9 +81,12 @@ function renderTimer(snapshot) {
   $("clock").classList.toggle("countup",countup);
   $("clock").classList.toggle("urgent",!countup && time !== null && time <= 10000 && snapshot.state==="running");
   $("timerLabel").textContent = countup ? "TIME ELAPSED" : snapshot.phase === "rest" ? "REST" : "TIME REMAINING";
-  $("phaseLabel").textContent = snapshot.state==="completed" ? "COMPLETADO" : snapshot.state==="capped" ? "TIME CAP" : snapshot.state==="paused" ? "PAUSADO" : snapshot.state==="idle" ? "PREPARADO" : (phase?.label || "EN CURSO").toUpperCase();
+  $("phaseLabel").textContent = snapshot.state==="completed" ? "COMPLETADO" : snapshot.state==="capped" ? "TIME CAP" : snapshot.state==="paused" ? "PAUSADO" : snapshot.state==="idle" ? "PREPARADO" : snapshot.phase==="rest" ? "DESCANSO" : (phase?.label || "EN CURSO").toUpperCase();
   $("roundValue").textContent = snapshot.round ? `${snapshot.round.current} / ${snapshot.round.total}` : "—";
-  $("totalValue").textContent = snapshot.totalRemainingMs == null ? formatTime(snapshot.totalElapsedMs) : formatTime(snapshot.totalRemainingMs);
+  const totalLabel = countup ? (snapshot.totalRemainingMs === null ? "TIEMPO TRANSCURRIDO" : "HASTA TIME CAP") : "TIEMPO RESTANTE";
+  $("totalLabel").textContent = totalLabel;
+  const total = countup && snapshot.totalRemainingMs === null ? snapshot.totalElapsedMs : snapshot.totalRemainingMs;
+  $("totalValue").textContent = total == null ? "—" : formatTime(total);
   const duration = phase?.durationMs;
   const progress = duration ? Math.min(100,Math.max(0,(snapshot.phaseElapsedMs/duration)*100)) : 0;
   $("progressFill").style.width = `${progress}%`;
@@ -66,15 +97,54 @@ function renderTimer(snapshot) {
   $("finishButton").classList.toggle("hidden",!snapshot.can.finish);
   $("statusMessage").textContent = snapshot.state==="capped" ? "Se ha alcanzado el Time Cap." : snapshot.state==="completed" ? "WOD finalizado." : snapshot.state==="paused" ? "Cronómetro pausado." : snapshot.state==="running" ? "Entrenamiento en curso." : "El cronómetro está listo.";
 }
+function updateCountdownCue(snapshot) {
+  if (snapshot.state!=="running" || snapshot.blockType==="countup" || snapshot.phaseRemainingMs===null) {
+    lastCountdownCue=null; return;
+  }
+  const second=Math.ceil(snapshot.phaseRemainingMs/1000);
+  if (second>=1 && second<=10 && second!==lastCountdownCue) {
+    lastCountdownCue=second;
+    playTone(second<=3?1320:880,.075);
+  }
+}
 function stopDisplayLoop() { if(displayFrame!==null) cancelAnimationFrame(displayFrame); displayFrame=null; }
 function displayLoop() {
   if(!engine) return;
   const snapshot=engine.tick();
+  processEvents();
+  updateCountdownCue(snapshot);
   renderTimer(snapshot);
   if(snapshot.state==="running") displayFrame=requestAnimationFrame(displayLoop);
-  else stopDisplayLoop();
+  else { stopDisplayLoop(); releaseWakeLock(); }
 }
 function startDisplayLoop() { stopDisplayLoop(); displayFrame=requestAnimationFrame(displayLoop); }
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator) || document.visibilityState!=="visible") return;
+  try {
+    wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release",()=>{wakeLock=null;});
+  } catch { wakeLock=null; }
+}
+async function releaseWakeLock() {
+  if (!wakeLock) return;
+  try { await wakeLock.release(); } catch {}
+  wakeLock=null;
+}
+function updateFullscreenButton() {
+  const active=!!document.fullscreenElement;
+  $("fullscreenButton").textContent=active?"SALIR PANTALLA COMPLETA":"PANTALLA COMPLETA";
+  $("fullscreenButton").setAttribute("aria-pressed",String(active));
+}
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    else $("statusMessage").textContent="La pantalla completa no está disponible en este navegador.";
+  } catch {
+    $("statusMessage").textContent="No se ha podido activar la pantalla completa en este dispositivo.";
+  }
+  updateFullscreenButton();
+}
 function showTimer() {
   const w=presets[selected];
   engine=new TimerEngine(w.plan);
@@ -83,42 +153,43 @@ function showTimer() {
   $("timerFormat").textContent=w.tag;
   $("timerWorkoutName").textContent=w.name;
   $("timerMovements").replaceChildren(...w.movements.map(m=>{const s=document.createElement("span");s.textContent=m;return s;}));
-  lastBeepSecond=null;
+  lastCountdownCue=null;
   renderTimer(engine.snapshot());
 }
-function beep() {
-  try {
-    audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-    if(audioContext.state==="suspended") audioContext.resume();
-    const osc=audioContext.createOscillator(), gain=audioContext.createGain();
-    osc.frequency.value=880; gain.gain.value=.055;
-    osc.connect(gain);gain.connect(audioContext.destination);
-    osc.start();osc.stop(audioContext.currentTime+.11);
-  } catch {}
-}
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.preset;renderPreset();}));
-$("startButton").addEventListener("click",()=>{showTimer();engine.start();renderTimer(engine.snapshot());startDisplayLoop();});
-$("pauseButton").addEventListener("click",()=>{
+$("startButton").addEventListener("click",async()=>{
+  showTimer();
+  if ($("soundButton").getAttribute("aria-pressed")==="true") {
+    try { const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audioContext ||= new Audio();await audioContext.resume();} } catch {}
+  }
+  const snap=engine.start();processEvents();renderTimer(snap);
+  await requestWakeLock();startDisplayLoop();
+});
+$("pauseButton").addEventListener("click",async()=>{
   if(!engine)return;
   const state=engine.snapshot().state;
   const result=state==="running"?engine.pause():state==="paused"?engine.resume():state==="idle"?engine.start():engine.snapshot();
-  renderTimer(result);
-  if(result.state==="running")startDisplayLoop();else stopDisplayLoop();
+  processEvents();renderTimer(result);
+  if(result.state==="running"){await requestWakeLock();startDisplayLoop();}else{stopDisplayLoop();await releaseWakeLock();}
 });
-$("resetButton").addEventListener("click",()=>{if(!engine)return;renderTimer(engine.reset());stopDisplayLoop();});
-$("skipButton").addEventListener("click",()=>{if(!engine)return;renderTimer(engine.skip());if(engine.snapshot().state==="running")startDisplayLoop();});
-$("finishButton").addEventListener("click",()=>{if(!engine)return;renderTimer(engine.finish());stopDisplayLoop();});
-$("backButton").addEventListener("click",()=>{stopDisplayLoop();engine=null;$("timerPanel").classList.add("hidden");$("setupPanel").classList.remove("hidden");});
-document.addEventListener("visibilitychange",()=>{
+$("resetButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.reset();processEvents();lastCountdownCue=null;renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
+$("skipButton").addEventListener("click",()=>{if(!engine)return;const snap=engine.skip();processEvents();lastCountdownCue=null;renderTimer(snap);if(snap.state==="running")startDisplayLoop();});
+$("finishButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.finish();processEvents();renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
+$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.add("hidden");$("setupPanel").classList.remove("hidden");});
+$("soundButton").addEventListener("click",async()=>{
+  const enabled=$("soundButton").getAttribute("aria-pressed")!=="true";
+  $("soundButton").setAttribute("aria-pressed",String(enabled));
+  $("soundButton").textContent=enabled?"SONIDO: ON":"SONIDO: OFF";
+  if(enabled){try{const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audioContext ||= new Audio();await audioContext.resume();playTone(880,.1);}}catch{}}
+});
+$("fullscreenButton").addEventListener("click",toggleFullscreen);
+document.addEventListener("fullscreenchange",updateFullscreenButton);
+document.addEventListener("visibilitychange",async()=>{
   if(!engine)return;
   if(document.visibilityState==="visible"){
-    const snap=engine.tick();renderTimer(snap);
-    if(snap.state==="running")startDisplayLoop();else stopDisplayLoop();
-  } else stopDisplayLoop();
+    const snap=engine.tick();processEvents();updateCountdownCue(snap);renderTimer(snap);
+    if(snap.state==="running"){await requestWakeLock();startDisplayLoop();}else stopDisplayLoop();
+  } else {stopDisplayLoop();await releaseWakeLock();}
 });
-function onFrame() {
-  if(!engine || document.visibilityState!=="visible")return;
-  const s=engine.tick();renderTimer(s);
-  if(s.state==="running")displayFrame=requestAnimationFrame(onFrame);
-}
 renderPreset();
+updateFullscreenButton();
