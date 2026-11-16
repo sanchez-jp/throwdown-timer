@@ -47,4 +47,20 @@
 .structure-step-row{grid-template-columns:1fr auto}
 .structure-step-row .structure-items,.structure-step-row .structure-add-button{grid-column:1/-1}
 .structure-step-row .structure-item-row{background:#101925}
-\n.fullscreen-hint{margin:9px 0 0;padding:11px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:11px;line-height:1.5}.tool-button:disabled{opacity:.65;cursor:default}\n
+.fullscreen-hint{margin:9px 0 0;padding:11px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:11px;line-height:1.5}.tool-button:disabled{opacity:.65;cursor:default}
+
+/* Immersive timer mode: focus on the clock and essential controls. */
+.app-shell.timer-immersive{width:100%;max-width:none;min-height:100vh;min-height:100dvh;padding:18px 22px;justify-content:center}
+.timer-immersive .topbar,.timer-immersive>footer{display:none}
+.timer-immersive .timer-panel{width:100%;max-width:900px;margin:auto;display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - 36px);min-height:calc(100dvh - 36px)}
+.timer-immersive .timer-topline{display:none}
+.timer-immersive .timer-label{margin-top:0;font-size:clamp(12px,2vw,18px)}
+.timer-immersive .clock{font-size:clamp(110px,25vw,230px);letter-spacing:-.055em;margin:12px 0}
+.timer-immersive .progress-track{margin:24px 0}
+.timer-immersive .stats-row,.timer-immersive .sound-control,.timer-immersive .compact,.timer-immersive #statusMessage{display:none}
+.timer-immersive .timer-tools{display:flex;justify-content:center;margin-top:20px}
+.timer-immersive #fullscreenButton{width:min(100%,360px);min-height:48px;border-color:var(--lime);color:var(--lime);background:#111a25;font-size:11px}
+.timer-immersive .timer-controls{width:100%;max-width:620px;margin:0 auto}
+.timer-immersive .timer-controls .primary-button{font-size:14px;min-height:58px}
+.timer-immersive .timer-controls .secondary-button,.timer-immersive .timer-controls .finish-button{min-height:58px}
+@media(max-width:420px){.timer-immersive .app-shell{padding:12px}.timer-immersive .clock{font-size:clamp(100px,27vw,150px);letter-spacing:-.06em}.timer-immersive .progress-track{margin:18px 0}}
