@@ -1,5 +1,6 @@
 import { TimerEngine } from "./timer-engine.js";
 import { validateWodV2 } from "./wod-validator.js";
+import { migrateWodV1ToV2 } from "./wod-migration.js";
 
 const DATABASE_NAME = "throwdown-timer";
 const DATABASE_VERSION = 1;
@@ -209,6 +210,20 @@ export function createWorkoutRepository({
         timer: existing.timer,
         interpretation: existing.interpretation
       });
+    },
+
+    async migrateToV2(id) {
+      const existing = await storage.get(id);
+      if (!existing) throw new WorkoutRepositoryError("NOT_FOUND", "No se ha encontrado el WOD que quieres migrar.");
+      let migrated;
+      try {
+        migrated = migrateWodV1ToV2(existing);
+        validateWorkout(migrated);
+      } catch (error) {
+        throw new WorkoutRepositoryError(error.code || "MIGRATION_FAILED", error.message);
+      }
+      await storage.put(clone(migrated));
+      return clone(migrated);
     },
 
     async delete(id) {
