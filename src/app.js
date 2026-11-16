@@ -443,6 +443,7 @@ function createTimerBlockRow(block = {}) {
   const select = document.createElement("select");
   select.className = "editor-input";
   select.name = "blockType";
+  select.setAttribute("aria-label", "Tipo de bloque temporal");
   for (const [value, label] of timerBlockTypes) {
     const option = document.createElement("option");
     option.value = value;
