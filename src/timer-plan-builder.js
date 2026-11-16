@@ -36,6 +36,10 @@ export function flattenTimerPlan(plan) {
 
 export function buildTimerPlan(title, blocks) {
   if (!Array.isArray(blocks) || blocks.length === 0) return null;
+  const countupIndex = blocks.findIndex(block => block?.type === "countup");
+  if (countupIndex !== -1 && countupIndex !== blocks.length - 1) {
+    throw new TimerPlanBuilderError("COUNTUP_MUST_BE_FINAL", "En esta versión, un bloque For Time debe ser el último segmento del WOD.");
+  }
   const plan = { type: "sequence", label: String(title || "WOD").trim() || "WOD", blocks: structuredClone(blocks) };
   try { new TimerEngine(plan, { now: () => 0 }); }
   catch (error) { throw new TimerPlanBuilderError("INVALID_PLAN", error.message); }
