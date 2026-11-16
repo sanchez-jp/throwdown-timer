@@ -16,5 +16,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Check JavaScript syntax
+        run: node --check src/app.js && node --check src/timer-engine.js && node --check src/timer-plan-builder.js && node --check service-worker.js
       - name: Run unit tests
         run: npm test
