@@ -335,3 +335,60 @@
   min-height:48px !important;
   max-height:48px !important;
 }
+
+/* Immersive mode refinement: protect the clock from the description column,
+   compact the utility buttons, and remove the normal-screen glow behind the header. */
+.timer-panel.timer-immersive{
+  background:#0b1018 !important;
+  isolation:isolate;
+}
+.timer-immersive .timer-main{
+  background:#0b1018 !important;
+  border-color:var(--line);
+}
+.timer-immersive .timer-topline,
+.timer-immersive .timer-label,
+.timer-immersive .clock,
+.timer-immersive .phase-label,
+.timer-immersive .progress-track,
+.timer-immersive .stats-row,
+.timer-immersive .timer-controls,
+.timer-immersive .timer-tools{
+  position:relative;
+  z-index:1;
+  min-width:0;
+  max-width:100%;
+}
+.timer-immersive .timer-tools > .tool-button.timer-icon-button{
+  flex:0 0 40px !important;
+  width:40px !important;
+  min-width:40px !important;
+  max-width:40px !important;
+  height:40px !important;
+  min-height:40px !important;
+  max-height:40px !important;
+}
+.timer-immersive .timer-tools{gap:7px !important;margin-top:2px !important}
+@media (orientation:landscape) and (min-width:600px){
+  .timer-immersive .timer-main{min-width:0;overflow:hidden}
+  .timer-immersive .clock{
+    display:block !important;
+    flex:0 1 auto !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+    white-space:nowrap !important;
+    text-overflow:clip;
+    font-size:clamp(64px, min(32vh, 8.5vw), 148px) !important;
+    line-height:1 !important;
+    letter-spacing:-.065em !important;
+    text-align:center !important;
+  }
+}
+@media (orientation:portrait){
+  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
+    flex-basis:40px !important;width:40px !important;min-width:40px !important;max-width:40px !important;
+    height:40px !important;min-height:40px !important;max-height:40px !important;
+  }
+}
