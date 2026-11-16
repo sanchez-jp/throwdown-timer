@@ -39,3 +39,9 @@ This is an app-shell offline baseline. Saved WODs are persisted locally with Ind
 ## Local WOD repository
 
 The first IndexedDB repository is implemented in `src/workout-repository.js`. It stores version-1 WOD records with stable IDs and creation/update timestamps, validates timer plans through the timer engine, and supports list, get, create, update, duplicate, delete, and restore operations. The first UI integration lets users save the selected demo WOD, browse saved entries, open executable WODs, edit titles/formats/descriptions/movements, duplicate, delete, and undo the latest deletion. Repository behavior is covered with an in-memory storage adapter in the Node test suite; browser-specific IndexedDB behavior still needs real-browser validation.
+
+## Visual timer-plan editor
+
+The WOD editor now includes an ordered timer-block builder. It supports countdown blocks, count-up/For Time blocks with an optional Time Cap, EMOM/E2MOM intervals, work/rest intervals, and explicit rest blocks. Blocks can be added, removed, and reordered; the complete plan is validated by the same deterministic TimerEngine used at runtime before it is saved.
+
+Durations are entered explicitly in minutes and seconds. EMOM rounds are derived from total duration divided by interval length and must divide evenly. Interval rest must be entered explicitly (including 0 when no rest is intended). A WOD with no configured timer remains a draft and cannot be started. In this editor version, a For Time/count-up block must be the final segment because Finish and Time Cap end the timer session.
