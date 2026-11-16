@@ -43,9 +43,7 @@ function inspectBlocks(blocks, depth = 0, insideRepeat = false) {
       if (child.countupIndexes.length && block.repeatCount > 1) {
         throw new TimerPlanBuilderError("COUNTUP_IN_REPEAT", "For Time no puede estar dentro de un grupo que se repite más de una vez.");
       }
-      if (child.countupIndexes.length) {
-        result.countupIndexes.push(result.phaseCount + child.countupIndexes[0]);
-      }
+      for (const index of child.countupIndexes) result.countupIndexes.push(result.phaseCount + index);
       result.phaseCount += child.phaseCount * block.repeatCount;
       return;
     }
