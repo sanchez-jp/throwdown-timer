@@ -350,8 +350,11 @@ export class TimerEngine {
     const remainingTotal = this.phases.slice(this.index).some(p => p.durationMs === null)
       ? null
       : (remaining ?? 0) + this.phases.slice(this.index + 1).reduce((sum, p) => sum + p.durationMs, 0);
-    const rounds = phase?.totalRounds ? { current: phase.round, total: phase.totalRounds } :
-      phase?.rounds ? { current: phase.rounds, total: phase.rounds } : null;
+    // Only expose progress when the engine knows the current round.
+    // `countup.rounds` is a target/description, not live progress.
+    const rounds = phase?.totalRounds
+      ? { current: phase.round, total: phase.totalRounds }
+      : null;
     const result = {
       state: this.state,
       blockIndex: phase ? this.index : null,
