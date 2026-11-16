@@ -93,6 +93,11 @@
         },
         "structure": {
           "$ref": "#/$defs/structureNode"
+        },
+        "legacyFormat": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original v1 format retained when its semantic structure cannot be reconstructed safely."
         }
       }
     },
