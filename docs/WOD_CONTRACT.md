@@ -189,3 +189,12 @@ Timed leaf blocks may include the optional boolean `allowSkip`. If omitted, it d
 - Sequence and repeat containers are structural and do not have their own skip flag.
 
 The timer engine must enforce this policy even if the UI accidentally displays a Skip control.
+
+
+## 9. Version 2 semantic workout model
+
+Version 2 adds a semantic structure to the workout while keeping timer blocks independent. Its schema is [wod-v2.schema.json](../schemas/wod-v2.schema.json), canonical examples are in [WOD_V2_EXAMPLES.md](WOD_V2_EXAMPLES.md), and the design rationale is in [WOD_MODEL_V2_DESIGN.md](WOD_MODEL_V2_DESIGN.md).
+
+The v2 movement catalogue assigns stable IDs to movements. Structure nodes reference those IDs and represent ordered sequences, explicit rounds, chippers, ladders with explicitly stored steps, and named compound sections. The application validates references and format/structure compatibility before persistence.
+
+The repository accepts v1 and v2 records side by side. Existing v1 records are not silently rewritten or migrated. A v2 record marked ready must have a valid timer plan; timer-plan validation remains the timer engine's responsibility. Explicit workout progress tracking is not part of this version.
