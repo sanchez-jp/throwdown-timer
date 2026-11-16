@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "throwdown-timer-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v4`;
+const CACHE_NAME = `${CACHE_PREFIX}v5`;
 const APP_SHELL = [
   "",
   "index.html",
@@ -7,6 +7,7 @@ const APP_SHELL = [
   "assets/icon.svg",
   "src/styles.css",
   "src/app.js",
+  "src/audio-cues.js",
   "src/timer-engine.js",
   "src/timer-plan-builder.js"
 ].map((path) => new URL(path, self.registration.scope).toString());
