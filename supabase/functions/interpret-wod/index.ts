@@ -393,6 +393,10 @@ EJEMPLO 2 — CINDY:
 Entrada: 20 min AMRAP: 5 Pull-ups, 10 Push-ups, 15 Air Squats.
 Criterio: format amrap; structure sequence con esos tres movimientos y prescriptions 5, 10, 15; timer countdown durationSeconds 1200.
 
+EJEMPLO 3 — ROUNDS FOR TIME:
+Entrada: 5 rounds for time: 10 Deadlifts 60 kg, 12 Box Jumps.
+Criterio: format rounds_for_time; structure {type:"rounds",count:5,items:[Deadlifts 10, Box Jumps 12]}; timer countup con rounds 5 y timeCapSeconds null si no se indica Time Cap.
+
 EJEMPLO 3 — CHIPPER:
 Entrada: For time: 50 Double Unders, 40 Sit-ups, 30 Wall Balls 9 kg, 20 Box Jumps, 10 Pull-ups. Time cap 15 min.
 Criterio: format chipper; structure chipper con cinco apariciones en ese orden; timer countup con timeCapSeconds 900 y rounds null.
@@ -403,7 +407,7 @@ Criterio: format emom; structure sequence con Bike y Burpees en el orden descrit
 
 EJEMPLO 5 — FUERZA + WOD:
 Entrada: Back Squat 5x5; rest 3 minutes; then 10 min AMRAP of 10 Wall Balls 9 kg and 10 Burpees.
-Criterio: format strength_plus_wod; structure sections Strength y Conditioning, cada una con sequence; timer blocks en orden: countdown solo si se indica duración para fuerza (aquí no se indica, por tanto no inventes ese bloque), rest 180 s, countdown 600 s. Como el segmento de fuerza no tiene duración explícita, no inventes su temporizador; informa el dato ausente como issue y conserva el temporizador parcial solo si es seguro.
+Criterio: format strength_plus_wod; structure sections Strength y Conditioning, cada una con sequence. Como la sección Strength no tiene duración y el temporizador no puede representar una sección manual sin tiempo, devuelve timer:null y una issue blocking que pregunte si el usuario quiere configurar un tiempo para Strength o iniciar el temporizador desde el descanso/condicionamiento.
 
 `;
 
