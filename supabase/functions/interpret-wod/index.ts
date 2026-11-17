@@ -168,7 +168,8 @@ function normalizeCommonStructureDrift(workout: any, timer: any) {
 function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
-  raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);\n  raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
+  raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);
+  raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
   if (raw?.workout) raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
   raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
