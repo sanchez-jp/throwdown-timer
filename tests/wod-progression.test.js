@@ -43,10 +43,10 @@ test("expands a stated descending interval progression into explicit ladder step
   assert.equal(expanded.workout.structure.steps.length, 5);
 });
 
-test("does not infer a decrement when the description does not state one", () => {
+test("rejects a descending marker when the decrement is missing", () => {
   const value = result();
   value.workout.description = "5 intervalos de 2 minutos de trabajo y 1 minuto de descanso.";
-  assert.equal(expandDescendingIntervalProgression(value), value);
+  assert.throws(() => expandDescendingIntervalProgression(value), /no ha especificado el decremento/);
 });
 
 test("does not create non-positive prescriptions", () => {
