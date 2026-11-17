@@ -932,7 +932,7 @@ const structureFormats = {
   emom: ["sequence", "sections"],
   e2mom: ["sequence", "sections"],
   tabata: ["sequence", "sections"],
-  intervals: ["sequence", "sections"],
+  intervals: ["sequence", "rounds", "ladder", "sections"],
   death_by: ["sequence", "ladder", "sections"],
   custom: ["sequence", "rounds", "chipper", "ladder", "sections"]
 };

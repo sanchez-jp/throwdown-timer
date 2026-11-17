@@ -14,7 +14,7 @@ const STRUCTURE_BY_FORMAT = {
   emom: new Set(["sequence", "sections"]),
   e2mom: new Set(["sequence", "sections"]),
   tabata: new Set(["sequence", "sections"]),
-  intervals: new Set(["sequence", "sections"]),
+  intervals: new Set(["sequence", "rounds", "ladder", "sections"]),
   death_by: new Set(["sequence", "ladder", "sections"]),
   custom: new Set(["sequence", "rounds", "chipper", "ladder", "sections"])
 };

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
+import { expandDescendingIntervalProgression } from "../_shared/wod-progression.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -31,7 +32,7 @@ function validateStructure(workout: any): string | null {
     rounds_for_time: ["rounds"], chipper: ["chipper"], ladder: ["ladder"],
     strength_plus_wod: ["sections"], for_time: ["sequence", "rounds", "chipper", "sections"],
     amrap: ["sequence", "rounds", "sections"], emom: ["sequence", "sections"],
-    e2mom: ["sequence", "sections"], tabata: ["sequence", "sections"], intervals: ["sequence", "rounds", "sections"],
+    e2mom: ["sequence", "sections"], tabata: ["sequence", "sections"], intervals: ["sequence", "rounds", "ladder", "sections"],
     death_by: ["sequence", "ladder", "sections"], custom: ["sequence", "rounds", "chipper", "ladder", "sections"],
   };
   if (!allowedStructures[workout?.format]?.includes(structure?.type)) return "El tipo de estructura no es compatible con el formato del WOD.";
@@ -100,7 +101,7 @@ function validatePlan(timer: any): string | null {
   return countups > 1 ? "Solo se permite un segmento For Time." : null;
 }
 
-function normalizeResult(raw: any) {
+function normalizeResult(raw: any) {\n  raw = expandDescendingIntervalProgression(raw);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
@@ -356,7 +357,7 @@ REGLAS DE INTERPRETACIÓN:
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items; no deduzcas peldaños que no estén indicados.
    - sections: bloques nombrados, cada uno con structure de tipo sequence. Úsalo para Strength + WOD u otros segmentos diferenciados.
-7. Compatibilidad: rounds_for_time=rounds; chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
+7. Compatibilidad: rounds_for_time=rounds; chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/ladder/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
 8. Diferencia formato del WOD y temporizador. El temporizador no registra la finalización de movimientos.
 9. Temporizador:
    - AMRAP con duración explícita: countdown con duración en segundos.
@@ -405,9 +406,15 @@ EJEMPLO 4 — EMOM:
 Entrada: EMOM 12 minutes: minute 1 12/10 cal Bike, minute 2 10 Burpees.
 Criterio: format emom; structure sequence con Bike y Burpees en el orden descrito; timer emom durationSeconds 720, intervalSeconds 60, rounds 12. No confundas los dos movimientos alternos con solo dos rondas.
 
-EJEMPLO 5 — INTERVALOS CON BLOQUE REPETIDO:
-Entrada: 5 x 2 min on 1 min off: 20 Chest-to-Bar, 20 HSPU, max Box Jump Over.
-Criterio: format intervals; structure {type:"rounds",count:5,items:[Chest-to-Bar 20,HSPU 20,Box Jump Over max]}; timer intervals con rounds 5, workSeconds 120, restSeconds 60, startWithRest false. No conviertas "max" en un número ni añadas un Time Cap diferente.
+EJEMPLO 5 — INTERVALOS CON PROGRESIÓN DESCENDENTE:
+Entrada: 5 intervalos de 2 min de trabajo y 1 min de descanso: 20 Chest-to-Bar, 20 HSPU y máximo Box Jump Over. Resta 2 repeticiones a los movimientos contados en cada intervalo sucesivo.
+Criterio: format intervals; structure ladder direction descending con 5 steps explícitos:
+Intervalo 1: Chest-to-Bar 20, HSPU 20, Box Jump Over max.
+Intervalo 2: Chest-to-Bar 18, HSPU 18, Box Jump Over max.
+Intervalo 3: Chest-to-Bar 16, HSPU 16, Box Jump Over max.
+Intervalo 4: Chest-to-Bar 14, HSPU 14, Box Jump Over max.
+Intervalo 5: Chest-to-Bar 12, HSPU 12, Box Jump Over max.
+El timer es intervals con rounds 5, workSeconds 120, restSeconds 60, startWithRest false. No conviertas "max" en un número ni añadas un Time Cap diferente.
 
 EJEMPLO 6 — FUERZA + WOD:
 Entrada: Back Squat 5x5; rest 3 minutes; then 10 min AMRAP of 10 Wall Balls 9 kg and 10 Burpees.
@@ -416,7 +423,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
 `;
 
     let prompt = `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\n\n${examples}\nDESCRIPCIÓN DEL WOD:\n${sourceText}`;
-    const requestGemini = async (model: string, timeoutMs = 15000) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const requestGemini = async (model: string, timeoutMs = 12000) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: AbortSignal.timeout(timeoutMs),
@@ -447,6 +454,18 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
         await response.body?.cancel();
         console.warn("Gemini model temporarily unavailable; trying next model", model, nextModel);
         await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+    if (response?.status === 503) {
+      const retryDelayMs = 700 + Math.floor(Math.random() * 400);
+      console.warn("Gemini fallback is overloaded; retrying once after backoff", retryDelayMs);
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      try {
+        const retryResponse = await requestGemini(fallbackModel, 8000);
+        if (retryResponse.status !== 503) response = retryResponse;
+        else await retryResponse.body?.cancel();
+      } catch (retryError) {
+        console.warn("Gemini bounded retry did not complete", retryError instanceof Error ? retryError.name : "unknown");
       }
     }
     if (!response) throw new Error("No se ha podido contactar con los modelos de IA.");
@@ -480,7 +499,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       prompt = correctionPrompt;
       let correctedResponse: Response;
       try {
-        correctedResponse = await requestGemini(selectedModel, 12000);
+        correctedResponse = await requestGemini(selectedModel, 8000);
       } catch (correctionError) {
         console.error("Gemini correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
         return json({ error: "La interpretación necesita una corrección, pero el modelo no ha respondido a tiempo. Inténtalo de nuevo." }, 503, allowedOrigin);
