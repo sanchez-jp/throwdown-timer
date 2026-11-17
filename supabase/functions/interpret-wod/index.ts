@@ -127,7 +127,8 @@ function validatePlan(timer: any): string | null {
 }
 
 function normalizeResult(raw: any, sourceTextForNormalization = "") {
-  raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);\n  raw = expandDescendingIntervalProgression(raw);
+  raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
+  raw = expandDescendingIntervalProgression(raw);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
