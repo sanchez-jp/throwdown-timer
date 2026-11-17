@@ -298,14 +298,16 @@ function renderTimerDescription(workout) {
   const movements = Array.isArray(workoutData.movements) ? workoutData.movements : [];
   const structure = workoutData.structure;
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
-  const makeMovementList = items => {
+  const makeMovementList = (items, groupLabel = "") => {
     const list = document.createElement("ol");
     list.className = "timer-description-list timer-description-ordered";
     (items || []).forEach(entry => {
       const movement = entry?.movementId ? movementById.get(entry.movementId) : null;
       const item = document.createElement("li");
       const name = movement?.name || "Movimiento no disponible";
-      item.textContent = [entry?.prescription || movement?.prescription, name, movement?.load]
+      const loadShownInLabel = /\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?\s*kg\b/i.test(groupLabel) &&
+        groupLabel.toLowerCase().includes(name.toLowerCase());
+      item.textContent = [entry?.prescription || movement?.prescription, name, loadShownInLabel ? null : movement?.load]
         .filter(Boolean).join(" · ");
       list.append(item);
     });
@@ -316,7 +318,7 @@ function renderTimerDescription(workout) {
     group.className = "timer-description-structure-group";
     const heading = document.createElement("h3");
     heading.textContent = label;
-    group.append(heading, makeMovementList(items));
+    group.append(heading, makeMovementList(items, label));
     panel.append(group);
   };
 

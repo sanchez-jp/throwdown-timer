@@ -58,3 +58,51 @@ export function expandDescendingIntervalProgression(raw) {
     },
   };
 }
+
+
+function parseLoadValues(value) {
+  return value.split("/").map(part => Number(part.trim().replace(",", ".")));
+}
+
+function formatLoadValues(values) {
+  return values.map(value => Number.isInteger(value) ? String(value) : String(value).replace(".", ",")).join("/");
+}
+
+export function expandProgressiveLoadLadder(raw, sourceText = "") {
+  const structure = raw?.workout?.structure;
+  if (structure?.type !== "ladder" || !Array.isArray(structure.steps) || structure.steps.length < 2) return raw;
+
+  const progression = sourceText.match(
+    /(?:start(?:ing)?\\s+with|(?:comienza|empieza|inicia|arranca)\\s+con)\\s*(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+(?:[.,]\\d+)?)?)\\s*kg\\b[\\s\\S]{0,180}?(?:increase|increases|increment(?:a|ar)?|aument(?:a|ar)?|sub(?:e|ir))\\s*(?:by|en)?\\s*(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+(?:[.,]\\d+)?)?)\\s*kg\\b[\\s\\S]{0,100}?(?:after|tras|después de)\\s*(?:each|cada)\\s*(?:round|ronda)\\b/i
+  );
+  if (!progression) return raw;
+
+  const startingLoads = parseLoadValues(progression[1]);
+  const increments = parseLoadValues(progression[2]);
+  if (startingLoads.length !== increments.length || startingLoads.some(value => !Number.isFinite(value)) ||
+      increments.some(value => !Number.isFinite(value)) || startingLoads.some(value => value <= 0) ||
+      increments.some(value => value <= 0) || structure.steps.length > 30) return raw;
+
+  const movements = Array.isArray(raw.workout.movements) ? raw.workout.movements : [];
+  const baseText = progression[1].replace(/\\s/g, "").replace(/,/g, ".");
+  const loadedMovements = movements.filter(movement => typeof movement?.load === "string" && movement.load.trim());
+  const target = loadedMovements.find(movement =>
+    movement.load.replace(/\\s/g, "").replace(/,/g, ".").includes(baseText)
+  ) || (loadedMovements.length === 1 ? loadedMovements[0] : null);
+  if (!target) return raw;
+
+  const steps = structure.steps.map((step, index) => {
+    const label = String(step.label || "Ronda " + (index + 1));
+    const cleanLabel = label.replace(/\\s*[·|–—-]\\s*.*$/, "").trim() || "Ronda " + (index + 1);
+    const values = startingLoads.map((value, position) => Number((value + increments[position] * index).toFixed(2)));
+    return { ...step, label: cleanLabel + " · " + target.name + " " + formatLoadValues(values) + " kg" };
+  });
+
+  return {
+    ...raw,
+    workout: {
+      ...raw.workout,
+      structure: { ...structure, steps },
+    },
+  };
+}

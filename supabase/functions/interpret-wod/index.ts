@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
-import { expandDescendingIntervalProgression } from "./wod-progression.js";
+import { expandDescendingIntervalProgression, expandProgressiveLoadLadder } from "./wod-progression.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -168,6 +168,7 @@ function normalizeCommonStructureDrift(workout: any, timer: any) {
 function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
+  raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);
   if (raw?.workout) raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
   raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
@@ -423,7 +424,7 @@ REGLAS DE INTERPRETACIÓN:
    - sequence: lista ordenada literal. Es la opción correcta para esquemas descendentes o irregulares como 21-15-9 cuando las repeticiones cambian en cada vuelta.
    - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda. En un WOD explícito de N rondas con repeticiones/cargas que progresan, usa ladder con N steps, aunque el formato sea rounds_for_time.
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
-   - ladder: steps explícitos, cada uno con label e items. Úsalo cuando las repeticiones cambien entre rondas o intervalos, aunque el temporizador sea intervals. Si el texto indica una reducción o aumento y aporta valor inicial, paso y número de rondas, representa cada peldaño explícitamente. No inventes progresiones.
+   - ladder: steps explícitos, cada uno con label e items. Úsalo cuando las repeticiones cambien entre rondas o intervalos, aunque el temporizador sea intervals. Si el texto indica una reducción o aumento y aporta valor inicial, paso y número de rondas, representa cada peldaño explícitamente. No inventes progresiones. Si una carga comienza en un peso y aumenta una cantidad fija después de cada ronda, incluye en la etiqueta de cada peldaño el peso exacto de esa ronda, calculándolo desde el peso inicial y el incremento.
    - sections: bloques nombrados, cada uno con structure de tipo sequence. Úsalo para Strength + WOD u otros segmentos diferenciados.
 7. Compatibilidad: rounds_for_time=rounds o ladder (ladder cuando las prescripciones cambian entre rondas); chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/ladder/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
 8. Diferencia formato del WOD y temporizador. El temporizador no registra la finalización de movimientos.
