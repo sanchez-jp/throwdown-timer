@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "throwdown-timer-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v44`;
+const CACHE_NAME = `${CACHE_PREFIX}v45`;
 const APP_SHELL = [
   "",
   "index.html",
