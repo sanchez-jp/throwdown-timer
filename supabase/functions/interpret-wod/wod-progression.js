@@ -110,3 +110,58 @@ export function expandProgressiveLoadLadder(raw, sourceText = "") {
     },
   };
 }
+
+
+export function expandAlternatingCleanVariants(raw, sourceText = "") {
+  const alternatingClean = /(?:alternate|alternating|alternar|alternando|alternan)\\s+(?:sc|squat\\s+clean)\\s+(?:and|y|con)\\s+(?:pc|power\\s+clean)|(?:1\\s+squat\\s+clean\\s*\\+\\s*1\\s+power\\s+clean)/i.test(sourceText);
+  const workout = raw?.workout;
+  const structure = workout?.structure;
+  if (!alternatingClean || structure?.type !== "ladder" || !Array.isArray(structure.steps) ||
+      !Array.isArray(workout.movements)) return raw;
+
+  const genericCleans = workout.movements.filter(movement =>
+    typeof movement?.name === "string" && /^clean$/i.test(movement.name.trim())
+  );
+  if (genericCleans.length !== 1) return raw;
+
+  const clean = genericCleans[0];
+  const powerId = workout.movements.some(movement => movement.id === "power-clean")
+    ? "power-clean-alternating"
+    : "power-clean";
+  const powerClean = { ...clean, id: powerId, name: "Power Clean" };
+  clean.name = "Squat Clean";
+
+  let expandedItems = 0;
+  const steps = structure.steps.map(step => ({
+    ...step,
+    items: step.items.flatMap(item => {
+      if (item?.type !== "movement" || item.movementId !== clean.id) return [item];
+      const rawPrescription = item.prescription ?? clean.prescription ?? "";
+      const match = String(rawPrescription).match(/^\\s*(\\d+)\\s*(reps?|repeticiones?)?\\s*$/i);
+      if (!match) return [item];
+      const total = Number(match[1]);
+      if (!Number.isInteger(total) || total < 2) return [item];
+      const squatReps = Math.ceil(total / 2);
+      const powerReps = Math.floor(total / 2);
+      const suffix = match[2] ? " " + match[2] : "";
+      expandedItems++;
+      return [
+        { ...item, prescription: String(squatReps) + suffix },
+        { ...item, movementId: powerId, prescription: String(powerReps) + suffix },
+      ];
+    }),
+  }));
+
+  if (!expandedItems) {
+    clean.name = "Clean";
+    return raw;
+  }
+  return {
+    ...raw,
+    workout: {
+      ...workout,
+      movements: [...workout.movements, powerClean],
+      structure: { ...structure, steps },
+    },
+  };
+}
