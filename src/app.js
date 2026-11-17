@@ -536,7 +536,7 @@ function makeLibraryCard(record) {
     catch (error) { showLibraryError(error); }
   });
   const remove = document.createElement("button");
-  remove.className = "danger-button";
+  remove.className = "secondary-button danger-button";
   remove.type = "button";
   remove.textContent = "ELIMINAR";
   remove.addEventListener("click", async () => {
