@@ -126,9 +126,50 @@ function validatePlan(timer: any): string | null {
   return countups > 1 ? "Solo se permite un segmento For Time." : null;
 }
 
+function normalizeTimerPlan(timer: any) {
+  if (!timer || timer.type !== "sequence" || !Array.isArray(timer.blocks)) return timer;
+  return {
+    ...timer,
+    blocks: timer.blocks.map((block: any) => {
+      if (!block || typeof block !== "object") return block;
+      if (block.type === "countup") return {
+        ...block,
+        timeCapSeconds: block.timeCapSeconds ?? null,
+        rounds: block.rounds ?? null,
+      };
+      return block;
+    }),
+  };
+}
+
+function normalizeCommonStructureDrift(workout: any, timer: any) {
+  const structure = workout?.structure;
+  if (workout?.format !== "rounds_for_time" || structure?.type !== "ladder" ||
+      !Array.isArray(structure.steps) || structure.steps.length < 2) return workout;
+
+  const firstItems = structure.steps[0]?.items;
+  if (!Array.isArray(firstItems) || !firstItems.length) return workout;
+  const signature = (items: any[]) => JSON.stringify(items.map(item => ({
+    type: item?.type, movementId: item?.movementId, prescription: item?.prescription ?? null,
+  })));
+  const firstSignature = signature(firstItems);
+  const repeatedIdentically = structure.steps.every((step: any) =>
+    Array.isArray(step?.items) && signature(step.items) === firstSignature
+  );
+  const timerRounds = timer?.blocks?.find((block: any) => block?.type === "countup")?.rounds;
+  if (!repeatedIdentically || (timerRounds != null && timerRounds !== structure.steps.length)) return workout;
+
+  return {
+    ...workout,
+    structure: { type: "rounds", count: structure.steps.length, items: firstItems },
+  };
+}
+
 function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
+  if (raw?.workout) raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
+  raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
