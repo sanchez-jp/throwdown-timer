@@ -20,10 +20,10 @@ const formats = new Set([
   "strength_plus_wod", "custom",
 ]);
 function attachTrailingOptionalLoad(raw: any, sourceText: string) {
-  const trailingLoad = sourceText.match(/(?:^|\\n)\\s*\\*\\s*(\\d+(?:[.,’']\\d+)?\\s*\\/\\s*\\d+(?:[.,’']\\d+)?)\\s*kg\\s*\\??\\s*$/i);
+  const trailingLoad = sourceText.match(/(?:^|\n)\s*\*\s*(\d+(?:[.,’']\d+)?\s*\/\s*\d+(?:[.,’']\d+)?)\s*kg\s*\??\s*$/i);
   if (!trailingLoad || !Array.isArray(raw?.workout?.movements)) return raw;
 
-  const optionalLoad = trailingLoad[1].replace(/[’']/g, ",").replace(/\\s*\\/\\s*/g, "/").replace(/\\s+/g, "") + " kg";
+  const optionalLoad = trailingLoad[1].replace(/[’']/g, ",").replace(/\s*\/\s*/g, "/").replace(/\s+/g, "") + " kg";
   const target = [...raw.workout.movements].reverse().find((movement: any) =>
     typeof movement?.load === "string" && movement.load.trim()
   );
