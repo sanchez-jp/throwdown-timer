@@ -252,3 +252,23 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 @media(min-width:768px){
   .app-shell{padding-top:max(28px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
 }
+
+
+/* Keep the immersive landscape shell full-bleed; apply device safe areas to content. */
+@media (orientation:landscape) and (min-width:480px){
+  .timer-panel.timer-immersive{
+    padding-left:0;
+    padding-right:0;
+  }
+  .timer-immersive .timer-main{
+    padding-left:max(clamp(12px,1.8vw,24px),env(safe-area-inset-left));
+    padding-right:max(clamp(12px,1.8vw,24px),env(safe-area-inset-right));
+  }
+  .timer-immersive.description-open .timer-main{
+    padding-right:clamp(12px,1.8vw,24px);
+  }
+  .timer-immersive.description-open .timer-description{
+    padding-left:clamp(12px,2vw,24px);
+    padding-right:max(clamp(12px,2vw,24px),env(safe-area-inset-right));
+  }
+}
