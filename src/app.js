@@ -294,14 +294,6 @@ function renderTimerDescription(workout) {
   heading.append(format);
   panel.append(heading);
 
-  const descriptionText = workout.description || workout.workout?.description;
-  if (descriptionText) {
-    const description = document.createElement("p");
-    description.className = "timer-description-summary";
-    description.textContent = descriptionText;
-    panel.append(description);
-  }
-
   const workoutData = workout.workout || workout;
   const movements = Array.isArray(workoutData.movements) ? workoutData.movements : [];
   const structure = workoutData.structure;
@@ -368,6 +360,14 @@ function renderTimerDescription(workout) {
     notes.className = "timer-description-notes";
     notes.textContent = notesText;
     panel.append(notes);
+  }
+
+  const descriptionText = workout.description || workout.workout?.description;
+  if (descriptionText) {
+    const description = document.createElement("p");
+    description.className = "timer-description-summary";
+    description.textContent = descriptionText;
+    panel.append(description);
   }
   panel.classList.remove("hidden");
 }
