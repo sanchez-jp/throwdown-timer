@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants } from "../supabase/functions/interpret-wod/wod-progression.js";
+import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants, normalizeLadderDirection } from "../supabase/functions/interpret-wod/wod-progression.js";
 
 function result() {
   return {
@@ -146,4 +146,26 @@ test("does not split Clean when the source does not explicitly request alternati
   const expanded = expandAlternatingCleanVariants(value, "10 rounds of Clean");
   assert.equal(expanded.workout.movements.length, 1);
   assert.equal(expanded.workout.structure.steps[0].items.length, 1);
+});
+
+
+test("defaults a ladder with steps but no valid direction to custom", () => {
+  const value = {
+    workout: {
+      movements: [{ id: "clean", name: "Clean" }],
+      structure: {
+        type: "ladder",
+        steps: [{ label: "Ronda 1", items: [{ type: "movement", movementId: "clean", prescription: "10" }] }],
+      },
+    },
+  };
+  const normalized = normalizeLadderDirection(value);
+  assert.equal(normalized.workout.structure.direction, "custom");
+  assert.equal(normalized.workout.structure.steps.length, 1);
+  assert.equal(normalized.workout.structure.steps[0].items[0].movementId, "clean");
+});
+
+test("preserves an explicit ladder direction", () => {
+  const value = { workout: { structure: { type: "ladder", direction: "descending", steps: [{ label: "Ronda 1", items: [{}] }] } } };
+  assert.equal(normalizeLadderDirection(value), value);
 });
