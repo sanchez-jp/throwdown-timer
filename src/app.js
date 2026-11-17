@@ -280,18 +280,61 @@ function renderTimerDescription(workout) {
     panel.append(description);
   }
 
-  const movements = workout.movements || (workout.workout?.movements || []).map(m =>
-    [m.prescription, m.name, m.load].filter(Boolean).join(" · ")
-  );
-  if (movements.length) {
+  const workoutData = workout.workout || workout;
+  const movements = Array.isArray(workoutData.movements) ? workoutData.movements : [];
+  const structure = workoutData.structure;
+  const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
+  const makeMovementList = items => {
+    const list = document.createElement("ol");
+    list.className = "timer-description-list timer-description-ordered";
+    (items || []).forEach(entry => {
+      const movement = entry?.movementId ? movementById.get(entry.movementId) : null;
+      const item = document.createElement("li");
+      const name = movement?.name || "Movimiento no disponible";
+      item.textContent = [entry?.prescription || movement?.prescription, name, movement?.load]
+        .filter(Boolean).join(" · ");
+      list.append(item);
+    });
+    return list;
+  };
+  const addStructureGroup = (label, items) => {
+    const group = document.createElement("section");
+    group.className = "timer-description-structure-group";
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    group.append(heading, makeMovementList(items));
+    panel.append(group);
+  };
+
+  if (structure && ["sequence", "rounds", "chipper"].includes(structure.type)) {
+    const label = structure.type === "rounds"
+      ? (Number(structure.count) || 1) + " RONDAS"
+      : structure.type === "chipper" ? "CHIPPER" : "SECUENCIA";
+    addStructureGroup(label, structure.items);
+  } else if (structure?.type === "ladder" && Array.isArray(structure.steps)) {
+    const direction = { ascending: "ASCENDENTE", descending: "DESCENDENTE", alternating: "ALTERNANDO", custom: "PERSONALIZADA" }[structure.direction] || "";
+    const heading = document.createElement("h3");
+    heading.textContent = ["LADDER", direction].filter(Boolean).join(" · ");
+    panel.append(heading);
+    structure.steps.forEach((step, index) => addStructureGroup(step.label || "PELDAÑO " + (index + 1), step.items));
+  } else if (structure?.type === "sections" && Array.isArray(structure.sections)) {
+    const heading = document.createElement("h3");
+    heading.textContent = "ESTRUCTURA POR SECCIONES";
+    panel.append(heading);
+    structure.sections.forEach((section, index) =>
+      addStructureGroup(section.name || "SECCIÓN " + (index + 1), section.structure?.items)
+    );
+  } else if (movements.length) {
     const label = document.createElement("h3");
     label.textContent = "MOVIMIENTOS";
     panel.append(label);
-    const list = document.createElement("ul");
-    list.className = "timer-description-list";
+    const list = document.createElement("ol");
+    list.className = "timer-description-list timer-description-ordered";
     movements.forEach(movement => {
       const item = document.createElement("li");
-      item.textContent = typeof movement === "string" ? movement : movement.name || "";
+      item.textContent = typeof movement === "string"
+        ? movement
+        : [movement.prescription, movement.name, movement.load].filter(Boolean).join(" · ");
       list.append(item);
     });
     panel.append(list);
