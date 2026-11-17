@@ -43,7 +43,7 @@ const presets = {
         {type:"movement",movementId:"pull-ups",prescription:"9"}
       ]}
     },
-    plan:{type:"sequence",blocks:[{type:"countup",label:"FOR TIME"}]}
+    plan:{type:"sequence",blocks:[{type:"countup",label:"FOR TIME",timeCapSeconds:null,rounds:null}]}
   }
 };
 let selected = "amrap";
