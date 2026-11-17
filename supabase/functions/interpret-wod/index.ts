@@ -54,7 +54,7 @@ function validateStructure(workout: any): string | null {
   const movements = workout?.movements;
   const structure = workout?.structure;
   const allowedStructures: Record<string, string[]> = {
-    rounds_for_time: ["rounds"], chipper: ["chipper"], ladder: ["ladder"],
+    rounds_for_time: ["rounds", "ladder"], chipper: ["chipper"], ladder: ["ladder"],
     strength_plus_wod: ["sections"], for_time: ["sequence", "rounds", "chipper", "sections"],
     amrap: ["sequence", "rounds", "sections"], emom: ["sequence", "sections"],
     e2mom: ["sequence", "sections"], tabata: ["sequence", "sections"], intervals: ["sequence", "rounds", "ladder", "sections"],
@@ -421,11 +421,11 @@ REGLAS DE INTERPRETACIÓN:
 5. En cada nodo de structure usa type:"movement", movementId exacto y prescription como texto específico de esa aparición o null. No incluyas movimientos que no aparezcan en el WOD.
 6. Elige la estructura más fiel:
    - sequence: lista ordenada literal. Es la opción correcta para esquemas descendentes o irregulares como 21-15-9 cuando las repeticiones cambian en cada vuelta.
-   - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda.
+   - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda. En un WOD explícito de N rondas con repeticiones/cargas que progresan, usa ladder con N steps, aunque el formato sea rounds_for_time.
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items. Úsalo cuando las repeticiones cambien entre rondas o intervalos, aunque el temporizador sea intervals. Si el texto indica una reducción o aumento y aporta valor inicial, paso y número de rondas, representa cada peldaño explícitamente. No inventes progresiones.
    - sections: bloques nombrados, cada uno con structure de tipo sequence. Úsalo para Strength + WOD u otros segmentos diferenciados.
-7. Compatibilidad: rounds_for_time=rounds; chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/ladder/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
+7. Compatibilidad: rounds_for_time=rounds o ladder (ladder cuando las prescripciones cambian entre rondas); chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/ladder/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
 8. Diferencia formato del WOD y temporizador. El temporizador no registra la finalización de movimientos.
 9. Temporizador:
    - AMRAP con duración explícita: countdown con duración en segundos.
