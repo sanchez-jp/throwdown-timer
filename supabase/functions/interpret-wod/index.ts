@@ -458,7 +458,8 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       const validationMessage = firstError instanceof Error ? firstError.message : "La respuesta no cumple el contrato.";
       console.warn("AI output rejected; requesting one schema correction", validationMessage);
       const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.\\nError de validación: ${validationMessage}\\nDescripción original:\\n${sourceText}\\nRespuesta que debes corregir:\\n${output.slice(0, 14000)}`;
-      prompt = correctionPrompt;\n      const correctedResponse = await requestGemini(selectedModel);
+      prompt = correctionPrompt;
+      const correctedResponse = await requestGemini(selectedModel);
       if (!correctedResponse.ok) {
         const detail = await correctedResponse.text();
         console.error("Gemini correction attempt failed", correctedResponse.status, detail.slice(0, 800));
