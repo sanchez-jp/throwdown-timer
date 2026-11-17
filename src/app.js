@@ -266,6 +266,13 @@ function renderTimerDescription(workout) {
   const title = document.createElement("h2");
   title.textContent = workout.title || workout.name || "WOD";
   heading.append(title);
+  const closeButton = document.createElement("button");
+  closeButton.className = "text-button timer-description-close";
+  closeButton.type = "button";
+  closeButton.textContent = "CERRAR WOD";
+  closeButton.setAttribute("aria-label", "Cerrar descripción del WOD");
+  closeButton.addEventListener("click", toggleWorkoutDetails);
+  heading.append(closeButton);
   const format = document.createElement("span");
   format.className = "tag";
   format.textContent = workout.tag || String(workout.workout?.format || "WOD").replaceAll("_", " ").toUpperCase();
