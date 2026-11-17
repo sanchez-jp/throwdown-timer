@@ -107,3 +107,33 @@ test("requires an explicit timer for ready WODs and preserves needs-review draft
 test("rejects unsupported schema versions", () => {
   assert.throws(() => validateWodV2(wod({ schemaVersion: 1 })), error => error.code === "UNSUPPORTED_SCHEMA");
 });
+
+test("accepts a variable-repetition ladder inside an intervals workout", () => {
+  const value = wod({
+    workout: {
+      format: "intervals",
+      description: "5 intervalos con repeticiones descendentes",
+      movements: [
+        { id: "c2b", name: "Chest-to-Bar", prescription: null, load: null, notes: null },
+        { id: "hspu", name: "HSPU", prescription: null, load: null, notes: null },
+        { id: "bjo", name: "Box Jump Over", prescription: null, load: null, notes: null }
+      ],
+      structure: { type: "ladder", direction: "descending", steps: [
+        { label: "Intervalo 1", items: [
+          { type: "movement", movementId: "c2b", prescription: "20" },
+          { type: "movement", movementId: "hspu", prescription: "20" },
+          { type: "movement", movementId: "bjo", prescription: "max" }
+        ]},
+        { label: "Intervalo 2", items: [
+          { type: "movement", movementId: "c2b", prescription: "18" },
+          { type: "movement", movementId: "hspu", prescription: "18" },
+          { type: "movement", movementId: "bjo", prescription: "max" }
+        ]}
+      ]}
+    },
+    timer: { type: "sequence", label: "Intervals", blocks: [
+      { type: "intervals", label: "Trabajo", rounds: 5, workSeconds: 120, restSeconds: 60, startWithRest: false }
+    ]}
+  });
+  assert.equal(validateWodV2(value), true);
+});
