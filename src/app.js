@@ -536,10 +536,12 @@ function makeLibraryCard(record) {
     catch (error) { showLibraryError(error); }
   });
   const remove = document.createElement("button");
-  remove.className = "secondary-button";
+  remove.className = "danger-button";
   remove.type = "button";
   remove.textContent = "ELIMINAR";
   remove.addEventListener("click", async () => {
+    const confirmed = window.confirm("¿Seguro que quieres eliminar el WOD «" + record.title + "»? Esta acción se puede deshacer desde la biblioteca.");
+    if (!confirmed) return;
     try {
       deletedWorkout = await repository.delete(record.id);
       $("undoArea").classList.remove("hidden");
