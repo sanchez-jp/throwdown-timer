@@ -504,7 +504,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       }),
     });
     const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
-    const groqModel = Deno.env.get("GROQ_MODEL") || "llama-3.3-70b-versatile";
+    const groqModel = Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b";
     const requestGroq = async (timeoutMs = 12000, model = groqModel) => fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
