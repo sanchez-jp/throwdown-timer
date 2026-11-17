@@ -206,15 +206,15 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 - [ ] Verify offline access and schema migrations.
 
 ### Phase 4 — AI interpretation
-- [ ] Implement strict versioned JSON contract.
+- [x] Implement strict versioned JSON contract for v2, with Gemini structured-output schema and independent server-side semantic validation.
 - [x] Create the Supabase project and configure the Gemini API key as an Edge Function secret.
 - [x] Enable anonymous Supabase Auth and deploy the authenticated `interpret-wod` Edge Function proxy (JWT verification is performed in the function because the project uses the modern publishable API key).
-- [x] Implement the initial Gemini text interpretation and server-side structural/timer validation.
-- [ ] Integrate the browser client and review workflow.
+- [x] Implement Gemini text interpretation, explicit CrossFit rules and representative examples (FRAN, CINDY, chipper, EMOM, compound WOD), structured JSON output, server-side structural/timer validation, and one bounded correction attempt.
+- [x] Integrate the browser client and review workflow; require explicit user confirmation before saving an AI interpretation.
 - [ ] Implement image upload and camera capture.
 - [ ] Add durable per-user rate limiting / abuse controls before public release.
 - [ ] Add text, image upload, and camera capture.
-- [ ] Validate output and present review/correction UI.
+- [x] Validate output and present the editable review workflow; correction retry is server-side and bounded to one attempt.
 - [ ] Verify that saved WODs never trigger unnecessary AI calls.
 
 ### Phase 5 — Hardening and release
@@ -233,3 +233,14 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 4. Do not let AI output execute code or bypass validation.
 5. Do not invent missing WOD details.
 6. Prefer a reliable timer and usable local library before adding cloud sync or advanced AI features.
+
+
+## 12. AI interpretation contract and prompt strategy
+
+The `interpret-wod` Edge Function uses a dedicated Gemini `responseSchema` (JSON structured output) in addition to the system instructions. The schema constrains the v2 envelope, movement catalogue, semantic structure nodes, timer blocks, and interpretation issues. Server-side validators remain authoritative: structured output guarantees shape more reliably, not CrossFit semantics.
+
+The system instructions define the distinction between the movement catalogue and ordered execution structure, explain when to choose sequence/rounds/chipper/ladder/sections, define format compatibility, and prohibit inventing missing data. Few-shot references cover FRAN (21-15-9 as an explicit ordered sequence), CINDY, a chipper, EMOM, and a compound strength/rest/conditioning workout.
+
+If parsing or semantic validation fails, the function makes exactly one bounded correction request to the same selected model, including the original WOD, validation error, and rejected response. It validates the corrected result again and returns a clear 422 if it still fails. Provider/model retries for temporary 503 availability remain separately bounded. Never log the full user WOD or API key.
+
+Structured-output schemas are intentionally kept within the documented Gemini schema subset; do not assume arbitrary JSON Schema features such as recursive unions or complex conditional branches are supported. Extend the schema and validator together whenever the v2 contract changes.
