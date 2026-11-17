@@ -434,8 +434,23 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
         generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: "application/json", responseSchema },
       }),
     });
+    const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
+    const groqModel = Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-20b";
+    const requestGroq = async (timeoutMs = 12000) => fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        model: groqModel,
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }],
+        temperature: 0.1,
+        max_tokens: 4096,
+        response_format: { type: "json_object" },
+      }),
+    });
     let response: Response | null = null;
     let selectedModel = primaryModel;
+    let selectedProvider: "gemini" | "groq" = "gemini";
     for (let index = 0; index < modelCandidates.length; index++) {
       const model = modelCandidates[index];
       selectedModel = model;
@@ -445,7 +460,8 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
         if (!(error instanceof Error) || error.name !== "TimeoutError") throw error;
         console.warn("Gemini model request timed out", model);
         if (index === modelCandidates.length - 1) {
-          return json({ error: "Los modelos de IA están tardando demasiado o están saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
+          response = null;
+          break;
         }
         continue;
       }
@@ -469,17 +485,46 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
         console.warn("Gemini bounded retry did not complete", retryError instanceof Error ? retryError.name : "unknown");
       }
     }
-    if (!response) throw new Error("No se ha podido contactar con los modelos de IA.");
+    if (!response || [429, 503].includes(response.status)) {
+      if (groqApiKey) {
+        selectedProvider = "groq";
+        selectedModel = groqModel;
+        try {
+          console.warn("Gemini unavailable; switching to independent Groq provider", response?.status || "timeout");
+          response = await requestGroq();
+        } catch (fallbackError) {
+          console.error("Groq fallback request failed", fallbackError instanceof Error ? fallbackError.name : "unknown");
+          response = null;
+        }
+      }
+    }
+    if (!response) {
+      const message = groqApiKey
+        ? "Gemini y el proveedor alternativo no han respondido. Espera un momento y vuelve a intentarlo."
+        : "Gemini está temporalmente saturado. El proveedor alternativo aún no está configurado; inténtalo de nuevo más tarde.";
+      return json({ error: message }, 503, allowedOrigin);
+    }
     if (!response.ok) {
       const detail = await response.text();
-      console.error("Gemini API error", response.status, detail.slice(0, 1200));
-      if (response.status === 429) return json({ error: "Se ha alcanzado temporalmente el límite de uso de IA. Inténtalo más tarde." }, 429, allowedOrigin);
-      if (response.status === 503) return json({ error: "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
+      console.error(`${selectedProvider} API error`, response.status, detail.slice(0, 1200));
+      if (response.status === 429) return json({ error: selectedProvider === "groq"
+        ? "El proveedor alternativo ha alcanzado temporalmente su límite de uso. Inténtalo más tarde."
+        : "Gemini y el proveedor alternativo han alcanzado temporalmente sus límites de uso. Inténtalo más tarde." }, 429, allowedOrigin);
+      if (response.status === 503) return json({ error: selectedProvider === "groq"
+        ? "El proveedor alternativo también está temporalmente saturado. Inténtalo más tarde."
+        : "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
+      if (selectedProvider === "groq" && [401, 403].includes(response.status)) {
+        return json({ error: "La clave del proveedor alternativo no es válida o no tiene permisos. Revisa el secreto GROQ_API_KEY en Supabase." }, 502, allowedOrigin);
+      }
       return json({ error: "El servicio de IA no ha podido interpretar el WOD." }, 502, allowedOrigin);
     }
-    const extractText = async (geminiResponse: Response) => {
-      const payload = await geminiResponse.json();
-      return (payload.candidates?.[0]?.content?.parts || []).map((part: any) => part.text || "").join("").trim();
+    const extractText = async (modelResponse: Response) => {
+      const payload = await modelResponse.json();
+      if (Array.isArray(payload.candidates)) {
+        return (payload.candidates?.[0]?.content?.parts || []).map((part: any) => part.text || "").join("").trim();
+      }
+      const content = payload.choices?.[0]?.message?.content;
+      return typeof content === "string" ? content.trim() : "";
     };
     const parseAndValidate = (output: string) => {
       if (!output) throw new Error("La IA no ha devuelto contenido interpretable.");
@@ -500,14 +545,14 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       prompt = correctionPrompt;
       let correctedResponse: Response;
       try {
-        correctedResponse = await requestGemini(selectedModel, 8000);
+        correctedResponse = selectedProvider === "groq" ? await requestGroq(8000) : await requestGemini(selectedModel, 8000);
       } catch (correctionError) {
         console.error("Gemini correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
         return json({ error: "La interpretación necesita una corrección, pero el modelo no ha respondido a tiempo. Inténtalo de nuevo." }, 503, allowedOrigin);
       }
       if (!correctedResponse.ok) {
         const detail = await correctedResponse.text();
-        console.error("Gemini correction attempt failed", correctedResponse.status, detail.slice(0, 800));
+        console.error(`${selectedProvider} correction attempt failed`, correctedResponse.status, detail.slice(0, 800));
         if (correctedResponse.status === 503) return json({ error: "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
         if (correctedResponse.status === 429) return json({ error: "Se ha alcanzado temporalmente el límite de uso de IA. Inténtalo más tarde." }, 429, allowedOrigin);
         return json({ error: "La IA ha generado una interpretación que necesita corrección y no ha podido completarla. Inténtalo de nuevo." }, 422, allowedOrigin);
