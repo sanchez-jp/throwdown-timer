@@ -925,7 +925,7 @@ $("addTimerBlockButton").addEventListener("click", () => {
 
 
 const structureFormats = {
-  rounds_for_time: ["rounds"],
+  rounds_for_time: ["rounds", "ladder"],
   chipper: ["chipper"],
   ladder: ["ladder"],
   strength_plus_wod: ["sections"],
