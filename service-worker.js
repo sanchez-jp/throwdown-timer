@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "throwdown-timer-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v49`;
+const CACHE_NAME = `${CACHE_PREFIX}v50`;
 const APP_SHELL = [
   "",
   "index.html",
@@ -9,11 +9,12 @@ const APP_SHELL = [
   "assets/apple-touch-icon.png",
   "assets/icon-192.png",
   "assets/icon-512.png",
-  "src/styles.css?v=47",
+  "src/styles.css?v=48",
   "src/app.js",
   "src/audio-cues.js",
   "src/timer-engine.js",
-  "src/timer-plan-builder.js"
+  "src/timer-plan-builder.js",
+  "src/ai-client.js"
 ].map((path) => new URL(path, self.registration.scope).toString());
 
 self.addEventListener("install", (event) => {

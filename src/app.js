@@ -66,6 +66,8 @@ let timerPlanLoadError = false;
 let editingSchemaVersion = 2;
 let editingLegacyFormat = null;
 let editingStructureSupported = true;
+let aiSourceText = null;
+let aiReviewRequired = false;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -605,6 +607,7 @@ function createMovementEditorRow(movement = {}) {
   return row;
 }
 async function openEditor(id) {
+  resetAiReview();
   try {
     creatingWorkout = false;
     editorReturnView = "library";
@@ -635,6 +638,7 @@ async function openEditor(id) {
   } catch (error) { showLibraryError(error); }
 }
 async function openNewEditor(sourceView = "library") {
+  resetAiReview();
   creatingWorkout = true;
   editingSchemaVersion = 2;
   editingLegacyFormat = null;
@@ -1186,6 +1190,11 @@ $("movementEditorList").addEventListener("input", event => {
 $("workoutEditor").addEventListener("submit", async event => {
   event.preventDefault();
   if (!repository || (!creatingWorkout && !editingWorkoutId)) return;
+  if (aiReviewRequired && !$("aiReviewConfirmed").checked) {
+    $("editorStatus").textContent = "Revisa la interpretación y confirma que el orden, las repeticiones y el temporizador son correctos antes de guardar.";
+    $("aiReviewConfirmed").focus();
+    return;
+  }
   if (editingSchemaVersion === 2 && !editingStructureSupported) {
     $("editorStatus").textContent = "No se puede guardar: esta estructura aún no es editable sin pérdida de información.";
     return;
@@ -1235,12 +1244,13 @@ $("workoutEditor").addEventListener("submit", async event => {
       ? { status: "ready", issues: [] }
       : { status: "needs_review", issues: [timerPlanRequiredIssue()] };
     if (creatingWorkout) {
-      await repository.create({ schemaVersion: editingSchemaVersion, title, sourceText: null, workout, timer, interpretation });
+      await repository.create({ schemaVersion: editingSchemaVersion, title, sourceText: aiSourceText, workout, timer, interpretation });
     } else {
-      await repository.update(editingWorkoutId, { title, workout, timer, interpretation });
+      await repository.update(editingWorkoutId, { title, sourceText: aiSourceText === null ? undefined : aiSourceText, workout, timer, interpretation });
     }
     creatingWorkout = false;
     editingWorkoutId = null;
+    resetAiReview();
     $("editorStatus").textContent = "WOD guardado.";
     $("editorPanel").classList.add("hidden");
     $("libraryPanel").classList.remove("hidden");
@@ -1250,6 +1260,73 @@ $("workoutEditor").addEventListener("submit", async event => {
   } finally {
     save.disabled = false;
     save.textContent = creatingWorkout ? "CREAR WOD" : "GUARDAR CAMBIOS";
+  }
+});
+
+
+function resetAiReview() {
+  aiSourceText = null;
+  aiReviewRequired = false;
+  const confirmation = $("aiReviewConfirmation");
+  if (confirmation) confirmation.classList.add("hidden");
+  if ($("aiReviewConfirmed")) $("aiReviewConfirmed").checked = false;
+  if ($("aiSourceText")) $("aiSourceText").value = "";
+  if ($("aiInterpretationStatus")) $("aiInterpretationStatus").textContent = "";
+  if ($("interpretWithAiButton")) {
+    $("interpretWithAiButton").disabled = false;
+    $("interpretWithAiButton").textContent = "INTERPRETAR CON IA";
+  }
+}
+
+$("interpretWithAiButton").addEventListener("click", async () => {
+  const sourceText = $("aiSourceText").value.trim();
+  const status = $("aiInterpretationStatus");
+  const button = $("interpretWithAiButton");
+  if (sourceText.length < 8) {
+    status.textContent = "Escribe o pega la descripción completa del WOD.";
+    $("aiSourceText").focus();
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "INTERPRETANDO…";
+  status.textContent = "Conectando con el servicio de IA…";
+  try {
+    const { interpretWod } = await import("./ai-client.js");
+    const result = await interpretWod(sourceText);
+    editingSchemaVersion = 2;
+    editingLegacyFormat = null;
+    editingStructureSupported = true;
+    $("editTitle").value = result.title;
+    $("editFormat").value = result.workout.format;
+    $("editDescription").value = result.workout.description;
+    const movementRows = result.workout.movements.map(movement => createMovementEditorRow(movement));
+    $("movementEditorList").replaceChildren(...movementRows);
+    result.workout.movements.forEach((movement, index) => {
+      $("movementEditorList").children[index].dataset.movementId = movement.id;
+    });
+    setStructureEditorVisible(true);
+    configureStructureEditor(result.workout.format, result.workout.structure);
+    editingStructureSupported = isStructureEditorCompatible(result.workout.structure) &&
+      $("structureType").value === result.workout.structure.type;
+    renderTimerBlocks(result.timer);
+    aiSourceText = sourceText;
+    aiReviewRequired = true;
+    $("aiReviewConfirmation").classList.remove("hidden");
+    $("aiReviewConfirmed").checked = false;
+    const issues = result.interpretation.issues || [];
+    status.textContent = issues.length
+      ? "Interpretación recibida con observaciones:\n" + issues.map(item => "• " + item.message + (item.question ? " " + item.question : "")).join("\n") + "\nRevisa todos los campos antes de guardar."
+      : "Interpretación recibida. Revisa el título, los movimientos, su orden y el temporizador antes de guardar.";
+    if (result.timer === null) {
+      status.textContent += "\nNo se ha inventado una duración: configura el temporizador manualmente.";
+    }
+    $("editorStatus").textContent = "";
+    $("editTitle").focus();
+  } catch (error) {
+    status.textContent = error.message || "No se ha podido interpretar el WOD. Comprueba tu conexión e inténtalo de nuevo.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "INTERPRETAR CON IA";
   }
 });
 

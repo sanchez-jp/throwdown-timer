@@ -136,7 +136,7 @@ Keep the timer engine deterministic and independent of UI components, storage, n
 
 ### Backend / AI
 
-Use a Supabase Edge Function as the server-side proxy for the AI provider. Never expose provider API keys in browser code or repository files.
+Use the Supabase project `throwdown-timer` (`ldyqtqpvdrnxinlbxsvz`, region `eu-west-3`) and an Edge Function as the server-side proxy for the AI provider. Anonymous Supabase Auth sessions identify app users without collecting personal details. The browser uses only the public publishable key; the Gemini provider key remains in Edge Function secrets. Never expose provider API keys in browser code or repository files.
 
 Keep provider-specific request/response handling behind an adapter so providers can be changed without rewriting the timer engine or WOD contract.
 
@@ -144,7 +144,7 @@ Each WOD interpretation should be an independent request. Do not maintain a conv
 
 ### Initial AI provider direction
 
-Gemini 3.5 Flash-Lite was selected as the provisional first provider for prototyping because of multimodal input and structured-output support. This is a provisional implementation choice, not a permanent dependency. Keep the provider replaceable and re-check current model availability, pricing, quotas, privacy terms, and structured-output behavior before production use.
+Gemini `gemini-3.5-flash-lite` was selected as the provisional first provider for prototyping because of multimodal input and structured JSON output support. This is a provisional implementation choice, not a permanent dependency. Keep the provider replaceable and re-check current model availability, pricing, quotas, privacy terms, and structured-output behavior before production use.
 
 Do not send sensitive/private workout data to a provider without reviewing the applicable data terms and making the trade-off clear.
 
@@ -207,8 +207,12 @@ The PWA baseline precaches the app shell and falls back to cached HTML for offli
 
 ### Phase 4 — AI interpretation
 - [ ] Implement strict versioned JSON contract.
-- [ ] Implement Supabase Edge Function proxy.
-- [ ] Implement provider adapter and initial Gemini integration.
+- [x] Create the Supabase project and configure the Gemini API key as an Edge Function secret.
+- [x] Enable anonymous Supabase Auth and deploy the authenticated `interpret-wod` Edge Function proxy (JWT verification is performed in the function because the project uses the modern publishable API key).
+- [x] Implement the initial Gemini text interpretation and server-side structural/timer validation.
+- [ ] Integrate the browser client and review workflow.
+- [ ] Implement image upload and camera capture.
+- [ ] Add durable per-user rate limiting / abuse controls before public release.
 - [ ] Add text, image upload, and camera capture.
 - [ ] Validate output and present review/correction UI.
 - [ ] Verify that saved WODs never trigger unnecessary AI calls.

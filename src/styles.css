@@ -375,3 +375,13 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-description-structure-group h3{margin-top:12px}
 .timer-description-ordered{padding-left:1.55em;list-style:decimal}
 .timer-description-ordered li{padding-left:2px}
+
+
+/* AI WOD import */
+.ai-import-panel{margin:22px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.ai-import-panel .movement-editor-heading{align-items:center}
+.ai-source-input{min-height:112px;resize:vertical}
+.ai-interpret-button{width:100%;margin-top:12px}
+.ai-interpretation-status{white-space:pre-line;margin-top:10px}
+.ai-review-confirmation{display:flex;align-items:flex-start;gap:10px;margin-top:14px;color:var(--text);font-size:.9rem;line-height:1.45}
+.ai-review-confirmation input{flex:0 0 auto;margin-top:3px;accent-color:var(--lime)}
