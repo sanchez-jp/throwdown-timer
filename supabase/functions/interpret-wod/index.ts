@@ -504,7 +504,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       }),
     });
     const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
-    const groqModel = Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-20b";
+    const groqModel = Deno.env.get("GROQ_MODEL") || "llama-3.3-70b-versatile";
     const requestGroq = async (timeoutMs = 12000, model = groqModel) => fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
@@ -621,13 +621,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       }
       if (selectedProvider === "groq" && correctedResponse.status === 400) {
         const detail = await correctedResponse.text();
-        console.warn("Groq correction rejected; retrying with the larger GPT-OSS model", detail.slice(0, 400));
-        try {
-          correctedResponse = await requestGroq(10000, "openai/gpt-oss-120b");
-          selectedModel = "openai/gpt-oss-120b";
-        } catch (correctionError) {
-          console.error("Groq larger-model correction failed", correctionError instanceof Error ? correctionError.name : "unknown");
-        }
+        console.warn("Groq JSON response mode rejected by the configured model", detail.slice(0, 400));
       }
       if (!correctedResponse.ok) {
         const detail = await correctedResponse.text();
