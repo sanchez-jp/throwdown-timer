@@ -365,3 +365,10 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   }
   .timer-immersive.description-open .timer-description > *{flex-shrink:0}
 }
+
+
+/* v44: structured WOD description follows the semantic workout order. */
+.timer-description-structure-group{margin:0 0 12px}
+.timer-description-structure-group h3{margin-top:12px}
+.timer-description-ordered{padding-left:1.55em;list-style:decimal}
+.timer-description-ordered li{padding-left:2px}
