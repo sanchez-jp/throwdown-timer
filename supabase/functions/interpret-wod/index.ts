@@ -31,7 +31,7 @@ function validateStructure(workout: any): string | null {
     rounds_for_time: ["rounds"], chipper: ["chipper"], ladder: ["ladder"],
     strength_plus_wod: ["sections"], for_time: ["sequence", "rounds", "chipper", "sections"],
     amrap: ["sequence", "rounds", "sections"], emom: ["sequence", "sections"],
-    e2mom: ["sequence", "sections"], tabata: ["sequence", "sections"], intervals: ["sequence", "sections"],
+    e2mom: ["sequence", "sections"], tabata: ["sequence", "sections"], intervals: ["sequence", "rounds", "sections"],
     death_by: ["sequence", "ladder", "sections"], custom: ["sequence", "rounds", "chipper", "ladder", "sections"],
   };
   if (!allowedStructures[workout?.format]?.includes(structure?.type)) return "El tipo de estructura no es compatible con el formato del WOD.";
@@ -356,7 +356,7 @@ REGLAS DE INTERPRETACIÓN:
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items; no deduzcas peldaños que no estén indicados.
    - sections: bloques nombrados, cada uno con structure de tipo sequence. Úsalo para Strength + WOD u otros segmentos diferenciados.
-7. Compatibilidad: rounds_for_time=rounds; chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata/intervals=sequence/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
+7. Compatibilidad: rounds_for_time=rounds; chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
 8. Diferencia formato del WOD y temporizador. El temporizador no registra la finalización de movimientos.
 9. Temporizador:
    - AMRAP con duración explícita: countdown con duración en segundos.
@@ -405,7 +405,11 @@ EJEMPLO 4 — EMOM:
 Entrada: EMOM 12 minutes: minute 1 12/10 cal Bike, minute 2 10 Burpees.
 Criterio: format emom; structure sequence con Bike y Burpees en el orden descrito; timer emom durationSeconds 720, intervalSeconds 60, rounds 12. No confundas los dos movimientos alternos con solo dos rondas.
 
-EJEMPLO 5 — FUERZA + WOD:
+EJEMPLO 5 — INTERVALOS CON BLOQUE REPETIDO:
+Entrada: 5 x 2 min on 1 min off: 20 Chest-to-Bar, 20 HSPU, max Box Jump Over.
+Criterio: format intervals; structure {type:"rounds",count:5,items:[Chest-to-Bar 20,HSPU 20,Box Jump Over max]}; timer intervals con rounds 5, workSeconds 120, restSeconds 60, startWithRest false. No conviertas "max" en un número ni añadas un Time Cap diferente.
+
+EJEMPLO 6 — FUERZA + WOD:
 Entrada: Back Squat 5x5; rest 3 minutes; then 10 min AMRAP of 10 Wall Balls 9 kg and 10 Burpees.
 Criterio: format strength_plus_wod; structure sections Strength y Conditioning, cada una con sequence. Como la sección Strength no tiene duración y el temporizador no puede representar una sección manual sin tiempo, devuelve timer:null y una issue blocking que pregunte si el usuario quiere configurar un tiempo para Strength o iniciar el temporizador desde el descanso/condicionamiento.
 
@@ -484,6 +488,8 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       if (!correctedResponse.ok) {
         const detail = await correctedResponse.text();
         console.error("Gemini correction attempt failed", correctedResponse.status, detail.slice(0, 800));
+        if (correctedResponse.status === 503) return json({ error: "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
+        if (correctedResponse.status === 429) return json({ error: "Se ha alcanzado temporalmente el límite de uso de IA. Inténtalo más tarde." }, 429, allowedOrigin);
         return json({ error: "La IA ha generado una interpretación que necesita corrección y no ha podido completarla. Inténtalo de nuevo." }, 422, allowedOrigin);
       }
       output = await extractText(correctedResponse);
