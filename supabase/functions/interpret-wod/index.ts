@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
-import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants } from "./wod-progression.js";
+import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants, normalizeLadderDirection } from "./wod-progression.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -170,6 +170,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = expandDescendingIntervalProgression(raw);
   raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);
   raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
+  raw = normalizeLadderDirection(raw);
   if (raw?.workout) raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
   raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
