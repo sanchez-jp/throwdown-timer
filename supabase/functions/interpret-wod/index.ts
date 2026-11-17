@@ -307,7 +307,9 @@ const responseSchema = {
     },
   },
   required: ["schemaVersion", "title", "workout", "timer", "interpretation"],
-};\n\nDeno.serve(async (req: Request) => {
+};
+
+Deno.serve(async (req: Request) => {
   const origin = req.headers.get("Origin") || "";
   const allowedOrigin = allowedOrigins.has(origin) ? origin : "";
   if (req.method === "OPTIONS") {
