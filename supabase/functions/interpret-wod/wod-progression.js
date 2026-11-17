@@ -113,7 +113,7 @@ export function expandProgressiveLoadLadder(raw, sourceText = "") {
 
 
 export function expandAlternatingCleanVariants(raw, sourceText = "") {
-  const alternatingClean = /(?:alternate|alternating|alternar|alternando|alternan)\\s+(?:sc|squat\\s+clean)\\s+(?:and|y|con)\\s+(?:pc|power\\s+clean)|(?:1\\s+squat\\s+clean\\s*\\+\\s*1\\s+power\\s+clean)/i.test(sourceText);
+  const alternatingClean = /(?:alternate|alternating|alternar|alternando|alternan)\s+(?:sc|squat\s+clean)\s+(?:and|y|con)\s+(?:pc|power\s+clean)|(?:1\s+squat\s+clean\s*\+\s*1\s+power\s+clean)/i.test(sourceText);
   const workout = raw?.workout;
   const structure = workout?.structure;
   if (!alternatingClean || structure?.type !== "ladder" || !Array.isArray(structure.steps) ||
@@ -137,7 +137,7 @@ export function expandAlternatingCleanVariants(raw, sourceText = "") {
     items: step.items.flatMap(item => {
       if (item?.type !== "movement" || item.movementId !== clean.id) return [item];
       const rawPrescription = item.prescription ?? clean.prescription ?? "";
-      const match = String(rawPrescription).match(/^\\s*(\\d+)\\s*(reps?|repeticiones?)?\\s*$/i);
+      const match = String(rawPrescription).match(/^\s*(\d+)\s*(reps?|repeticiones?)?\s*$/i);
       if (!match) return [item];
       const total = Number(match[1]);
       if (!Number.isInteger(total) || total < 2) return [item];
