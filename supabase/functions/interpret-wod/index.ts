@@ -42,7 +42,7 @@ function validateStructure(workout: any): string | null {
     if (ids.has(movement.id)) return "Hay identificadores de movimiento duplicados.";
     ids.add(movement.id);
     for (const field of ["prescription", "load", "notes"]) {
-      if (movement[field] !== null && typeof movement[field] !== "string") return "Una prescripción, carga o nota tiene un formato no válido.";
+      if (movement[field] != null && typeof movement[field] !== "string") return "Una prescripción, carga o nota tiene un formato no válido.";
     }
   }
   const checkItems = (items: any[]) => Array.isArray(items) && items.length > 0 && items.every(item =>
@@ -105,7 +105,22 @@ function normalizeResult(raw: any) {
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
   const structureError = validateStructure(raw.workout);
-  if (structureError) throw new Error(structureError);
+  if (structureError) {
+    const structure = raw.workout.structure || {};
+    const items = Array.isArray(structure.items) ? structure.items : [];
+    console.error("AI structure validation diagnostic", JSON.stringify({
+      format: raw.workout.format,
+      structureType: structure.type,
+      structureKeys: Object.keys(structure),
+      countType: typeof structure.count,
+      countValue: structure.count,
+      itemsType: Array.isArray(structure.items) ? "array" : typeof structure.items,
+      itemsLength: items.length,
+      firstItem: items[0] ? { keys: Object.keys(items[0]), type: items[0].type, movementIdType: typeof items[0].movementId } : null,
+      movementFields: (raw.workout.movements || []).slice(0, 8).map((m: any) => ({ keys: Object.keys(m || {}), prescriptionType: typeof m?.prescription, loadType: typeof m?.load, notesType: typeof m?.notes })),
+    }));
+    throw new Error(structureError);
+  }
   const timerError = validatePlan(raw.timer);
   if (timerError) throw new Error(timerError);
   const issues = Array.isArray(raw.interpretation?.issues) ? raw.interpretation.issues
@@ -217,6 +232,9 @@ Deno.serve(async (req: Request) => {
     return json({ result }, 200, allowedOrigin);
   } catch (error) {
     console.error("interpret-wod failure", error instanceof Error ? error.message : "unknown");
+    if (error instanceof Error && (error.message.startsWith("La estructura") || error.message.startsWith("Una prescripción"))) {
+      return json({ error: error.message }, 422, allowedOrigin);
+    }
     return json({ error: error instanceof Error && error.name === "TimeoutError" ? "La interpretación ha tardado demasiado. Inténtalo de nuevo." : "No se ha podido completar la interpretación. Comprueba la conexión e inténtalo de nuevo." }, 500, allowedOrigin);
   }
 });
