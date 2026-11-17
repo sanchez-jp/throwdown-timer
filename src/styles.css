@@ -50,39 +50,85 @@
 .fullscreen-hint{margin:9px 0 0;padding:11px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font-size:11px;line-height:1.5}.tool-button:disabled{opacity:.65;cursor:default}
 
 
-/* Fullscreen timer layout inspired by Throwdown Tracker. */
-.timer-main{display:contents}
+
+/* Responsive timer layout shared by browser and installed PWA. */
+html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{min-width:320px;min-height:100vh;min-height:100svh}
+.app-shell{
+  min-height:100vh;min-height:100svh;
+  padding-top:max(24px,env(safe-area-inset-top));
+  padding-right:max(clamp(14px,4vw,36px),env(safe-area-inset-right));
+  padding-bottom:max(18px,env(safe-area-inset-bottom));
+  padding-left:max(clamp(14px,4vw,36px),env(safe-area-inset-left));
+}
+.setup-panel,.timer-panel,.library-panel,.editor-panel{min-width:0}
+.preset-grid,.home-actions,.stats-row,.timer-tools,.timer-controls,
+.library-card-actions,.movement-editor-row,.timer-block-fields,
+.structure-item-row,.structure-step-row,.structure-section-row{min-width:0}
+.preset,.workout-preview,.library-card,.timer-block-card,
+.movement-editor-row,.structure-item-row,.structure-step-row,.structure-section-row{
+  min-width:0;overflow-wrap:anywhere
+}
+.editor-input,.movement-editor-row .editor-input,.timer-block-fields .editor-input,
+.structure-item-row .editor-input,.structure-step-row .editor-input,
+.structure-section-row .editor-input{min-width:0;max-width:100%}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+/* Standard timer view: natural document flow, no overlapping absolute controls. */
+.timer-panel{margin-top:clamp(22px,4vh,40px);margin-bottom:28px}
+.timer-main{display:flex;flex-direction:column;align-items:stretch;min-width:0;width:100%;gap:0}
 .timer-description{display:none}
-.timer-panel.timer-immersive{
-  position:fixed;inset:0;z-index:10000;width:100vw;height:100vh;height:100dvh;
-  max-width:none;margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  display:grid;grid-template-rows:minmax(0,1.08fr) minmax(0,.92fr);gap:0;
-  overflow:hidden;background:#0b1018;
+.timer-topline{width:100%;min-width:0}
+.timer-label{margin:clamp(22px,4vh,38px) 0 4px;text-align:center}
+.clock{
+  display:block;width:100%;max-width:100%;min-width:0;
+  font-size:clamp(68px,22vw,142px);line-height:1.02;
+  letter-spacing:-.065em;white-space:nowrap;overflow:hidden;
+  font-variant-numeric:tabular-nums;text-align:center;margin:8px 0;
 }
-.timer-immersive .timer-main{
-  min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:clamp(12px,3vw,30px);overflow:hidden;
-  background:radial-gradient(ellipse at 50% 45%,#1b3038 0,transparent 60%),#0b1018;
-  border-bottom:1px solid var(--line);
+.phase-label{min-height:20px;text-align:center;line-height:1.35}
+.progress-track{width:100%;margin:20px 0 18px}
+.stats-row{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stats-row>div{min-width:0;padding:13px}
+.stats-row small{font-size:clamp(7px,2vw,9px);line-height:1.35;overflow-wrap:anywhere}
+.stats-row strong{font-size:clamp(18px,5vw,23px)}
+.timer-controls{
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;
+  gap:10px;width:100%;margin:18px 0 0;
 }
-.timer-immersive .timer-topline{width:100%;max-width:900px}
-.timer-immersive .timer-label{margin-top:clamp(8px,2vh,20px);font-size:clamp(10px,1.6vw,15px)}
-.timer-immersive .clock{font-size:clamp(72px,18vw,170px);letter-spacing:-.06em;line-height:1;margin:5px 0}
-.timer-immersive .phase-label{font-size:clamp(11px,1.8vw,16px)}
-.timer-immersive .progress-track{width:min(100%,760px);margin:clamp(8px,1.8vh,18px) 0}
-.timer-immersive .stats-row{width:min(100%,760px);gap:8px}
-.timer-immersive .stats-row>div{padding:8px 12px}
-.timer-immersive .stats-row strong{font-size:clamp(15px,2.5vw,22px)}
-.timer-immersive .timer-tools{width:min(100%,760px);margin-top:10px}
-.timer-immersive .timer-controls{width:min(100%,760px);margin-top:0}
-.timer-immersive .timer-controls .primary-button,
-.timer-immersive .timer-controls .secondary-button,
-.timer-immersive .timer-controls .finish-button{margin-top:10px;min-height:48px}
-.timer-immersive .workout-preview,.timer-immersive #statusMessage{display:none}
-.timer-immersive .timer-description{
-  display:block;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:clamp(14px,3vw,28px) clamp(18px,4vw,42px);background:#111a25;
+.timer-controls>button.timer-icon-button{
+  box-sizing:border-box;display:inline-flex;flex:0 0 48px;
+  align-items:center;justify-content:center;width:48px;height:48px;
+  min-width:48px;min-height:48px;margin:0;padding:0;
+  border-radius:9px;font-family:Arial,sans-serif;font-size:23px;line-height:1;
 }
+.timer-controls>#pauseButton{font-size:23px}
+.timer-controls>#resetButton{font-size:26px}
+.timer-controls>#skipButton{font-size:20px}
+.timer-controls>#finishButton{font-size:19px}
+.timer-controls>button:disabled{opacity:.35;cursor:default}
+.timer-tools{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;width:100%;margin:14px 0 0;
+}
+.timer-tools .workout-details-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:40px;padding:0 10px;margin:0;
+  border:1px solid transparent;border-radius:7px;
+}
+.timer-tools>.tool-button.timer-icon-button{
+  box-sizing:border-box;display:inline-flex;flex:0 0 44px;
+  align-items:center;justify-content:center;width:44px;height:44px;
+  min-width:44px;min-height:44px;margin:0;padding:0;
+  border-radius:9px;font-family:Arial,sans-serif;font-size:19px;line-height:1;
+}
+.timer-tools>#fullscreenButton{font-size:24px}
+.timer-tools>.tool-button[aria-pressed="true"]{border-color:#55dfc780;color:var(--cyan)}
+.timer-tools>.tool-button:focus-visible,.timer-controls>button:focus-visible{
+  outline:2px solid var(--lime);outline-offset:3px
+}
+.timer-main>.workout-preview.compact{width:100%;margin-top:18px}
+.timer-main>#statusMessage{margin:12px 0 0}
 .timer-description-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
 .timer-description-heading h2{font-size:clamp(18px,3vw,28px);line-height:1.15;margin:0}
 .timer-description-summary{font-size:clamp(12px,2vw,16px);color:var(--muted);margin:8px 0 16px}
@@ -90,879 +136,120 @@
 .timer-description-list{padding-left:1.2em;margin:8px 0}
 .timer-description-list li{font-size:clamp(13px,2vw,18px);line-height:1.35;margin:0 0 7px;color:var(--white)}
 .timer-description-notes{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
-@media (orientation:landscape) and (min-width:600px){
-  .timer-panel.timer-immersive{grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);grid-template-rows:1fr}
-  .timer-immersive .timer-main{border-bottom:0;border-right:1px solid var(--line);padding:clamp(12px,2vw,26px)}
-  .timer-immersive .clock{font-size:clamp(64px,12vw,180px)}
-  .timer-immersive .timer-label{margin-top:8px}
-  .timer-immersive .progress-track{margin:10px 0}
-  .timer-immersive .timer-controls .primary-button,
-  .timer-immersive .timer-controls .secondary-button,
-  .timer-immersive .timer-controls .finish-button{min-height:44px}
-  .timer-immersive .timer-description{align-self:stretch}
-}
-@media (max-height:520px) and (orientation:landscape){
-  .timer-immersive .timer-topline{margin-bottom:4px}
-  .timer-immersive .timer-label{margin-top:0}
-  .timer-immersive .clock{font-size:clamp(58px,10vw,120px)}
-  .timer-immersive .timer-tools{margin-top:5px}
-  .timer-immersive .timer-controls .primary-button,
-  .timer-immersive .timer-controls .secondary-button,
-  .timer-immersive .timer-controls .finish-button{min-height:38px;margin-top:5px}
-}
 
-
-/* Prioridad visual al reloj en el modo de pantalla completa. */
-.timer-immersive .timer-main{gap:clamp(2px,.8vh,8px);padding:clamp(8px,1.8vw,20px)}
-.timer-immersive .timer-topline{flex:0 0 auto;min-height:24px}
-.timer-immersive .timer-topline .text-button{font-size:10px;padding:4px 0}
-.timer-immersive .timer-topline .tag{font-size:9px;padding:4px 8px}
-.timer-immersive .timer-label{font-size:clamp(9px,1.2vw,12px);margin:2px 0}
-.timer-immersive .clock{
-  font-size:clamp(150px,27vh,260px);
-  line-height:.88;letter-spacing:-.075em;margin:clamp(2px,.7vh,8px) 0;
-  flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;
-  white-space:nowrap;
-}
-.timer-immersive .phase-label{font-size:clamp(10px,1.25vw,13px);margin:0}
-.timer-immersive .progress-track{height:5px;margin:clamp(4px,.8vh,9px) 0;flex:0 0 auto}
-.timer-immersive .stats-row{gap:6px;flex:0 0 auto}
-.timer-immersive .stats-row>div{padding:5px 8px;border-radius:10px}
-.timer-immersive .stats-row small{font-size:8px;letter-spacing:1px}
-.timer-immersive .stats-row strong{font-size:clamp(13px,1.8vw,17px)}
-.timer-immersive .timer-tools{margin-top:4px;flex:0 0 auto}
-.timer-immersive .timer-tools .tool-button{min-height:30px;padding:5px 10px;font-size:9px}
-.timer-immersive .timer-controls{flex:0 0 auto;display:flex;gap:7px}
-.timer-immersive .timer-controls .primary-button,
-.timer-immersive .timer-controls .secondary-button,
-.timer-immersive .timer-controls .finish-button{min-height:36px;margin-top:4px;padding:7px 10px;font-size:10px}
-@media (orientation:landscape) and (min-width:600px){
-  .timer-immersive .timer-main{gap:clamp(2px,.6vh,7px);padding:clamp(8px,1.3vw,18px)}
-  .timer-immersive .clock{font-size:clamp(118px,40vh,230px)}
-  .timer-immersive .timer-label{font-size:10px}
-  .timer-immersive .progress-track{height:4px;margin:5px 0}
-  .timer-immersive .stats-row>div{padding:4px 7px}
-  .timer-immersive .timer-tools .tool-button{min-height:26px}
-  .timer-immersive .timer-controls .primary-button,
-  .timer-immersive .timer-controls .secondary-button,
-  .timer-immersive .timer-controls .finish-button{min-height:32px;margin-top:2px}
-}
-@media (max-height:520px) and (orientation:landscape){
-  .timer-immersive .clock{font-size:clamp(105px,34vh,190px)}
-}
-
-
-/* Portrait fullscreen: constrain the clock by both viewport width and height. */
-@media (orientation:portrait){
-  .timer-immersive .timer-main{
-    min-width:0;
-    width:100%;
-    padding:8px max(12px, env(safe-area-inset-left)) 8px max(12px, env(safe-area-inset-right));
-    gap:clamp(2px,.5vh,6px);
-  }
-  .timer-immersive .clock{
-    width:100%;
-    max-width:100%;
-    min-width:0;
-    flex:1 1 0;
-    font-size:clamp(64px, min(24vh, 24vw), 180px);
-    line-height:1;
-    letter-spacing:-.065em;
-    white-space:nowrap;
-    overflow:hidden;
-  }
-}
-
-
-/* Compact, consistent icon-only timer controls. */
-.timer-controls .timer-icon-button{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  flex:0 0 48px;
-  min-width:48px;
-  width:48px;
-  height:48px;
-  min-height:48px;
-  padding:0;
-  margin:16px 0 0;
-  border-radius:8px;
-  font-family:Arial,sans-serif;
-  font-size:22px;
-  line-height:1;
-}
-.timer-controls #pauseButton{
-  flex:0 0 48px;
-  width:48px;
-  font-size:25px;
-}
-.timer-controls .timer-icon-button:disabled{
-  opacity:.3;
-  cursor:default;
-}
-.timer-controls #finishButton{font-size:19px;color:#ff8c8c}
-.timer-controls #skipButton{font-size:20px}
-.timer-controls .timer-icon-button:focus-visible{
-  outline:2px solid var(--lime);
-  outline-offset:3px;
-}
-@media(max-width:420px){
-  .timer-immersive .timer-controls .timer-icon-button{min-width:42px;width:42px}
-  .timer-immersive .timer-controls #pauseButton{width:42px;flex-basis:42px}
-}
-
-/* Keep the available timer actions grouped as equal square controls. */
-.timer-controls{display:flex;justify-content:center;align-items:center;gap:9px}
-.timer-controls .timer-icon-button{flex:0 0 48px}
-.timer-controls #pauseButton{flex:0 0 48px}
-.timer-controls .timer-icon-button:disabled{opacity:.3;cursor:default}
-@media(max-width:420px){.timer-immersive .timer-controls .timer-icon-button,.timer-immersive .timer-controls #pauseButton{flex-basis:42px;width:42px;min-width:42px}}
-
-
-/* Final override: all timer actions are compact square icon buttons. */
-.timer-controls{
-  display:flex !important;
-  grid-template-columns:none !important;
-  justify-content:center !important;
-  align-items:center !important;
-  gap:9px !important;
-}
-.timer-controls > button.timer-icon-button{
-  box-sizing:border-box !important;
-  display:inline-flex !important;
-  flex:0 0 48px !important;
-  width:48px !important;
-  min-width:48px !important;
-  max-width:48px !important;
-  height:48px !important;
-  min-height:48px !important;
-  max-height:48px !important;
-  padding:0 !important;
-  margin:16px 0 0 !important;
-  border-radius:9px !important;
-  aspect-ratio:1 / 1 !important;
-  font-size:22px !important;
-  line-height:1 !important;
-}
-.timer-controls > #pauseButton{font-size:23px !important;width:48px !important;flex-basis:48px !important}
-.timer-controls > #finishButton{color:#ff8c8c !important}
-.timer-controls > button.hidden{display:none !important}
-@media(max-width:420px){
-  .timer-immersive .timer-controls > button.timer-icon-button,
-  .timer-immersive .timer-controls > #pauseButton{
-    flex-basis:42px !important;width:42px !important;min-width:42px !important;max-width:42px !important;
-    height:42px !important;min-height:42px !important;max-height:42px !important;
-  }
-}
-
-
-/* Match the reset glyph's visual size to the play/pause control. */
-.timer-controls > #resetButton{font-size:25px !important;line-height:1 !important}
-
-
-/* Sound and fullscreen share the timer controls' square dimensions,
-   with the pair anchored to the right edge of the timer panel. */
-.timer-tools{
-  display:flex !important;
-  justify-content:flex-end !important;
-  align-items:center !important;
-  gap:9px !important;
-  margin-top:18px !important;
-}
-.timer-tools > .tool-button.timer-icon-button{
-  box-sizing:border-box !important;
-  display:inline-flex !important;
-  flex:0 0 48px !important;
-  width:48px !important;
-  min-width:48px !important;
-  max-width:48px !important;
-  height:48px !important;
-  min-height:48px !important;
-  max-height:48px !important;
-  margin:0 !important;
-  padding:0 !important;
-  border-radius:9px !important;
-  aspect-ratio:1 / 1 !important;
-  align-items:center !important;
-  justify-content:center !important;
-  font-family:Arial,sans-serif !important;
-  font-size:19px !important;
-  line-height:1 !important;
-  letter-spacing:0 !important;
-}
-.timer-tools > #fullscreenButton{font-size:25px !important}
-.timer-tools > .tool-button[aria-pressed="true"]{
-  border-color:#55dfc780 !important;
-  color:var(--cyan) !important;
-}
-.timer-tools > .tool-button:focus-visible{
-  outline:2px solid var(--lime);
-  outline-offset:3px;
-}
-@media(max-width:420px){
-  .timer-tools > .tool-button.timer-icon-button{
-    flex-basis:48px !important;
-    width:48px !important;
-    min-width:48px !important;
-    max-width:48px !important;
-    height:48px !important;
-    min-height:48px !important;
-    max-height:48px !important;
-  }
-}
-
-
-/* Final fullscreen alignment: timer actions first, utility actions second.
-   Keep every icon control at the same 48px square size in portrait and landscape. */
-.timer-immersive .timer-controls{order:1 !important}
-.timer-immersive .timer-tools{order:2 !important}
-.timer-immersive .timer-controls > button.timer-icon-button,
-.timer-immersive .timer-controls > #pauseButton{
-  flex:0 0 48px !important;
-  width:48px !important;
-  min-width:48px !important;
-  max-width:48px !important;
-  height:48px !important;
-  min-height:48px !important;
-  max-height:48px !important;
-}
-.timer-immersive .timer-tools > .tool-button.timer-icon-button{
-  flex:0 0 48px !important;
-  width:48px !important;
-  min-width:48px !important;
-  max-width:48px !important;
-  height:48px !important;
-  min-height:48px !important;
-  max-height:48px !important;
-}
-
-/* Immersive mode refinement: protect the clock from the description column,
-   compact the utility buttons, and remove the normal-screen glow behind the header. */
+/* Immersive view: one viewport-sized surface, with a single control hierarchy. */
 .timer-panel.timer-immersive{
-  background:#0b1018 !important;
-  isolation:isolate;
+  position:fixed;inset:0;z-index:10000;
+  width:100%;max-width:none;height:100vh;height:100dvh;
+  margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display:flex;flex-direction:column;overflow:hidden;
+  background:#0b1018;isolation:isolate;
 }
 .timer-immersive .timer-main{
-  background:#0b1018 !important;
-  border-color:var(--line);
+  position:relative;display:flex;flex:1 1 auto;flex-direction:column;
+  justify-content:space-between;align-items:stretch;
+  width:100%;min-width:0;min-height:0;gap:clamp(4px,1vh,12px);
+  padding:clamp(12px,2.5vh,26px) clamp(14px,4vw,36px);
+  overflow:hidden;background:#0b1018;border:0;
 }
-.timer-immersive .timer-topline,
-.timer-immersive .timer-label,
-.timer-immersive .clock,
-.timer-immersive .phase-label,
-.timer-immersive .progress-track,
-.timer-immersive .stats-row,
-.timer-immersive .timer-controls,
-.timer-immersive .timer-tools{
-  position:relative;
-  z-index:1;
-  min-width:0;
-  max-width:100%;
+.timer-immersive .timer-topline{flex:0 0 auto;min-height:28px}
+.timer-immersive .timer-label{flex:0 0 auto;margin:0;text-align:center;font-size:clamp(10px,1.4vw,14px)}
+.timer-immersive .clock{
+  flex:1 1 0;display:flex;align-items:center;justify-content:center;
+  width:100%;min-width:0;min-height:0;max-width:100%;margin:0;
+  font-size:clamp(76px,min(25vw,25vh),210px);line-height:1;
+  letter-spacing:-.065em;white-space:nowrap;overflow:hidden;
 }
-.timer-immersive .timer-tools > .tool-button.timer-icon-button{
-  flex:0 0 40px !important;
-  width:40px !important;
-  min-width:40px !important;
-  max-width:40px !important;
-  height:40px !important;
-  min-height:40px !important;
-  max-height:40px !important;
-}
-.timer-immersive .timer-tools{gap:7px !important;margin-top:2px !important}
-@media (orientation:landscape) and (min-width:600px){
-  .timer-immersive .timer-main{min-width:0;overflow:hidden}
-  .timer-immersive .clock{
-    display:block !important;
-    flex:0 1 auto !important;
-    width:100% !important;
-    max-width:100% !important;
-    min-width:0 !important;
-    overflow:hidden !important;
-    white-space:nowrap !important;
-    text-overflow:clip;
-    font-size:clamp(64px, min(32vh, 8.5vw), 148px) !important;
-    line-height:1 !important;
-    letter-spacing:-.065em !important;
-    text-align:center !important;
-  }
-}
-@media (orientation:portrait){
-  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
-    flex-basis:40px !important;width:40px !important;min-width:40px !important;max-width:40px !important;
-    height:40px !important;min-height:40px !important;max-height:40px !important;
-  }
-}
-
-
-/* Definitive immersive-mode controls and background reset. */
-.timer-immersive .timer-tools > .tool-button.timer-icon-button{
-  box-sizing:border-box !important;
-  flex:0 0 32px !important;
-  width:32px !important;
-  min-width:32px !important;
-  max-width:32px !important;
-  height:32px !important;
-  min-height:32px !important;
-  max-height:32px !important;
-  padding:0 !important;
-  margin:0 !important;
-  border-radius:7px !important;
-  box-shadow:none !important;
+.timer-immersive .phase-label{flex:0 0 auto;font-size:clamp(10px,1.5vw,15px);margin:0}
+.timer-immersive .progress-track{flex:0 0 5px;width:100%;margin:4px 0}
+.timer-immersive .stats-row{flex:0 0 auto;width:min(100%,760px);align-self:center;gap:8px}
+.timer-immersive .stats-row>div{padding:8px 12px}
+.timer-immersive .stats-row small{font-size:clamp(7px,1vw,9px)}
+.timer-immersive .stats-row strong{font-size:clamp(15px,2.4vw,22px)}
+.timer-immersive .timer-controls{flex:0 0 auto;width:100%;margin:0;gap:10px}
+.timer-immersive .timer-controls>button.timer-icon-button{
+  flex-basis:48px;width:48px;height:48px;min-width:48px;min-height:48px;margin:0
 }
 .timer-immersive .timer-tools{
-  gap:6px !important;
-  margin-top:2px !important;
-  min-height:32px !important;
+  flex:0 0 auto;width:100%;margin:0;justify-content:space-between;
+  min-height:44px;gap:8px
 }
-.timer-panel.timer-immersive,
-.timer-immersive .timer-main,
-.timer-immersive .timer-description{
-  background:#0b1018 !important;
-  background-image:none !important;
-  box-shadow:none !important;
-  filter:none !important;
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
+.timer-immersive .timer-tools>.tool-button.timer-icon-button{
+  flex-basis:40px;width:40px;height:40px;min-width:40px;min-height:40px
 }
-.timer-immersive .timer-main *,
-.timer-immersive .timer-description *{
-  filter:none !important;
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
+.timer-immersive .timer-tools .workout-details-button{
+  display:inline-flex;min-height:38px;border-color:var(--line);
+  background:#111a25;color:var(--cyan)
+}
+.timer-immersive .workout-preview.compact,.timer-immersive #statusMessage{display:none}
+.timer-immersive .timer-description{display:none}
+.timer-immersive.description-open .timer-description{
+  display:block;position:absolute;z-index:5;left:0;right:0;bottom:0;
+  max-height:48%;overflow:auto;overscroll-behavior:contain;
+  padding:18px 22px max(18px,env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);background:#111a25;
 }
 
-
-/* Landscape immersive layout: maximise the clock and keep controls out of its way. */
+/* Landscape: keep the clock dominant and reserve a separate WOD column when opened. */
 @media (orientation:landscape) and (min-width:600px){
-  .timer-panel.timer-immersive{
-    display:block !important;
-    background:#0b1018 !important;
-  }
+  .timer-panel.timer-immersive{flex-direction:row}
   .timer-immersive .timer-main{
-    position:relative !important;
-    display:flex !important;
-    flex-direction:column !important;
-    justify-content:space-between !important;
-    align-items:stretch !important;
-    width:100% !important;
-    height:100% !important;
-    min-height:0 !important;
-    padding: max(10px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)) !important;
-    gap:4px !important;
-    border:0 !important;
-    background:#0b1018 !important;
-    overflow:hidden !important;
+    flex:1 1 100%;width:100%;height:100%;
+    padding:clamp(10px,2vh,22px) clamp(18px,2vw,32px);
+    gap:clamp(3px,.8vh,9px);transition:flex-basis .2s ease;
   }
-  .timer-immersive .timer-topline{
-    order:0 !important;
-    flex:0 0 26px !important;
-    width:100% !important;
-    max-width:none !important;
-    margin:0 !important;
-  }
-  .timer-topline-actions{display:flex;align-items:center;gap:10px}
-  .timer-immersive #workoutDetailsButton{
-    padding:4px 8px !important;
-    border:1px solid var(--line) !important;
-    border-radius:6px !important;
-    color:var(--cyan) !important;
-  }
-  .timer-immersive .timer-label{
-    order:1 !important;
-    flex:0 0 auto !important;
-    margin:0 !important;
-    font-size:clamp(10px,1.2vw,14px) !important;
-  }
-  .timer-immersive .clock{
-    order:2 !important;
-    display:block !important;
-    flex:1 1 0 !important;
-    width:100% !important;
-    min-width:0 !important;
-    max-width:none !important;
-    min-height:0 !important;
-    margin:0 !important;
-    overflow:hidden !important;
-    white-space:nowrap !important;
-    text-align:center !important;
-    align-content:center !important;
-    font-size:clamp(160px,56vh,360px) !important;
-    line-height:.95 !important;
-    letter-spacing:-.065em !important;
-  }
-  .timer-immersive .phase-label{order:3 !important;flex:0 0 auto !important;margin:0 !important}
-  .timer-immersive .progress-track{order:4 !important;flex:0 0 4px !important;width:100% !important;margin:3px 0 !important}
-  .timer-immersive .stats-row{order:5 !important;flex:0 0 auto !important;width:min(100%,620px) !important;align-self:center !important}
-  .timer-immersive .timer-controls{
-    order:6 !important;
-    flex:0 0 auto !important;
-    width:100% !important;
-    justify-content:center !important;
-    gap:10px !important;
-    margin:0 !important;
-  }
-  .timer-immersive .timer-controls > button.timer-icon-button,
-  .timer-immersive .timer-controls > #pauseButton{
-    flex:0 0 42px !important;width:42px !important;min-width:42px !important;max-width:42px !important;
-    height:42px !important;min-height:42px !important;max-height:42px !important;margin:0 !important;
-  }
-  .timer-immersive .timer-tools{
-    position:absolute !important;
-    top:max(10px,env(safe-area-inset-top)) !important;
-    right:max(18px,env(safe-area-inset-right)) !important;
-    z-index:5 !important;
-    width:auto !important;
-    margin:0 !important;
-    gap:6px !important;
-  }
-  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
-    flex:0 0 30px !important;width:30px !important;min-width:30px !important;max-width:30px !important;
-    height:30px !important;min-height:30px !important;max-height:30px !important;
-  }
-  .timer-immersive .timer-description{display:none !important}
+  .timer-immersive .clock{font-size:clamp(100px,min(31vw,48vh),360px)}
+  .timer-immersive.description-open .timer-main{flex:0 1 68%;width:68%}
+  .timer-immersive.description-open .clock{font-size:clamp(88px,min(20vw,38vh),260px)}
   .timer-immersive.description-open .timer-description{
-    display:block !important;
-    position:absolute !important;
-    z-index:10 !important;
-    left:0 !important;right:0 !important;bottom:0 !important;
-    max-height:48% !important;
-    overflow:auto !important;
-    padding:16px 22px !important;
-    border-top:1px solid var(--line) !important;
-    background:#111a25 !important;
-    box-shadow:0 -12px 30px #0009 !important;
+    position:relative;inset:auto;display:block;flex:0 0 32%;
+    width:32%;height:100%;max-height:none;min-width:0;
+    padding:clamp(18px,2vw,30px);overflow:auto;
+    border:0;border-left:1px solid var(--line);border-radius:0;
   }
+  .timer-immersive .timer-tools{justify-content:flex-end}
+  .timer-immersive .timer-tools .workout-details-button{margin-right:auto}
 }
-
-
-/* Landscape immersive layout: clean hierarchy, adaptive clock and right-side WOD. */
-@media (orientation:landscape) and (min-width:600px){
-  .timer-panel.timer-immersive{
-    display:flex !important;
-    flex-direction:row !important;
-    align-items:stretch !important;
-    gap:0 !important;
-    width:100vw !important;
-    height:100vh !important;
-    height:100dvh !important;
-    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
-    margin:0 !important;
-    overflow:hidden !important;
-    background:#0b1018 !important;
-    background-image:none !important;
-  }
-  .timer-immersive .timer-main{
-    position:relative !important;
-    display:flex !important;
-    flex:1 1 100% !important;
-    flex-direction:column !important;
-    justify-content:space-between !important;
-    align-items:stretch !important;
-    width:100% !important;
-    min-width:0 !important;
-    height:100% !important;
-    padding:clamp(10px,2vh,22px) clamp(14px,2vw,30px) !important;
-    gap:clamp(3px,1vh,10px) !important;
-    border:0 !important;
-    background:#0b1018 !important;
-    background-image:none !important;
-    box-shadow:none !important;
-    overflow:hidden !important;
-    transition:flex-basis .22s ease,width .22s ease;
-  }
-  .timer-immersive .timer-topline{
-    order:0 !important;
-    display:flex !important;
-    justify-content:space-between !important;
-    align-items:center !important;
-    flex:0 0 30px !important;
-    width:100% !important;
-    margin:0 !important;
-  }
-  .timer-immersive .timer-topline .tag{margin-left:auto !important}
-  .timer-immersive .timer-tools{
-    position:static !important;
-    order:6 !important;
-    display:flex !important;
-    flex:0 0 auto !important;
-    align-items:center !important;
-    justify-content:center !important;
-    gap:10px !important;
-    width:100% !important;
-    min-height:34px !important;
-    margin:0 !important;
-    z-index:2 !important;
-  }
-  .timer-immersive .workout-details-button{
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    min-height:32px !important;
-    padding:0 12px !important;
-    border:1px solid var(--line) !important;
-    border-radius:7px !important;
-    color:var(--cyan) !important;
-    background:#111a25 !important;
-    white-space:nowrap !important;
-  }
-  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
-    flex:0 0 32px !important;
-    width:32px !important;
-    min-width:32px !important;
-    max-width:32px !important;
-    height:32px !important;
-    min-height:32px !important;
-    max-height:32px !important;
-    padding:0 !important;
-    margin:0 !important;
-    background:#111a25 !important;
-    box-shadow:none !important;
-  }
-  .timer-immersive .timer-label{
-    order:1 !important;
-    flex:0 0 auto !important;
-    margin:0 !important;
-  }
-  .timer-immersive .clock{
-    order:2 !important;
-    display:flex !important;
-    flex:1 1 0 !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:100% !important;
-    min-width:0 !important;
-    min-height:0 !important;
-    max-width:100% !important;
-    margin:0 !important;
-    overflow:hidden !important;
-    font-size:clamp(100px, min(31vw, 48vh), 360px) !important;
-    line-height:1 !important;
-    letter-spacing:-.065em !important;
-    white-space:nowrap !important;
-    text-align:center !important;
-    text-shadow:none !important;
-    transition:font-size .22s ease;
-  }
-  .timer-immersive .phase-label{order:3 !important;flex:0 0 auto !important;margin:0 !important}
-  .timer-immersive .progress-track{order:4 !important;flex:0 0 4px !important;width:100% !important;margin:3px 0 !important}
-  .timer-immersive .stats-row{order:5 !important;flex:0 0 auto !important;width:min(100%,680px) !important;align-self:center !important}
-  .timer-immersive .timer-controls{
-    order:5 !important;
-    flex:0 0 auto !important;
-    width:100% !important;
-    justify-content:center !important;
-    gap:10px !important;
-    margin:0 !important;
-  }
-  .timer-immersive .timer-controls > button.timer-icon-button,
-  .timer-immersive .timer-controls > #pauseButton{
-    flex:0 0 44px !important;
-    width:44px !important;min-width:44px !important;max-width:44px !important;
-    height:44px !important;min-height:44px !important;max-height:44px !important;
-    margin:0 !important;
-  }
-  .timer-immersive .timer-description{display:none !important}
-  .timer-immersive.description-open .timer-main{
-    flex:0 1 68% !important;
-    width:68% !important;
-    min-width:0 !important;
-  }
-  .timer-immersive.description-open .clock{
-    font-size:clamp(88px, min(20vw, 38vh), 260px) !important;
-  }
-  .timer-immersive.description-open .timer-description{
-    position:relative !important;
-    inset:auto !important;
-    display:block !important;
-    flex:0 0 32% !important;
-    width:32% !important;
-    height:100% !important;
-    max-height:none !important;
-    min-width:0 !important;
-    overflow:auto !important;
-    padding:clamp(18px,2vw,30px) !important;
-    border:0 !important;
-    border-left:1px solid var(--line) !important;
-    border-radius:0 !important;
-    background:#111a25 !important;
-    background-image:none !important;
-    box-shadow:none !important;
-    filter:none !important;
-    backdrop-filter:none !important;
-    -webkit-backdrop-filter:none !important;
-  }
-}
-/* No glow, blur, gradient, shadow or pseudo-element overlay in immersive mode. */
-.timer-panel.timer-immersive,
-.timer-immersive .timer-main,
-.timer-immersive .timer-description{
-  background-color:#0b1018 !important;
-  background-image:none !important;
-  box-shadow:none !important;
-  filter:none !important;
-  backdrop-filter:none !important;
-  -webkit-backdrop-filter:none !important;
-  text-shadow:none !important;
-}
-.timer-immersive .timer-main::before,
-.timer-immersive .timer-main::after,
-.timer-immersive .timer-description::before,
-.timer-immersive .timer-description::after{
-  content:none !important;
-  display:none !important;
-}
-.timer-immersive .clock{text-shadow:none !important;filter:none !important}
-
-
-/* Final control-row alignment: keep the clock area clear. */
-@media (orientation:portrait){
-  .timer-immersive .workout-details-button{display:none !important}
-}
-@media (orientation:landscape) and (min-width:600px){
-  .timer-immersive .timer-main{padding-bottom:max(14px,env(safe-area-inset-bottom)) !important}
-  .timer-immersive .timer-controls{
-    order:6 !important;
-    flex:0 0 44px !important;
-    width:calc(100% - 136px) !important;
-    max-width:calc(100% - 136px) !important;
-    min-width:0 !important;
-    align-self:flex-start !important;
-    justify-content:center !important;
-    margin:0 !important;
-  }
-  .timer-immersive .timer-tools{
-    position:absolute !important;
-    top:auto !important;
-    right:max(18px,env(safe-area-inset-right)) !important;
-    bottom:max(14px,env(safe-area-inset-bottom)) !important;
-    width:auto !important;
-    min-height:44px !important;
-    height:44px !important;
-    display:flex !important;
-    flex-direction:row !important;
-    align-items:center !important;
-    justify-content:flex-end !important;
-    gap:8px !important;
-    margin:0 !important;
-    padding:0 !important;
-  }
-  .timer-immersive .timer-tools .workout-details-button{
-    height:34px !important;
-    min-height:34px !important;
-    padding:0 11px !important;
-  }
-  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
-    width:34px !important;min-width:34px !important;max-width:34px !important;
-    height:34px !important;min-height:34px !important;max-height:34px !important;
-  }
-}
-
-
-/* Final portrait/landscape polish: align transport controls with the stats cards
-   and force a fully opaque, effect-free surface in iOS immersive mode. */
-@media (orientation:landscape) and (min-width:600px){
-  .timer-immersive .stats-row{
-    width:min(100%,680px) !important;
-    max-width:680px !important;
-    align-self:center !important;
-  }
-  .timer-immersive .timer-controls{
-    width:min(100%,680px) !important;
-    max-width:680px !important;
-    align-self:center !important;
-    justify-content:space-between !important;
-    gap:10px !important;
-    padding:0 !important;
-  }
-}
-@media (orientation:portrait){
-  .timer-panel.timer-immersive{
-    position:fixed !important;
-    inset:0 !important;
-    width:100vw !important;
-    height:100vh !important;
-    height:100dvh !important;
-    background:#0b1018 !important;
-    background-image:none !important;
-    isolation:isolate !important;
-    overflow:hidden !important;
-  }
-  .timer-immersive .timer-main{
-    background:#0b1018 !important;
-    background-color:#0b1018 !important;
-    background-image:none !important;
-    box-shadow:none !important;
-    filter:none !important;
-    backdrop-filter:none !important;
-    -webkit-backdrop-filter:none !important;
-    text-shadow:none !important;
-  }
-  .timer-immersive::before,
-  .timer-immersive::after,
-  .timer-immersive .timer-main::before,
-  .timer-immersive .timer-main::after,
-  .timer-immersive .clock::before,
-  .timer-immersive .clock::after{
-    content:none !important;
-    display:none !important;
-    background:none !important;
-    box-shadow:none !important;
-    filter:none !important;
-    backdrop-filter:none !important;
-    -webkit-backdrop-filter:none !important;
-  }
-  .timer-immersive .timer-main,
-  .timer-immersive .timer-main *{
-    text-shadow:none !important;
-    filter:none !important;
-    backdrop-filter:none !important;
-    -webkit-backdrop-filter:none !important;
-  }
-}
-
-
-/* Landscape immersive: compact utility group, bottom-aligned with the top navigation. */
-@media (orientation:landscape) and (min-width:600px){
-  .timer-immersive .timer-tools{
-    position:absolute !important;
-    top:calc(clamp(10px,2vh,22px) + 28px) !important;
-    left:50% !important;
-    right:auto !important;
-    bottom:auto !important;
-    transform:translate(-50%,-100%) !important;
-    display:flex !important;
-    flex-direction:row !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:max-content !important;
-    max-width:calc(100% - 190px) !important;
-    height:28px !important;
-    min-height:28px !important;
-    margin:0 !important;
-    padding:0 !important;
-    gap:5px !important;
-    z-index:6 !important;
-    box-sizing:border-box !important;
-  }
-  .timer-immersive .timer-tools .workout-details-button{
-    flex:0 1 auto !important;
-    width:auto !important;
-    max-width:76px !important;
-    height:28px !important;
-    min-height:28px !important;
-    padding:0 7px !important;
-    font-size:8px !important;
-    line-height:1 !important;
-    white-space:nowrap !important;
-  }
-  .timer-immersive .timer-tools > .tool-button.timer-icon-button{
-    flex:0 0 28px !important;
-    width:28px !important;
-    min-width:28px !important;
-    max-width:28px !important;
-    height:28px !important;
-    min-height:28px !important;
-    max-height:28px !important;
-    padding:0 !important;
-    font-size:17px !important;
-  }
-  .timer-immersive .timer-tools > #fullscreenButton{font-size:21px !important}
-}
-
-
-/* Keep the home header clear of the translucent iOS status-bar blur. */
-@media (max-width:600px){
-  .app-shell:has(> .setup-panel:not(.hidden)){
-    padding-top:max(34px,calc(env(safe-area-inset-top) + 8px));
-  }
-}
-
-/* Responsive foundation shared by browser and installed PWA.
-   Keep layout rules viewport-driven, not platform/user-agent-driven. */
-html{
-  min-width:320px;
-  min-height:100%;
-  -webkit-text-size-adjust:100%;
-  text-size-adjust:100%;
-}
-body{
-  min-width:320px;
-  min-height:100vh;
-  min-height:100svh;
-}
-.app-shell{
-  min-height:100vh;
-  min-height:100svh;
-  padding-top:max(24px,env(safe-area-inset-top));
-  padding-right:max(clamp(14px,4vw,36px),env(safe-area-inset-right));
-  padding-bottom:max(18px,env(safe-area-inset-bottom));
-  padding-left:max(clamp(14px,4vw,36px),env(safe-area-inset-left));
-}
-.setup-panel,.timer-panel,.library-panel,.editor-panel{
-  min-width:0;
-}
-.preset-grid,.home-actions,.stats-row,.timer-tools,.timer-controls,
-.library-card-actions,.movement-editor-row,.timer-block-fields,
-.structure-item-row,.structure-step-row,.structure-section-row{
-  min-width:0;
-}
-.preset,.workout-preview,.library-card,.timer-block-card,
-.movement-editor-row,.structure-item-row,.structure-step-row,.structure-section-row{
-  min-width:0;
-  overflow-wrap:anywhere;
-}
-.editor-input,.movement-editor-row .editor-input,
-.timer-block-fields .editor-input,
-.structure-item-row .editor-input,.structure-step-row .editor-input,
-.structure-section-row .editor-input{
-  min-width:0;
-  max-width:100%;
-}
-button{
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
+@media (max-height:520px) and (orientation:landscape){
+  .timer-immersive .timer-main{gap:3px;padding:8px 16px}
+  .timer-immersive .timer-topline{min-height:24px}
+  .timer-immersive .timer-label{font-size:9px}
+  .timer-immersive .clock{font-size:clamp(76px,min(25vw,40vh),190px)}
+  .timer-immersive .progress-track{margin:2px 0;height:4px}
+  .timer-immersive .stats-row>div{padding:4px 8px}
+  .timer-immersive .timer-controls>button.timer-icon-button{width:40px;height:40px;min-width:40px;min-height:40px;flex-basis:40px}
+  .timer-immersive .timer-tools>.tool-button.timer-icon-button{width:32px;height:32px;min-width:32px;min-height:32px;flex-basis:32px}
 }
 @media(max-width:600px){
-  .app-shell{
-    padding-top:max(24px,calc(env(safe-area-inset-top) + 8px));
-    padding-bottom:max(18px,env(safe-area-inset-bottom));
-  }
-  .setup-panel,.library-panel,.editor-panel{
-    margin-top:clamp(24px,5vh,42px);
-  }
-  .intro{
-    line-height:1.5;
-  }
-  .editor-input{
-    font-size:16px;
-  }
+  .app-shell{padding-top:max(24px,calc(env(safe-area-inset-top) + 8px));padding-bottom:max(18px,env(safe-area-inset-bottom))}
+  .setup-panel,.library-panel,.editor-panel{margin-top:clamp(24px,5vh,42px)}
+  .intro{line-height:1.5}
+  .editor-input{font-size:16px}
+  .timer-panel{margin-top:clamp(20px,3vh,32px)}
+  .timer-immersive .timer-main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+}
+@media(max-width:420px){
+  .tool-button{font-size:8px}
+  .preset{min-height:86px;padding:12px}
+  .clock{letter-spacing:-.055em}
+  .workout-preview{padding:15px}
+  .library-card-actions{grid-template-columns:1fr 1fr}
+  .library-card-actions .primary-button{grid-column:1/-1}
+  .movement-editor-row{grid-template-columns:1fr 1fr}
 }
 @media(max-width:360px){
-  .app-shell{
-    padding-left:max(12px,env(safe-area-inset-left));
-    padding-right:max(12px,env(safe-area-inset-right));
-  }
-  h1{
-    font-size:clamp(29px,9vw,36px);
-    letter-spacing:-1.3px;
-  }
+  .app-shell{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  h1{font-size:clamp(29px,9vw,36px);letter-spacing:-1.3px}
   .preset-grid{gap:8px}
-  .preset{padding:11px;min-height:82px}
-  .preset strong{font-size:14px}
-  .preset small{font-size:10px}
+  .preset{min-height:82px;padding:11px}
+  .preset strong{font-size:14px}.preset small{font-size:10px}
   .workout-preview{padding:13px}
   .library-card{padding:12px}
   .library-card-actions{gap:6px}
   .library-card-actions button{font-size:8px;padding-left:4px;padding-right:4px}
-  .structure-item-row,.structure-step-row{
-    gap:5px;
-    padding:8px;
-  }
+  .structure-item-row,.structure-step-row{gap:5px;padding:8px}
 }
 @media(min-width:768px){
-  .app-shell{
-    padding-top:max(28px,env(safe-area-inset-top));
-    padding-bottom:max(24px,env(safe-area-inset-bottom));
-  }
+  .app-shell{padding-top:max(28px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
 }
-
