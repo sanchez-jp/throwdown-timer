@@ -161,7 +161,7 @@ function normalizeResult(raw: any) {
 const responseSchema = {
   type: "object",
   properties: {
-    schemaVersion: { type: "integer", enum: [2] },
+    schemaVersion: { type: "integer" },
     title: { type: "string" },
     workout: {
       type: "object",
@@ -175,9 +175,9 @@ const responseSchema = {
             properties: {
               id: { type: "string" },
               name: { type: "string" },
-              prescription: { type: ["string", "null"] },
-              load: { type: ["string", "null"] },
-              notes: { type: ["string", "null"] },
+              prescription: { type: "string", nullable: true },
+              load: { type: "string", nullable: true },
+              notes: { type: "string", nullable: true },
             },
             required: ["id", "name", "prescription", "load", "notes"],
           },
@@ -186,7 +186,7 @@ const responseSchema = {
           type: "object",
           properties: {
             type: { type: "string", enum: ["sequence", "rounds", "chipper", "ladder", "sections"] },
-            count: { type: ["integer", "null"] },
+            count: { type: "integer", nullable: true },
             items: {
               type: "array",
               items: {
@@ -194,7 +194,7 @@ const responseSchema = {
                 properties: {
                   type: { type: "string", enum: ["movement"] },
                   movementId: { type: "string" },
-                  prescription: { type: ["string", "null"] },
+                  prescription: { type: "string", nullable: true },
                 },
                 required: ["type", "movementId", "prescription"],
               },
@@ -213,7 +213,7 @@ const responseSchema = {
                       properties: {
                         type: { type: "string", enum: ["movement"] },
                         movementId: { type: "string" },
-                        prescription: { type: ["string", "null"] },
+                        prescription: { type: "string", nullable: true },
                       },
                       required: ["type", "movementId", "prescription"],
                     },
@@ -240,7 +240,7 @@ const responseSchema = {
                           properties: {
                             type: { type: "string", enum: ["movement"] },
                             movementId: { type: "string" },
-                            prescription: { type: ["string", "null"] },
+                            prescription: { type: "string", nullable: true },
                           },
                           required: ["type", "movementId", "prescription"],
                         },
@@ -259,7 +259,7 @@ const responseSchema = {
       required: ["format", "description", "movements", "structure"],
     },
     timer: {
-      type: ["object", "null"],
+      type: "object", nullable: true,
       properties: {
         type: { type: "string", enum: ["sequence"] },
         label: { type: "string" },
@@ -270,13 +270,13 @@ const responseSchema = {
             properties: {
               type: { type: "string", enum: ["countdown", "countup", "emom", "intervals", "rest"] },
               label: { type: "string" },
-              durationSeconds: { type: ["integer", "null"] },
-              timeCapSeconds: { type: ["integer", "null"] },
-              rounds: { type: ["integer", "null"] },
-              intervalSeconds: { type: ["integer", "null"] },
-              workSeconds: { type: ["integer", "null"] },
-              restSeconds: { type: ["integer", "null"] },
-              startWithRest: { type: ["boolean", "null"] },
+              durationSeconds: { type: "integer", nullable: true },
+              timeCapSeconds: { type: "integer", nullable: true },
+              rounds: { type: "integer", nullable: true },
+              intervalSeconds: { type: "integer", nullable: true },
+              workSeconds: { type: "integer", nullable: true },
+              restSeconds: { type: "integer", nullable: true },
+              startWithRest: { type: "boolean", nullable: true },
             },
             required: ["type", "label"],
           },
@@ -296,8 +296,8 @@ const responseSchema = {
               severity: { type: "string", enum: ["blocking", "warning"] },
               code: { type: "string" },
               message: { type: "string" },
-              fieldPath: { type: ["string", "null"] },
-              question: { type: ["string", "null"] },
+              fieldPath: { type: "string", nullable: true },
+              question: { type: "string", nullable: true },
             },
             required: ["severity", "code", "message", "fieldPath", "question"],
           },
