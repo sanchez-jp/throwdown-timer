@@ -24,6 +24,26 @@ const presets = {
     tag:"TABATA", name:"TABATA 8 ROUNDS", description:"20 segundos trabajo / 10 segundos descanso",
     movements:["Air Squats","Máximo trabajo en cada intervalo"],
     plan:{type:"sequence",blocks:[{type:"intervals",label:"TABATA",rounds:8,workSeconds:20,restSeconds:10,startWithRest:false}]}
+  },
+  fran: {
+    tag:"FOR TIME", name:"FRAN", description:"21-15-9 · Thrusters y Pull-ups",
+    movements:["Thrusters","Pull-ups"],
+    workout:{
+      format:"for_time", description:"Completa 21, 15 y 9 repeticiones de cada movimiento, en ese orden.",
+      movements:[
+        {id:"thrusters",name:"Thrusters",prescription:null,load:"43 kg / 30 kg",notes:null},
+        {id:"pull-ups",name:"Pull-ups",prescription:null,load:null,notes:null}
+      ],
+      structure:{type:"sequence",items:[
+        {type:"movement",movementId:"thrusters",prescription:"21"},
+        {type:"movement",movementId:"pull-ups",prescription:"21"},
+        {type:"movement",movementId:"thrusters",prescription:"15"},
+        {type:"movement",movementId:"pull-ups",prescription:"15"},
+        {type:"movement",movementId:"thrusters",prescription:"9"},
+        {type:"movement",movementId:"pull-ups",prescription:"9"}
+      ]}
+    },
+    plan:{type:"sequence",blocks:[{type:"countup",label:"FOR TIME"}]}
   }
 };
 let selected = "amrap";
@@ -446,6 +466,16 @@ document.addEventListener("visibilitychange",async()=>{
 
 function presetAsWod() {
   const preset = presets[selected];
+  if (preset.workout) {
+    return {
+      schemaVersion: 2,
+      title: preset.name,
+      sourceText: preset.description,
+      workout: structuredClone(preset.workout),
+      timer: structuredClone(preset.plan),
+      interpretation: { status: "ready", issues: [] }
+    };
+  }
   const formatMap = { amrap:"amrap", fortime:"for_time", emom:"emom", tabata:"tabata" };
   return {
     schemaVersion: 1,
