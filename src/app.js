@@ -255,7 +255,7 @@ function toggleWorkoutDetails() {
   const button = $("workoutDetailsButton");
   const open = panel.classList.toggle("description-open");
   button.setAttribute("aria-expanded", String(open));
-  button.textContent = open ? "CERRAR WOD" : "VER WOD";
+  button.textContent = open ? "CERRAR DESCRIPCIÓN" : "VER DESCRIPCIÓN";
 }
 
 function renderTimerDescription(workout) {
@@ -266,13 +266,6 @@ function renderTimerDescription(workout) {
   const title = document.createElement("h2");
   title.textContent = workout.title || workout.name || "WOD";
   heading.append(title);
-  const closeButton = document.createElement("button");
-  closeButton.className = "text-button timer-description-close";
-  closeButton.type = "button";
-  closeButton.textContent = "CERRAR WOD";
-  closeButton.setAttribute("aria-label", "Cerrar descripción del WOD");
-  closeButton.addEventListener("click", toggleWorkoutDetails);
-  heading.append(closeButton);
   const format = document.createElement("span");
   format.className = "tag";
   format.textContent = workout.tag || String(workout.workout?.format || "WOD").replaceAll("_", " ").toUpperCase();
@@ -384,7 +377,7 @@ $("resetButton").addEventListener("click", async () => {
 });
 $("skipButton").addEventListener("click",()=>{if(!engine)return;const snap=engine.skip();processEvents();lastCountdownCue=null;renderTimer(snap);if(snap.state==="running")startDisplayLoop();});
 $("finishButton").addEventListener("click",async()=>{if(!engine)return;const snap=engine.finish();processEvents();renderTimer(snap);stopDisplayLoop();await releaseWakeLock();});
-$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.remove("timer-immersive","description-open");$("workoutDetailsButton").setAttribute("aria-expanded","false");$("workoutDetailsButton").textContent="VER WOD";updateFullscreenButton();$("timerPanel").classList.add("hidden");$(returnView==="library"?"libraryPanel":"setupPanel").classList.remove("hidden");});
+$("backButton").addEventListener("click",async()=>{stopDisplayLoop();await releaseWakeLock();engine=null;$("timerPanel").classList.remove("timer-immersive","description-open");$("workoutDetailsButton").setAttribute("aria-expanded","false");$("workoutDetailsButton").textContent="VER DESCRIPCIÓN";updateFullscreenButton();$("timerPanel").classList.add("hidden");$(returnView==="library"?"libraryPanel":"setupPanel").classList.remove("hidden");});
 $("soundButton").addEventListener("click", async () => {
   const enabled = $("soundButton").getAttribute("aria-pressed") !== "true";
   $("soundButton").setAttribute("aria-pressed", String(enabled));
