@@ -165,3 +165,17 @@ export function expandAlternatingCleanVariants(raw, sourceText = "") {
     },
   };
 }
+
+
+export function normalizeLadderDirection(raw) {
+  const structure = raw?.workout?.structure;
+  if (structure?.type !== "ladder" || !Array.isArray(structure.steps) || structure.steps.length === 0) return raw;
+  if (["ascending", "descending", "alternating", "custom"].includes(structure.direction)) return raw;
+  return {
+    ...raw,
+    workout: {
+      ...raw.workout,
+      structure: { ...structure, direction: "custom" },
+    },
+  };
+}
