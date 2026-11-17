@@ -463,13 +463,13 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
     });
     const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
     const groqModel = Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-20b";
-    const requestGroq = async (timeoutMs = 12000) => fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const requestGroq = async (timeoutMs = 12000, model = groqModel) => fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
       signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
-        model: groqModel,
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }],
+        model,
+        messages: [{ role: "system", content: systemPrompt + "\\n\\nResponde exclusivamente con un objeto JSON válido. Incluye todos los campos del contrato y utiliza null cuando un dato no esté especificado." }, { role: "user", content: prompt }],
         temperature: 0.1,
         max_tokens: 4096,
         response_format: { type: "json_object" },
@@ -558,7 +558,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       let parsed: any;
       try { parsed = JSON.parse(output); }
       catch { throw new Error("La respuesta de IA no contiene JSON válido."); }
-      return normalizeResult(parsed);
+      return normalizeResult(parsed, sourceText);
     };
 
     let output = await extractText(response);
@@ -572,17 +572,27 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       prompt = correctionPrompt;
       let correctedResponse: Response;
       try {
-        correctedResponse = selectedProvider === "groq" ? await requestGroq(8000) : await requestGemini(selectedModel, 8000);
+        correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, 8000);
       } catch (correctionError) {
-        console.error("Gemini correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
+        console.error("AI correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
         return json({ error: "La interpretación necesita una corrección, pero el modelo no ha respondido a tiempo. Inténtalo de nuevo." }, 503, allowedOrigin);
+      }
+      if (selectedProvider === "groq" && correctedResponse.status === 400) {
+        const detail = await correctedResponse.text();
+        console.warn("Groq correction rejected; retrying with the larger GPT-OSS model", detail.slice(0, 400));
+        try {
+          correctedResponse = await requestGroq(10000, "openai/gpt-oss-120b");
+          selectedModel = "openai/gpt-oss-120b";
+        } catch (correctionError) {
+          console.error("Groq larger-model correction failed", correctionError instanceof Error ? correctionError.name : "unknown");
+        }
       }
       if (!correctedResponse.ok) {
         const detail = await correctedResponse.text();
         console.error(`${selectedProvider} correction attempt failed`, correctedResponse.status, detail.slice(0, 800));
         if (correctedResponse.status === 503) return json({ error: "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
         if (correctedResponse.status === 429) return json({ error: "Se ha alcanzado temporalmente el límite de uso de IA. Inténtalo más tarde." }, 429, allowedOrigin);
-        return json({ error: "La IA ha generado una interpretación que necesita corrección y no ha podido completarla. Inténtalo de nuevo." }, 422, allowedOrigin);
+        return json({ error: "El proveedor alternativo no ha podido corregir la estructura del WOD. Vuelve a intentarlo; no es un problema de conexión con Supabase." }, 422, allowedOrigin);
       }
       output = await extractText(correctedResponse);
       try {
