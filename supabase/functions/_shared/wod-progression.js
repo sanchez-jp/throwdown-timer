@@ -5,7 +5,7 @@ export function expandDescendingIntervalProgression(raw) {
       !Number.isInteger(structure.count) || structure.count < 2 || structure.count > 30) return raw;
 
   const description = typeof workout.description === "string" ? workout.description : "";
-  const decrementMatch = description.match(/(?:restando|restan|restar|resta|reduciendo|reduce|disminuyendo|disminuye|subtract(?:ing)?|decreas(?:e|ing))\\s+(?:en\\s+)?(\\d+)\\s+(?:repeticiones?|reps?)\\b/i);
+  const decrementMatch = description.match(/(?:restando|restan|restar|resta|reduciendo|reduce|disminuyendo|disminuye|subtract(?:ing)?|decreas(?:e|ing))\s+(?:en\s+)?(\d+)\s+(?:repeticiones?|reps?)\b/i);
   if (!decrementMatch) return raw;
 
   const decrement = Number(decrementMatch[1]);
@@ -19,7 +19,7 @@ export function expandDescendingIntervalProgression(raw) {
     const movement = movements.get(item?.movementId);
     const prescription = item?.prescription ?? movement?.prescription ?? null;
     const match = typeof prescription === "string"
-      ? prescription.trim().match(/^(\\d+)(\\s*(?:reps?|repeticiones?))?$/i)
+      ? prescription.trim().match(/^(\d+)(\s*(?:reps?|repeticiones?))?$/i)
       : null;
     return { item, match };
   });

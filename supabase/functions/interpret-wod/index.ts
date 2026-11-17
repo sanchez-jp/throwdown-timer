@@ -101,7 +101,8 @@ function validatePlan(timer: any): string | null {
   return countups > 1 ? "Solo se permite un segmento For Time." : null;
 }
 
-function normalizeResult(raw: any) {\n  raw = expandDescendingIntervalProgression(raw);
+function normalizeResult(raw: any) {
+  raw = expandDescendingIntervalProgression(raw);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
