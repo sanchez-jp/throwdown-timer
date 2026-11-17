@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
-import { expandDescendingIntervalProgression, expandProgressiveLoadLadder } from "./wod-progression.js";
+import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants } from "./wod-progression.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -168,7 +168,7 @@ function normalizeCommonStructureDrift(workout: any, timer: any) {
 function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
-  raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);
+  raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);\n  raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
   if (raw?.workout) raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
   raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
@@ -438,7 +438,7 @@ REGLAS DE INTERPRETACIÓN:
    - For Time sin Time Cap es válido: countup con timeCapSeconds:null.
 10. Si hay contradicciones, no elijas arbitrariamente: devuelve timer:null si afectan al temporizador y registra issue blocking.
 10 bis. Cargas alternativas al final: si la descripción termina con una línea independiente marcada con asterisco que contiene una carga (por ejemplo "*25/17.5kg?"), interprétala como carga alternativa opcional del movimiento anterior más cercano que tenga una carga explícita y sea compatible con esa unidad/equipo. No preguntes al usuario cuando esa asociación contextual sea inequívoca. Conserva la carga original y añade la alternativa como opcional al mismo movimiento. No la conviertas en movimiento ni en repeticiones. Solo crea una issue blocking si hay dos o más movimientos cargados plausibles y no existe una asociación clara.
-   11. La descripción debe explicar el flujo de ejecución en español, sin sustituir ni contradecir structure.
+   10 ter. Si el WOD indica alternar explícitamente Squat Clean (SC) y Power Clean (PC) repetición a repetición, no lo reduzcas a un único movimiento genérico "Clean". Crea dos movimientos distintos, "Squat Clean" y "Power Clean", y en cada peldaño coloca primero Squat Clean y después Power Clean. Reparte el total de repeticiones de ese peldaño entre ambos: si es par, mitad y mitad; si es impar, una repetición más de Squat Clean porque empieza la alternancia. Mantén el total original. La normalización del servidor también aplicará esta separación cuando detecte la instrucción en el texto original.\n  10 quater. En WODs en parejas donde se indique que cada atleta hace una ronda y cambia, conserva esa rotación explícitamente en la descripción: un atleta completa todos los movimientos de una ronda y después cambia el turno al compañero; no interpretes que se alternan movimiento a movimiento.
 12. Devuelve exclusivamente el objeto JSON definido por el esquema. No añadas Markdown ni texto externo.`;
 
     const examples = `EJEMPLO 1 — FRAN:
