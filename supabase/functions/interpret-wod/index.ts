@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
-import { expandDescendingIntervalProgression } from "../_shared/wod-progression.js";
+import { expandDescendingIntervalProgression } from "./wod-progression.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",

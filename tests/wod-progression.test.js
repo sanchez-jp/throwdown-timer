@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expandDescendingIntervalProgression } from "../supabase/functions/_shared/wod-progression.js";
+import { expandDescendingIntervalProgression } from "../supabase/functions/interpret-wod/wod-progression.js";
 
 function result() {
   return {
