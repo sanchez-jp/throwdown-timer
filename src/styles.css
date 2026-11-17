@@ -137,20 +137,22 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-description-list li{font-size:clamp(13px,2vw,18px);line-height:1.35;margin:0 0 7px;color:var(--white)}
 .timer-description-notes{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
 
-/* Immersive view: one viewport-sized surface, with a single control hierarchy. */
+/* Immersive timer: shared visual system, viewport-safe sizing and non-overlapping WOD panel. */
 .timer-panel.timer-immersive{
   position:fixed;inset:0;z-index:10000;
-  width:100%;max-width:none;height:100vh;height:100dvh;
-  margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right)
+  width:100%;max-width:none;height:100vh;height:100svh;height:100dvh;
+  min-height:0;margin:0;box-sizing:border-box;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
   display:flex;flex-direction:column;overflow:hidden;
   background:#0b1018;isolation:isolate;
 }
+.timer-panel:not(.timer-immersive) .workout-details-button{display:none}
 .timer-immersive .timer-main{
-  position:relative;display:flex;flex:1 1 auto;flex-direction:column;
+  position:relative;display:flex;flex:1 1 0;flex-direction:column;
   justify-content:space-between;align-items:stretch;
-  width:100%;min-width:0;min-height:0;gap:clamp(4px,1vh,12px);
-  padding:clamp(12px,2.5vh,26px) clamp(14px,4vw,36px);
+  width:100%;min-width:0;min-height:0;gap:clamp(3px,1vh,10px);
+  padding:clamp(10px,2.2vh,24px) clamp(14px,4vw,36px);
   overflow:hidden;background:#0b1018;border:0;
 }
 .timer-immersive .timer-topline{flex:0 0 auto;min-height:28px}
@@ -158,8 +160,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-immersive .clock{
   flex:1 1 0;display:flex;align-items:center;justify-content:center;
   width:100%;min-width:0;min-height:0;max-width:100%;margin:0;
-  font-size:clamp(76px,min(25vw,25vh),210px);line-height:1;
-  letter-spacing:-.065em;white-space:nowrap;overflow:hidden;
+  font-size:clamp(48px,min(22vw,24dvh),190px);line-height:1;
+  letter-spacing:-.055em;white-space:nowrap;overflow:visible;
 }
 .timer-immersive .phase-label{flex:0 0 auto;font-size:clamp(10px,1.5vw,15px);margin:0}
 .timer-immersive .progress-track{flex:0 0 5px;width:100%;margin:4px 0}
@@ -184,38 +186,40 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 }
 .timer-immersive .workout-preview.compact,.timer-immersive #statusMessage{display:none}
 .timer-immersive .timer-description{display:none}
+.timer-immersive.description-open .timer-main{flex:1 1 0;min-height:0}
 .timer-immersive.description-open .timer-description{
-  display:block;position:absolute;z-index:5;left:0;right:0;bottom:0;
-  max-height:48%;overflow:auto;overscroll-behavior:contain;
-  padding:18px 22px max(18px,env(safe-area-inset-bottom));
+  position:relative;display:block;flex:0 1 40%;
+  width:100%;min-width:0;min-height:0;max-height:40%;
+  overflow:auto;overscroll-behavior:contain;
+  padding:14px 20px max(14px,env(safe-area-inset-bottom));
   border-top:1px solid var(--line);background:#111a25;
 }
-
-/* Landscape: keep the clock dominant and reserve a separate WOD column when opened. */
-@media (orientation:landscape) and (min-width:600px){
+.timer-description-close{color:var(--cyan);white-space:nowrap}
+.timer-description-heading{flex-wrap:wrap}
+.timer-description-heading h2{min-width:0;flex:1 1 auto}
+@media (orientation:landscape) and (min-width:480px){
   .timer-panel.timer-immersive{flex-direction:row}
   .timer-immersive .timer-main{
     flex:1 1 100%;width:100%;height:100%;
-    padding:clamp(10px,2vh,22px) clamp(18px,2vw,32px);
-    gap:clamp(3px,.8vh,9px);transition:flex-basis .2s ease;
+    padding:clamp(8px,2vh,20px) clamp(14px,2vw,30px);
+    gap:clamp(2px,.8vh,8px);transition:flex-basis .2s ease;
   }
-  .timer-immersive .clock{font-size:clamp(100px,min(31vw,48vh),360px)}
-  .timer-immersive.description-open .timer-main{flex:0 1 68%;width:68%}
-  .timer-immersive.description-open .clock{font-size:clamp(88px,min(20vw,38vh),260px)}
+  .timer-immersive .clock{font-size:clamp(48px,min(20vw,23dvh),180px)}
+  .timer-immersive.description-open .timer-main{flex:0 1 66%;width:66%}
   .timer-immersive.description-open .timer-description{
-    position:relative;inset:auto;display:block;flex:0 0 32%;
-    width:32%;height:100%;max-height:none;min-width:0;
-    padding:clamp(18px,2vw,30px);overflow:auto;
+    position:relative;inset:auto;display:block;flex:0 0 34%;
+    width:34%;height:100%;max-height:none;min-width:0;
+    padding:clamp(12px,2vw,24px);overflow:auto;
     border:0;border-left:1px solid var(--line);border-radius:0;
   }
   .timer-immersive .timer-tools{justify-content:flex-end}
   .timer-immersive .timer-tools .workout-details-button{margin-right:auto}
 }
-@media (max-height:520px) and (orientation:landscape){
-  .timer-immersive .timer-main{gap:3px;padding:8px 16px}
+@media(max-height:520px) and (orientation:landscape){
+  .timer-immersive .timer-main{gap:2px;padding:6px 12px}
   .timer-immersive .timer-topline{min-height:24px}
   .timer-immersive .timer-label{font-size:9px}
-  .timer-immersive .clock{font-size:clamp(76px,min(25vw,40vh),190px)}
+  .timer-immersive .clock{font-size:clamp(42px,min(18vw,22dvh),120px)}
   .timer-immersive .progress-track{margin:2px 0;height:4px}
   .timer-immersive .stats-row>div{padding:4px 8px}
   .timer-immersive .timer-controls>button.timer-icon-button{width:40px;height:40px;min-width:40px;min-height:40px;flex-basis:40px}
