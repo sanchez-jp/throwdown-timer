@@ -19,6 +19,31 @@ const formats = new Set([
   "rounds_for_time", "chipper", "ladder", "death_by",
   "strength_plus_wod", "custom",
 ]);
+function attachTrailingOptionalLoad(raw: any, sourceText: string) {
+  const trailingLoad = sourceText.match(/(?:^|\\n)\\s*\\*\\s*(\\d+(?:[.,’']\\d+)?\\s*\\/\\s*\\d+(?:[.,’']\\d+)?)\\s*kg\\s*\\??\\s*$/i);
+  if (!trailingLoad || !Array.isArray(raw?.workout?.movements)) return raw;
+
+  const optionalLoad = trailingLoad[1].replace(/[’']/g, ",").replace(/\\s*\\/\\s*/g, "/").replace(/\\s+/g, "") + " kg";
+  const target = [...raw.workout.movements].reverse().find((movement: any) =>
+    typeof movement?.load === "string" && movement.load.trim()
+  );
+  if (!target) return raw;
+
+  const currentLoad = target.load.trim();
+  if (!currentLoad.toLowerCase().includes(optionalLoad.toLowerCase())) {
+    target.load = currentLoad + " (alternativa opcional: " + optionalLoad + ")";
+  }
+
+  if (raw.interpretation && Array.isArray(raw.interpretation.issues)) {
+    raw.interpretation.issues = raw.interpretation.issues.filter((item: any) => {
+      const text = [item?.code, item?.message, item?.question].filter(Boolean).join(" ").toLowerCase();
+      return !(/carga alternativa|carga opcional|alternative load|optional load/.test(text) &&
+        /movimiento|aplica|apply|devil press|carga/.test(text));
+    });
+  }
+  return raw;
+}
+
 const issue = (code: string, message: string, fieldPath: string | null, question: string | null) => ({
   severity: "blocking", code, message, fieldPath, question,
 });
@@ -101,8 +126,8 @@ function validatePlan(timer: any): string | null {
   return countups > 1 ? "Solo se permite un segmento For Time." : null;
 }
 
-function normalizeResult(raw: any) {
-  raw = expandDescendingIntervalProgression(raw);
+function normalizeResult(raw: any, sourceTextForNormalization = "") {
+  raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);\n  raw = expandDescendingIntervalProgression(raw);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
@@ -369,7 +394,8 @@ REGLAS DE INTERPRETACIÓN:
    - Si falta duración esencial, devuelve timer:null y añade issue blocking TIMER_DETAILS_MISSING con pregunta concreta.
    - For Time sin Time Cap es válido: countup con timeCapSeconds:null.
 10. Si hay contradicciones, no elijas arbitrariamente: devuelve timer:null si afectan al temporizador y registra issue blocking.
-11. La descripción debe explicar el flujo de ejecución en español, sin sustituir ni contradecir structure.
+10 bis. Cargas alternativas al final: si la descripción termina con una línea independiente marcada con asterisco que contiene una carga (por ejemplo "*25/17.5kg?"), interprétala como carga alternativa opcional del movimiento anterior más cercano que tenga una carga explícita y sea compatible con esa unidad/equipo. No preguntes al usuario cuando esa asociación contextual sea inequívoca. Conserva la carga original y añade la alternativa como opcional al mismo movimiento. No la conviertas en movimiento ni en repeticiones. Solo crea una issue blocking si hay dos o más movimientos cargados plausibles y no existe una asociación clara.
+   11. La descripción debe explicar el flujo de ejecución en español, sin sustituir ni contradecir structure.
 12. Devuelve exclusivamente el objeto JSON definido por el esquema. No añadas Markdown ni texto externo.`;
 
     const examples = `EJEMPLO 1 — FRAN:
