@@ -355,3 +355,13 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     transition:flex-basis .36s cubic-bezier(.22,.8,.25,1),padding .36s cubic-bezier(.22,.8,.25,1),opacity .22s ease,transform .36s cubic-bezier(.22,.8,.25,1),visibility 0s;
   }
 }
+
+
+/* v43: keep the complete WOD list scrollable in the landscape drawer. */
+@media (orientation:landscape) and (min-width:480px){
+  .timer-immersive.description-open .timer-description{
+    flex:0 0 34%;flex-basis:34%;min-width:0;min-height:0;height:100%;max-height:100%;
+    overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  }
+  .timer-immersive.description-open .timer-description > *{flex-shrink:0}
+}
