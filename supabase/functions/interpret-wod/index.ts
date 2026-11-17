@@ -341,7 +341,7 @@ Deno.serve(async (req: Request) => {
     if (!apiKey) throw new Error("No está configurada la clave del proveedor de IA.");
     const primaryModel = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
     const fallbackModel = primaryModel === "gemini-3.8-flash" ? "gemini-3.5-flash-lite" : "gemini-3.8-flash";
-    const modelCandidates = [...new Set([primaryModel, fallbackModel, "gemini-3.6-flash"])];
+    const modelCandidates = [...new Set([primaryModel, fallbackModel])];
     const systemPrompt = `Eres un analista experto de CrossFit y un normalizador de WODs para Throwdown Timer. Tu única tarea es interpretar fielmente el entrenamiento descrito y producir el objeto schemaVersion 2.
 
 REGLAS DE INTERPRETACIÓN:
@@ -412,10 +412,10 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
 `;
 
     let prompt = `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\n\n${examples}\nDESCRIPCIÓN DEL WOD:\n${sourceText}`;
-    const requestGemini = async (model: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const requestGemini = async (model: string, timeoutMs = 15000) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -426,14 +426,23 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
     let selectedModel = primaryModel;
     for (let index = 0; index < modelCandidates.length; index++) {
       const model = modelCandidates[index];
-      response = await requestGemini(model);
       selectedModel = model;
+      try {
+        response = await requestGemini(model);
+      } catch (error) {
+        if (!(error instanceof Error) || error.name !== "TimeoutError") throw error;
+        console.warn("Gemini model request timed out", model);
+        if (index === modelCandidates.length - 1) {
+          return json({ error: "Los modelos de IA están tardando demasiado o están saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
+        }
+        continue;
+      }
       if (response.status !== 503) break;
-      await response.body?.cancel();
       const nextModel = modelCandidates[index + 1];
       if (nextModel) {
+        await response.body?.cancel();
         console.warn("Gemini model temporarily unavailable; trying next model", model, nextModel);
-        await new Promise(resolve => setTimeout(resolve, 700));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
     if (!response) throw new Error("No se ha podido contactar con los modelos de IA.");
@@ -465,7 +474,13 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       console.warn("AI output rejected; requesting one schema correction", validationMessage);
       const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.\nError de validación: ${validationMessage}\nDescripción original:\n${sourceText}\nRespuesta que debes corregir:\n${output.slice(0, 14000)}`;
       prompt = correctionPrompt;
-      const correctedResponse = await requestGemini(selectedModel);
+      let correctedResponse: Response;
+      try {
+        correctedResponse = await requestGemini(selectedModel, 12000);
+      } catch (correctionError) {
+        console.error("Gemini correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
+        return json({ error: "La interpretación necesita una corrección, pero el modelo no ha respondido a tiempo. Inténtalo de nuevo." }, 503, allowedOrigin);
+      }
       if (!correctedResponse.ok) {
         const detail = await correctedResponse.text();
         console.error("Gemini correction attempt failed", correctedResponse.status, detail.slice(0, 800));
