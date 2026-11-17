@@ -30,7 +30,16 @@ export async function interpretWod(sourceText) {
     body: { sourceText },
   });
   if (error) {
-    const message = data?.error || error.message;
+    let serverMessage = data?.error;
+    if (!serverMessage && error.context && typeof error.context.clone === "function") {
+      try {
+        const payload = await error.context.clone().json();
+        serverMessage = payload?.error;
+      } catch {
+        // The function gateway may return a non-JSON error response.
+      }
+    }
+    const message = serverMessage || error.message;
     throw new Error(message || "El servicio de interpretación no está disponible.");
   }
   if (!data?.result) throw new Error(data?.error || "La IA no ha devuelto una interpretación válida.");
