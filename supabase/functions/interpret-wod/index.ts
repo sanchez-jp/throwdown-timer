@@ -407,7 +407,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
 
 `;
 
-    let prompt = `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nDESCRIPCIÓN DEL WOD:\\n${sourceText}`;
+    let prompt = `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\n\n${examples}\nDESCRIPCIÓN DEL WOD:\n${sourceText}`;
     const requestGemini = async (model: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -459,7 +459,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
     } catch (firstError) {
       const validationMessage = firstError instanceof Error ? firstError.message : "La respuesta no cumple el contrato.";
       console.warn("AI output rejected; requesting one schema correction", validationMessage);
-      const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.\\nError de validación: ${validationMessage}\\nDescripción original:\\n${sourceText}\\nRespuesta que debes corregir:\\n${output.slice(0, 14000)}`;
+      const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.\nError de validación: ${validationMessage}\nDescripción original:\n${sourceText}\nRespuesta que debes corregir:\n${output.slice(0, 14000)}`;
       prompt = correctionPrompt;
       const correctedResponse = await requestGemini(selectedModel);
       if (!correctedResponse.ok) {
