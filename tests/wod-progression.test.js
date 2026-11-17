@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expandDescendingIntervalProgression, expandProgressiveLoadLadder } from "../supabase/functions/interpret-wod/wod-progression.js";
+import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants } from "../supabase/functions/interpret-wod/wod-progression.js";
 
 function result() {
   return {
@@ -109,4 +109,41 @@ test("does not invent a load progression when multiple movements share the same 
   const source = "Start with 40/30kg and increase 10/7,5kg after each round";
   const expanded = expandProgressiveLoadLadder(value, source);
   assert.equal(expanded.workout.structure.steps[0].label, "Ronda 1");
+});
+
+test("splits an alternating Clean ladder into Squat Clean and Power Clean in the stated order", () => {
+  const value = {
+    workout: {
+      movements: [{ id: "clean", name: "Clean", prescription: null, load: "40/30 kg" }],
+      structure: {
+        type: "ladder",
+        direction: "descending",
+        steps: [
+          { label: "Ronda 1", items: [{ type: "movement", movementId: "clean", prescription: "10 reps" }] },
+          { label: "Ronda 2", items: [{ type: "movement", movementId: "clean", prescription: "9 reps" }] },
+        ],
+      },
+    },
+  };
+  const expanded = expandAlternatingCleanVariants(value,
+    "Alternate SC and PC: 1 squat clean + 1 power clean + 1 squat... until 10 reps");
+  assert.deepEqual(expanded.workout.movements.map(movement => movement.name), ["Squat Clean", "Power Clean"]);
+  assert.deepEqual(expanded.workout.structure.steps.map(step =>
+    step.items.map(item => [item.movementId, item.prescription])), [
+    [["clean", "5 reps"], ["power-clean", "5 reps"]],
+    [["clean", "5 reps"], ["power-clean", "4 reps"]],
+  ]);
+  assert.equal(expanded.workout.movements[1].load, "40/30 kg");
+});
+
+test("does not split Clean when the source does not explicitly request alternation", () => {
+  const value = {
+    workout: {
+      movements: [{ id: "clean", name: "Clean", prescription: null }],
+      structure: { type: "ladder", steps: [{ label: "Ronda 1", items: [{ type: "movement", movementId: "clean", prescription: "10" }] }] },
+    },
+  };
+  const expanded = expandAlternatingCleanVariants(value, "10 rounds of Clean");
+  assert.equal(expanded.workout.movements.length, 1);
+  assert.equal(expanded.workout.structure.steps[0].items.length, 1);
 });
