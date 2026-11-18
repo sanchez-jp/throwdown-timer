@@ -1248,7 +1248,7 @@ function collectSemanticStructure() {
     }
     const load = row.querySelector('[name="itemLoad"]').value.trim();
     const increment = row.querySelector('[name="loadProgression"]').value.trim().replace(/,/g, ".");
-    if (increment && !/^\\d+(?:\\.\\d+)?(?:\\s*\\/\\s*\\d+(?:\\.\\d+)?)?$/.test(increment)) {
+    if (increment && !/^[0-9]+(?:[.][0-9]+)?(?:\/[0-9]+(?:[.][0-9]+)?)?$/.test(increment.replace(/\s/g, ""))) {
       throw new Error("El incremento por ronda debe ser un número o dos valores separados por /, por ejemplo 10/5.");
     }
     if (increment && !load) throw new Error("Indica también la carga inicial para aplicar un incremento por ronda.");
