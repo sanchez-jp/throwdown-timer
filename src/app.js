@@ -565,12 +565,12 @@ function makeLibraryCard(record) {
   const edit = document.createElement("button");
   edit.className = "secondary-button";
   edit.type = "button";
-  edit.textContent = "EDITAR";
+  edit.textContent = "Editar";
   edit.addEventListener("click", () => openEditor(record.id));
   const duplicate = document.createElement("button");
   duplicate.className = "secondary-button";
   duplicate.type = "button";
-  duplicate.textContent = "DUPLICAR";
+  duplicate.textContent = "Duplicar";
   duplicate.addEventListener("click", async () => {
     try { await repository.duplicate(record.id); await renderLibrary(); }
     catch (error) { showLibraryError(error); }
@@ -578,7 +578,7 @@ function makeLibraryCard(record) {
   const remove = document.createElement("button");
   remove.className = "secondary-button danger-button";
   remove.type = "button";
-  remove.textContent = "ELIMINAR";
+  remove.textContent = "Borrar";
   remove.addEventListener("click", async () => {
     const confirmed = window.confirm("¿Seguro que quieres eliminar el WOD «" + record.title + "»? Esta acción se puede deshacer desde la biblioteca.");
     if (!confirmed) return;
@@ -643,6 +643,7 @@ async function openEditor(id) {
     editingLegacyFormat = record.workout.legacyFormat || null;
     $("editorHeading").innerHTML = 'Editar WOD<span>.</span>';
     $("editorIntro").textContent = "Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.";
+    $("ai-import-section").hidden = true;
     $("ai-import-section").classList.add("hidden");
     $("ai-import-section").open = false;
     $("saveEditorButton").textContent = "GUARDAR CAMBIOS";
@@ -686,6 +687,7 @@ async function openNewEditor(sourceView = "library") {
   renderTimerBlocks(null);
   $("editorHeading").innerHTML = 'Crear WOD<span>.</span>';
   $("editorIntro").textContent = "Pega la descripción del entrenamiento para importarlo, o completa los apartados manualmente.";
+  $("ai-import-section").hidden = false;
   $("ai-import-section").classList.remove("hidden");
   $("ai-import-section").open = true;
   ["basic-editor-section","movement-editor-section","teamEditorSection","structureSection","timerSection"].forEach(id => { $(id).open = false; });
