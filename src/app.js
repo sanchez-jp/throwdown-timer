@@ -358,12 +358,13 @@ function renderTimerDescription(workout, timerPlan = null) {
     const group = document.createElement("section"); group.className = "timer-description-structure-group";
     const heading = document.createElement("h3"); heading.textContent = label;
     group.append(heading);
+    const sequenceItems = Array.isArray(items) ? items : [];
     const isEmomSequence = label === "SECUENCIA" && emomBlock;
-    renderStructureNodes(items, group, Boolean(isEmomSequence));
-    if (isEmomSequence && emomBlock.intervalLabels.length > (items || []).length) {
-      emomBlock.intervalLabels.slice(items.length).forEach((intervalLabel, offset) => {
+    renderStructureNodes(sequenceItems, group, Boolean(isEmomSequence));
+    if (isEmomSequence && emomBlock.intervalLabels.length > sequenceItems.length) {
+      emomBlock.intervalLabels.slice(sequenceItems.length).forEach((intervalLabel, offset) => {
         const item = document.createElement("li");
-        item.dataset.intervalIndex = String(items.length + offset);
+        item.dataset.intervalIndex = String(sequenceItems.length + offset);
         item.textContent = intervalLabel;
         group.querySelector(".timer-emom-schedule")?.append(item);
       });
