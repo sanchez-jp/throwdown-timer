@@ -68,6 +68,10 @@ let editingLegacyFormat = null;
 let editingStructureSupported = true;
 let aiSourceText = null;
 let aiReviewRequired = false;
+let importMode = null;
+let selectedImportImage = null;
+let selectedImportObjectUrl = null;
+let cameraStream = null;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -1529,35 +1533,235 @@ $("workoutEditor").addEventListener("submit", async event => {
 });
 
 
+function stopAiCamera() {
+  if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+  cameraStream = null;
+  const video = $("aiCameraVideo");
+  if (video) video.srcObject = null;
+  if ($("aiCameraCaptureButton")) $("aiCameraCaptureButton").disabled = true;
+}
+function closeAiCamera() {
+  stopAiCamera();
+  const dialog = $("aiCameraDialog");
+  if (dialog?.open) dialog.close();
+}
+function clearSelectedImportImage() {
+  if (selectedImportObjectUrl) URL.revokeObjectURL(selectedImportObjectUrl);
+  selectedImportObjectUrl = null;
+  selectedImportImage = null;
+  $("aiImagePreview")?.classList.add("hidden");
+  $("aiImagePrompt")?.classList.remove("hidden");
+  if ($("aiImageFileInput")) $("aiImageFileInput").value = "";
+  if ($("aiCameraFallbackInput")) $("aiCameraFallbackInput").value = "";
+}
+function setImportMode(mode, preserveImage = false) {
+  importMode = mode;
+  if (mode !== "image" || !preserveImage) clearSelectedImportImage();
+  $("aiTextImport").classList.toggle("hidden", mode !== "text");
+  $("aiImageImport").classList.toggle("hidden", mode !== "image");
+  $("aiImportImageButton").setAttribute("aria-pressed", String(mode === "image"));
+  $("aiImportCameraButton").setAttribute("aria-pressed", String(mode === "camera"));
+  $("aiImportTextButton").setAttribute("aria-pressed", String(mode === "text"));
+  $("interpretWithAiButton").classList.toggle("hidden", mode === "none" || (mode === "image" && !selectedImportImage));
+  $("aiInterpretationStatus").textContent = "";
+}
+function readImageAsBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || "");
+      const separator = value.indexOf(",");
+      if (separator < 0) reject(new Error("No se ha podido leer la imagen."));
+      else resolve({ mimeType: blob.type || "image/jpeg", data: value.slice(separator + 1) });
+    };
+    reader.onerror = () => reject(new Error("No se ha podido leer el archivo de imagen."));
+    reader.readAsDataURL(blob);
+  });
+}
+async function compressImportImage(file) {
+  if (file.size > 20 * 1024 * 1024) throw new Error("La imagen es demasiado grande. Selecciona una imagen de menos de 20 MB.");
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+  if (allowedTypes.includes(file.type) && file.size <= 4 * 1024 * 1024) return file;
+  let bitmap = null;
+  try {
+    if (typeof createImageBitmap === "function") bitmap = await createImageBitmap(file);
+  } catch { /* Safari puede no decodificar todos los formatos mediante createImageBitmap. */ }
+  let image = bitmap;
+  let objectUrl = null;
+  if (!image) {
+    objectUrl = URL.createObjectURL(file);
+    image = new Image();
+    try {
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error("El navegador no puede leer esta imagen. Prueba con JPG, PNG o WebP."));
+        image.src = objectUrl;
+      });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+  const scale = Math.min(1, 2400 / Math.max(image.width || image.naturalWidth, image.height || image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round((image.width || image.naturalWidth) * scale));
+  canvas.height = Math.max(1, Math.round((image.height || image.naturalHeight) * scale));
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) throw new Error("No se ha podido preparar la imagen.");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  bitmap?.close?.();
+  const toBlob = quality => new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+  let result = await toBlob(.9);
+  if (!result || result.size > 4 * 1024 * 1024) {
+    const reduced = document.createElement("canvas");
+    const ratio = Math.min(.82, 1900 / Math.max(canvas.width, canvas.height));
+    reduced.width = Math.max(1, Math.round(canvas.width * ratio));
+    reduced.height = Math.max(1, Math.round(canvas.height * ratio));
+    reduced.getContext("2d", { alpha: false }).drawImage(canvas, 0, 0, reduced.width, reduced.height);
+    result = await new Promise(resolve => reduced.toBlob(resolve, "image/jpeg", .84));
+  }
+  if (!result || result.size > 4 * 1024 * 1024) throw new Error("No se ha podido reducir la imagen a un tamaño válido. Prueba con otra imagen.");
+  return result;
+}
+async function prepareImportImage(file) {
+  if (!file || !String(file.type || "").startsWith("image/")) throw new Error("Selecciona un archivo de imagen.");
+  const blob = await compressImportImage(file);
+  return { blob, payload: await readImageAsBase64(blob) };
+}
+function showImportImage(blob, payload, name) {
+  clearSelectedImportImage();
+  selectedImportImage = payload;
+  selectedImportObjectUrl = URL.createObjectURL(blob);
+  $("aiImagePreviewElement").src = selectedImportObjectUrl;
+  $("aiImageFileName").textContent = name || "Imagen del WOD";
+  $("aiImagePrompt").classList.add("hidden");
+  $("aiImagePreview").classList.remove("hidden");
+  $("interpretWithAiButton").classList.remove("hidden");
+  $("aiInterpretationStatus").textContent = "Imagen preparada. Pulsa INTERPRETAR para reconocer el WOD.";
+}
+async function handleImportImage(file, name = file?.name || "Imagen del WOD") {
+  if (!file) return;
+  const status = $("aiInterpretationStatus");
+  const button = $("interpretWithAiButton");
+  button.disabled = true;
+  button.classList.add("hidden");
+  status.textContent = "Preparando imagen…";
+  try {
+    const prepared = await prepareImportImage(file);
+    setImportMode("image", true);
+    showImportImage(prepared.blob, prepared.payload, name);
+  } catch (error) {
+    status.textContent = error.message || "No se ha podido preparar la imagen.";
+  } finally {
+    button.disabled = false;
+  }
+}
+async function openAiCamera() {
+  setImportMode("image");
+  const dialog = $("aiCameraDialog");
+  const status = $("aiCameraStatus");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    $("aiInterpretationStatus").textContent = "Este navegador no permite acceder a la cámara. Selecciona una foto desde Elegir imagen.";
+    $("aiCameraFallbackInput").click();
+    return;
+  }
+  status.textContent = "Solicitando acceso a la cámara…";
+  $("aiCameraCaptureButton").disabled = true;
+  dialog.showModal();
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    $("aiCameraVideo").srcObject = cameraStream;
+    await $("aiCameraVideo").play();
+    $("aiCameraCaptureButton").disabled = false;
+    status.textContent = "Enfoca el WOD y pulsa HACER FOTO.";
+  } catch (error) {
+    stopAiCamera();
+    status.textContent = error?.name === "NotAllowedError"
+      ? "No se ha concedido permiso para usar la cámara. Puedes elegir una imagen de la galería."
+      : "No se ha podido abrir la cámara en este dispositivo. Puedes elegir una imagen.";
+  }
+}
+async function captureAiCameraImage() {
+  const video = $("aiCameraVideo");
+  if (!cameraStream || !video.videoWidth || !video.videoHeight) return;
+  const scale = Math.min(1, 2400 / Math.max(video.videoWidth, video.videoHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .9));
+  if (!blob) {
+    $("aiCameraStatus").textContent = "No se ha podido capturar la foto. Inténtalo de nuevo.";
+    return;
+  }
+  closeAiCamera();
+  const file = new File([blob], "foto-wod.jpg", { type: "image/jpeg" });
+  await handleImportImage(file, "Foto del WOD");
+}
 function resetAiReview() {
+  closeAiCamera();
   aiSourceText = null;
   aiReviewRequired = false;
+  importMode = null;
+  clearSelectedImportImage();
   const confirmation = $("aiReviewConfirmation");
   if (confirmation) confirmation.classList.add("hidden");
   if ($("aiReviewConfirmed")) $("aiReviewConfirmed").checked = false;
   if ($("aiSourceText")) $("aiSourceText").value = "";
+  if ($("aiTextImport")) $("aiTextImport").classList.add("hidden");
+  if ($("aiImageImport")) $("aiImageImport").classList.add("hidden");
+  if ($("aiImportImageButton")) $("aiImportImageButton").setAttribute("aria-pressed", "false");
+  if ($("aiImportCameraButton")) $("aiImportCameraButton").setAttribute("aria-pressed", "false");
+  if ($("aiImportTextButton")) $("aiImportTextButton").setAttribute("aria-pressed", "false");
   if ($("aiInterpretationStatus")) $("aiInterpretationStatus").textContent = "";
   if ($("interpretWithAiButton")) {
     $("interpretWithAiButton").disabled = false;
     $("interpretWithAiButton").textContent = "INTERPRETAR";
+    $("interpretWithAiButton").classList.add("hidden");
   }
 }
+$("aiImportImageButton").addEventListener("click", () => {
+  setImportMode("image");
+  $("aiImageFileInput").click();
+});
+$("aiImageChangeButton").addEventListener("click", () => $("aiImageFileInput").click());
+$("aiImportTextButton").addEventListener("click", () => {
+  setImportMode("text");
+  $("aiSourceText").focus();
+});
+$("aiImportCameraButton").addEventListener("click", openAiCamera);
+$("aiImageFileInput").addEventListener("change", event => handleImportImage(event.target.files?.[0]));
+$("aiCameraFallbackInput").addEventListener("change", event => handleImportImage(event.target.files?.[0], "Foto del WOD"));
+$("aiCameraCancelButton").addEventListener("click", closeAiCamera);
+$("aiCameraCloseButton").addEventListener("click", closeAiCamera);
+$("aiCameraCaptureButton").addEventListener("click", captureAiCameraImage);
+$("aiCameraDialog").addEventListener("cancel", stopAiCamera);
 
 $("interpretWithAiButton").addEventListener("click", async () => {
-  const sourceText = $("aiSourceText").value.trim();
+  const sourceText = importMode === "text" ? $("aiSourceText").value.trim() : "";
+  const image = importMode === "image" ? selectedImportImage : null;
   const status = $("aiInterpretationStatus");
   const button = $("interpretWithAiButton");
-  if (sourceText.length < 8) {
+  if (importMode === "text" && sourceText.length < 8) {
     status.textContent = "Escribe o pega la descripción completa del WOD.";
     $("aiSourceText").focus();
     return;
   }
+  if (importMode === "image" && !image) {
+    status.textContent = "Selecciona una imagen o haz una foto del WOD.";
+    return;
+  }
+  if (!sourceText && !image) return;
   button.disabled = true;
   button.textContent = "INTERPRETANDO…";
-  status.textContent = "Conectando con el servicio de IA…";
+  status.textContent = image ? "Enviando imagen para reconocer el WOD…" : "Conectando con el servicio de IA…";
   try {
     const { interpretWod } = await import("./ai-client.js");
-    const result = await interpretWod(sourceText);
+    const result = await interpretWod(image ? { image } : sourceText);
     editingSchemaVersion = 2;
     editingLegacyFormat = null;
     editingStructureSupported = true;
@@ -1580,7 +1784,7 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     editingStructureSupported = isStructureEditorCompatible(result.workout.structure) &&
       $("structureType").value === result.workout.structure.type;
     renderTimerBlocks(result.timer);
-    aiSourceText = sourceText;
+    aiSourceText = sourceText || null;
     aiReviewRequired = true;
     $("aiReviewConfirmation").classList.remove("hidden");
     $("aiReviewConfirmed").checked = false;
