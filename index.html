@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="./src/styles.css?v=58">
+  <link rel="stylesheet" href="./src/styles.css?v=59">
 </head>
 <body>
   <main class="app-shell">
@@ -62,8 +62,8 @@
       <h1 id="editorHeading">Editar WOD<span>.</span></h1>
       <p class="intro" id="editorIntro">Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.</p>
       <form id="workoutEditor" novalidate>
-        <details class="editor-section ai-import-section">
-          <summary><span>Importar WOD con IA</span><small>Opcional · Pegar descripción</small></summary>
+        <details class="editor-section ai-import-section" id="ai-import-section">
+          <summary><span>Importar</span><small>Opcional · Pegar descripción</small></summary>
           <div class="editor-section-content ai-import-panel">
             <p class="timer-plan-help">Pega el texto del entrenamiento. La IA propondrá los movimientos, el orden y el temporizador; podrás revisarlo y editarlo antes de guardarlo.</p>
             <p class="timer-plan-help">La descripción se enviará a Google Gemini para interpretarla. Evita incluir datos personales o información sensible.</p>
@@ -73,7 +73,7 @@
             <div class="editor-status ai-interpretation-status" id="aiInterpretationStatus" role="status" aria-live="polite"></div>
           </div>
         </details>
-        <details class="editor-section basic-editor-section" open>
+        <details class="editor-section basic-editor-section" id="basic-editor-section" open>
           <summary><span>Datos básicos</span><small>Nombre, formato y descripción</small></summary>
           <div class="editor-section-content">
             <label class="field-label" for="editTitle">Nombre del WOD</label>
@@ -86,7 +86,7 @@
             <textarea class="editor-input" id="editDescription" name="description" rows="3" maxlength="1000"></textarea>
           </div>
         </details>
-        <details class="editor-section movement-editor-section" open>
+        <details class="editor-section movement-editor-section" id="movement-editor-section" open>
           <summary><span>Movimientos</span><small>Ejercicios, repeticiones y cargas</small></summary>
           <div class="editor-section-content">
             <div id="movementEditorList" class="movement-editor-list"></div>
@@ -172,6 +172,6 @@
     </section>
     <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
   </main>
-  <script type="module" src="./src/app.js?v=11"></script>
+  <script type="module" src="./src/app.js?v=12"></script>
 </body>
 </html>
