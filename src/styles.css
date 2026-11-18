@@ -385,3 +385,10 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .ai-interpretation-status{white-space:pre-line;margin-top:10px}
 .ai-review-confirmation{display:flex;align-items:flex-start;gap:10px;margin-top:14px;color:var(--text);font-size:.9rem;line-height:1.45}
 .ai-review-confirmation input{flex:0 0 auto;margin-top:3px;accent-color:var(--lime)}
+
+
+/* Team dynamics editor */
+.team-settings-editor{margin:22px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.team-settings-editor .movement-editor-heading{align-items:center}
+.team-rotation-settings{margin-top:12px}
+.timer-description-team{margin:10px 0 16px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:.88rem;line-height:1.45}
