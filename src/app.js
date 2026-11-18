@@ -638,7 +638,9 @@ function makeLibraryCard(record) {
   const remove = document.createElement("button");
   remove.className = "secondary-button danger-button";
   remove.type = "button";
-  remove.textContent = "Borrar";
+  remove.setAttribute("aria-label", "Borrar WOD");
+  remove.title = "Borrar WOD";
+  remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18M8 6V4h8v2m3 0-.9 14H5.9L5 6m4 4v6m6-6v6" /></svg>';
   remove.addEventListener("click", async () => {
     const confirmed = window.confirm("¿Seguro que quieres eliminar el WOD «" + record.title + "»? Esta acción se puede deshacer desde la biblioteca.");
     if (!confirmed) return;
