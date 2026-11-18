@@ -140,6 +140,9 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-emom-schedule{list-style:none;padding:0;margin:8px 0}
 .timer-emom-schedule li{padding:8px 10px;border:1px solid transparent;border-radius:6px;color:var(--muted);transition:background-color .22s ease,border-color .22s ease,color .22s ease,transform .22s ease}
 .timer-emom-schedule li.is-active{border-color:var(--lime);background:rgba(201,242,61,.1);color:var(--white);font-weight:800;transform:translateX(3px)}
+.timer-description-stage{padding:8px 10px;border:1px solid transparent;border-radius:8px;transition:background-color .22s ease,border-color .22s ease}
+.timer-description-stage.is-active{border-color:var(--lime);background:rgba(201,242,61,.1)}
+.timer-description-stage.is-active.is-paused{animation:emom-paused-pulse 1.2s ease-in-out infinite}
 .timer-emom-schedule li.is-active.is-paused{animation:emom-paused-pulse 1.2s ease-in-out infinite}
 @keyframes emom-paused-pulse{0%,100%{opacity:1;background:rgba(201,242,61,.18);box-shadow:0 0 0 1px rgba(201,242,61,.32)}50%{opacity:.62;background:rgba(201,242,61,.025);box-shadow:0 0 0 1px rgba(201,242,61,.06)}}
 
