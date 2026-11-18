@@ -392,3 +392,14 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .team-settings-editor .movement-editor-heading{align-items:center}
 .team-rotation-settings{margin-top:12px}
 .timer-description-team{margin:10px 0 16px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:.88rem;line-height:1.45}
+
+
+/* Estructuras semánticas anidadas */
+.structure-nested-group,.structure-choice-group{display:grid;gap:10px;padding:12px;border:1px solid var(--border,#344050);border-radius:12px;background:rgba(255,255,255,.025)}
+.structure-nested-heading,.structure-node-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.structure-nested-heading .structure-count{width:90px}
+.structure-choice-alternatives{display:grid;gap:10px}
+.structure-choice-alternative{display:grid;gap:8px;padding:10px;border:1px dashed var(--border,#344050);border-radius:9px}
+.timer-description-nested-group,.timer-description-choice{margin:8px 0;padding:10px;border-left:2px solid var(--accent,#8fa8ff);background:rgba(255,255,255,.025)}
+.timer-description-choice-option{margin:8px 0}
+.timer-description-choice-option>strong{display:block;margin-bottom:4px}
