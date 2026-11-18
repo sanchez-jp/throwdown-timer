@@ -397,7 +397,26 @@ function validatePlan(timer: any): string | null {
 }
 
 function normalizeTimerPlan(timer: any) {
-  if (!timer || timer.type !== "sequence" || !Array.isArray(timer.blocks)) return timer;
+  if (!timer || typeof timer !== "object") return timer;
+  const directType = String(timer.type || "").toLowerCase();
+  if (directType === "emom" || directType === "e2mom") {
+    const intervalSeconds = timer.intervalSeconds ?? (directType === "e2mom" ? 120 : 60);
+    const durationSeconds = timer.durationSeconds ?? (Number.isInteger(timer.durationMinutes) ? timer.durationMinutes * 60 : null);
+    return {
+      type: "sequence",
+      label: timer.label || directType.toUpperCase(),
+      blocks: [{
+        ...timer,
+        type: "emom",
+        label: timer.label || directType.toUpperCase(),
+        intervalSeconds,
+        durationSeconds,
+        rounds: timer.rounds ?? (Number.isInteger(durationSeconds) && Number.isInteger(intervalSeconds) && intervalSeconds > 0
+          ? durationSeconds / intervalSeconds : null),
+      }],
+    };
+  }
+  if (timer.type !== "sequence" || !Array.isArray(timer.blocks)) return timer;
   return {
     ...timer,
     blocks: timer.blocks.map((block: any) => {
@@ -461,6 +480,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
+  raw = normalizeEmomIntervalLabels(raw, sourceTextForNormalization);
   const structureError = validateStructure(raw.workout);
   if (structureError) {
     const structure = raw.workout.structure || {};
@@ -501,7 +521,15 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
     throw new Error(structureError);
   }
   const timerError = validatePlan(raw.timer);
-  if (timerError) throw new Error(timerError);
+  if (timerError) {
+    console.error("AI timer validation diagnostic", JSON.stringify({
+      timerType: raw.timer?.type,
+      timerKeys: raw.timer && typeof raw.timer === "object" ? Object.keys(raw.timer) : [],
+      blockTypes: Array.isArray(raw.timer?.blocks) ? raw.timer.blocks.map((block: any) => block?.type) : null,
+      format: raw.workout?.format,
+    }));
+    throw new Error(timerError);
+  }
   const issues = Array.isArray(raw.interpretation?.issues) ? raw.interpretation.issues
     .filter((item: any) => item && typeof item.message === "string")
     .slice(0, 12)
@@ -1106,7 +1134,7 @@ Devuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
       });
     }
 
-    result = normalizeEmomIntervalLabels(result, sourceText);
+    // EMOM labels are normalized inside normalizeResult before timer validation.
     const structure = result.workout?.structure;
     const hasProgression = (nodes: any[]): boolean => nodes.some((node: any) =>
       node?.loadProgression?.every === "round" ||
