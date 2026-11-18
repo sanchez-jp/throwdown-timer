@@ -116,13 +116,14 @@ function repairEmptyAmrapLoadProgression(workout: any, sourceText: string) {
   const items = movements.map((movement: any) => {
     if (!movement || typeof movement.id !== "string" || !movement.id) return null;
     const load = typeof movement.load === "string" && movement.load.trim()
-      ? movement.load.trim() + " · +" + increment + " kg por ronda"
+      ? movement.load.trim()
       : null;
     return {
       type: "movement",
       movementId: movement.id,
       prescription: typeof movement.prescription === "string" ? movement.prescription : null,
       load,
+      ...(load ? { loadProgression: { increment, unit: "kg", every: "round" } } : {}),
     };
   });
   if (items.some((item: any) => !item)) return workout;
@@ -506,6 +507,9 @@ const responseSchema = {
               name: { type: "string" },
               prescription: { type: "string", nullable: true },
               load: { type: "string", nullable: true },
+                  loadProgression: { type: "object", properties: {
+                    increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
+                  }, required: ["increment", "unit", "every"] },
               notes: { type: "string", nullable: true },
             },
             required: ["id", "name", "prescription", "load", "notes"],
@@ -523,16 +527,25 @@ const responseSchema = {
                 properties: {
                   type: { type: "string", enum: ["movement", "rounds", "choice"] },
                   movementId: { type: "string", nullable: true }, prescription: { type: "string", nullable: true },
-                  load: { type: "string", nullable: true }, count: { type: "integer", nullable: true }, label: { type: "string", nullable: true },
+                  load: { type: "string", nullable: true },
+                  loadProgression: { type: "object", properties: {
+                    increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
+                  }, required: ["increment", "unit", "every"] }, count: { type: "integer", nullable: true }, label: { type: "string", nullable: true },
                   items: { type: "array", items: { type: "object", properties: {
                     type: { type: "string", enum: ["movement"] }, movementId: { type: "string" },
                     prescription: { type: "string", nullable: true }, load: { type: "string", nullable: true },
+                  loadProgression: { type: "object", properties: {
+                    increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
+                  }, required: ["increment", "unit", "every"] },
                   }, required: ["type", "movementId", "prescription", "load"] } },
                   alternatives: { type: "array", items: { type: "object", properties: {
                     label: { type: "string" },
                     items: { type: "array", items: { type: "object", properties: {
                       type: { type: "string", enum: ["movement"] }, movementId: { type: "string" },
                       prescription: { type: "string", nullable: true }, load: { type: "string", nullable: true },
+                  loadProgression: { type: "object", properties: {
+                    increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
+                  }, required: ["increment", "unit", "every"] },
                     }, required: ["type", "movementId", "prescription", "load"] } },
                   }, required: ["label", "items"] } },
                 },
@@ -582,6 +595,9 @@ const responseSchema = {
                             movementId: { type: "string" },
                             prescription: { type: "string", nullable: true },
                             load: { type: "string", nullable: true },
+                  loadProgression: { type: "object", properties: {
+                    increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
+                  }, required: ["increment", "unit", "every"] },
                           },
                           required: ["type", "movementId", "prescription", "load"],
                         },
@@ -706,6 +722,7 @@ REGLAS DE INTERPRETACIÓN:
    - sequence: lista ordenada literal. Es la opción correcta para esquemas descendentes o irregulares como 21-15-9 cuando las repeticiones cambian en cada vuelta.
    - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda. También puede aparecer dentro de otra estructura para representar subrondas anidadas.
    - choice: cuando el atleta debe elegir una sola modalidad. Cada modalidad física elegible debe ser una alternativa independiente con un único movement. Si el texto dice "Row o Ski", crea dos alternativas separadas (Row y Ski), cada una con la misma prescripción; si además dice "o Bike", crea una tercera alternativa (Bike) con su prescripción propia. No crees una alternativa agrupadora llamada "Row or Ski" que contenga Row y Ski como dos items, porque los items de una alternativa se ejecutarían juntos. Ejemplo: "30/24 cal Row o Ski o 24/18 cal Bike" = choice con tres alternativas: Row (30/24 cal), Ski (30/24 cal) y Bike (24/18 cal).
+- En un AMRAP con incremento explícito de carga en cada vuelta (por ejemplo, "+10/5 kg en cada ronda"), representa el circuito como una sequence abierta. En cada movimiento afectado, conserva la carga inicial en load y añade loadProgression:{increment:"10/5",unit:"kg",every:"round"}. La progresión se aplica dinámicamente en cada vuelta completada, sin crear rondas fijas, peldaños ni un número máximo de vueltas. No consideres ambiguo que el AMRAP tenga rondas ilimitadas: este modelo representa esa progresión.
 - Usa ladder cuando el entrenamiento esté organizado realmente como peldaños/progresión. Si hay N rondas compuestas por varios movimientos y alguna prescripción cambia en cada ronda, conserva las rondas como grupos separados dentro de sequence; no conviertas automáticamente todo el circuito en ladder.
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items. Úsalo solo cuando el WOD esté planteado como una escalera de peldaños. Si hay un circuito de N rondas con prescripciones distintas en cada vuelta, represéntalo como sequence con N nodos rounds de count:1 y labels "RONDA 1"... "RONDA N"; no lo conviertas en ladder por el mero hecho de que las repeticiones cambien. No inventes progresiones. Si una carga comienza en un peso y aumenta una cantidad fija después de cada ronda, incluye en la etiqueta de cada peldaño el peso exacto de esa ronda, calculándolo desde el peso inicial y el incremento.
@@ -952,6 +969,7 @@ Comprueba especialmente:
 - Diferencia entre movimientos repetidos, alternativas (choice) y bloques anidados.
 - Dinámica de equipo: reparto libre, I Go You Go, sincronización y excepciones por movimiento.
 - Formato y temporizador: Time Cap, duración, intervalos y descansos.
+- Si el formato es AMRAP y la secuencia contiene movimientos con loadProgression.every:"round", interpreta esa regla como incremento dinámico en cada vuelta completada. No marques como ambigua la ausencia de un número fijo de rondas: la secuencia es abierta por definición.
 
 El texto original es la fuente de verdad. No des por correcta una interpretación solo porque el JSON sea estructuralmente válido. Si el candidato coloca una progresión de N valores fuera de un circuito de N rondas sin que el original indique un finisher separado, es una discrepancia semántica y debe corregirse agrupando cada valor al final de su ronda. Si no hay certeza por el contexto, devuelve uncertain y explica la ambigüedad.
 
@@ -1019,6 +1037,12 @@ Devuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
       });
     }
 
+    const structure = result.workout?.structure;
+    if (result.workout?.format === "amrap" && structure?.type === "sequence" &&
+        Array.isArray(structure.items) && structure.items.some((item: any) => item?.loadProgression?.every === "round")) {
+      result.interpretation.issues = (result.interpretation.issues || []).filter((item: any) =>
+        !/AMRAP.*(?:número fijo|rondas)|(?:representación estática|ambigua).*carga/i.test(item.message || ""));
+    }
     return json({ result }, 200, allowedOrigin);
   } catch (error) {
     console.error("interpret-wod failure", error instanceof Error ? error.message : "unknown");
