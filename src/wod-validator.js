@@ -54,6 +54,15 @@ function validateStructure(node, movementIds, path = "workout.structure", depth 
         fail("INVALID_MOVEMENT_LOAD", "La carga de esta aparición debe ser texto o null.", path + ".load");
       }
       return;
+    case "choice":
+      if (!Array.isArray(node.alternatives) || node.alternatives.length < 2) fail("INVALID_CHOICE", "Una elección debe ofrecer al menos dos alternativas.", path + ".alternatives");
+      node.alternatives.forEach((alternative, index) => {
+        const p = path + ".alternatives[" + index + "]";
+        if (!alternative || typeof alternative !== "object" || !nonEmptyString(alternative.label)) fail("INVALID_CHOICE_ALTERNATIVE", "Cada alternativa necesita una etiqueta.", p);
+        if (!Array.isArray(alternative.items) || !alternative.items.length) fail("EMPTY_CHOICE_ALTERNATIVE", "Cada alternativa debe contener al menos un movimiento.", p + ".items");
+        alternative.items.forEach((child, childIndex) => validateStructure(child, movementIds, p + ".items[" + childIndex + "]", depth + 1));
+      });
+      return;
     case "sequence":
     case "rounds":
     case "chipper": {
