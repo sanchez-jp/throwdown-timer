@@ -18,7 +18,7 @@ const presets = {
   emom: {
     tag:"EMOM", name:"EMOM 10'", description:"10 intervalos de 1 minuto",
     movements:["Minuto impar · 12/10 cal Bike","Minuto par · 10 Burpees"],
-    plan:{type:"sequence",blocks:[{type:"emom",label:"EMOM",durationSeconds:600,intervalSeconds:60,rounds:10}]}
+    plan:{type:"sequence",blocks:[{type:"emom",label:"EMOM",durationSeconds:600,intervalSeconds:60,rounds:10,intervalLabels:["Minuto impar · 12/10 cal Bike","Minuto par · 10 Burpees"]}]}
   },
   tabata: {
     tag:"TABATA", name:"TABATA 8 ROUNDS", description:"20 segundos trabajo / 10 segundos descanso",
@@ -399,6 +399,8 @@ function renderTimerDescription(workout, timerPlan = null) {
     structure.sections.forEach((section, index) =>
       addStructureGroup(section.name || "SECCIÓN " + (index + 1), section.structure?.items, hasTimedStages ? index : null)
     );
+  } else if (emomBlock) {
+    addStructureGroup("SECUENCIA", []);
   } else if (movements.length) {
     const label = document.createElement("h3");
     label.textContent = "MOVIMIENTOS";
@@ -435,17 +437,16 @@ function renderTimerDescription(workout, timerPlan = null) {
 
 function updateTimerDescriptionActive(snapshot) {
   const activeState = ["running", "paused"].includes(snapshot.state);
-  const schedule = document.querySelector(".timer-emom-schedule");
-  if (schedule) {
+  document.querySelectorAll(".timer-emom-schedule").forEach(schedule => {
     const items = [...schedule.querySelectorAll("[data-interval-index]")];
-    const current = activeState && snapshot.blockType === "emom" && snapshot.round
+    const current = activeState && snapshot.blockType === "emom" && snapshot.round && items.length
       ? (snapshot.round.current - 1) % items.length : -1;
     items.forEach((item, index) => {
       const active = index === current;
       item.classList.toggle("is-active", active);
       item.classList.toggle("is-paused", active && snapshot.state === "paused");
     });
-  }
+  });
   document.querySelectorAll("[data-timer-stage-index]").forEach(item => {
     const active = activeState && snapshot.blockType === "countup" &&
       Number(item.dataset.timerStageIndex) === snapshot.stageIndex;
