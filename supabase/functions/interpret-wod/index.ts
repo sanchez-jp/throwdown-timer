@@ -389,7 +389,8 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
-  raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);\n  raw.workout = repairEmptyRoundGroups(raw.workout);
+  raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
+  raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
   const structureError = validateStructure(raw.workout);
