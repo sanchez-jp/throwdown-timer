@@ -69,11 +69,16 @@ function compilePlan(plan) {
       case "countup":
         if (block.timeCapSeconds !== null) positiveInteger(block.timeCapSeconds, "timeCapSeconds");
         if (block.rounds !== null) positiveInteger(block.rounds, "rounds");
+        const stages = Array.isArray(block.stages) ? block.stages.map(stage => ({
+          label: stage.label,
+          durationMs: stage.durationSeconds * 1000
+        })) : null;
         add({
           type: "countup",
           label: block.label || "For Time",
           durationMs: block.timeCapSeconds === null ? null : block.timeCapSeconds * 1000,
           rounds: block.rounds,
+          stages,
           allowSkip: false
         }, path);
         break;
@@ -365,6 +370,24 @@ export class TimerEngine {
     const rounds = phase?.totalRounds
       ? { current: phase.round, total: phase.totalRounds }
       : null;
+    let stageIndex = null;
+    let stageLabel = null;
+    let stageElapsedMs = null;
+    if (phase?.type === "countup" && Array.isArray(phase.stages) && phase.stages.length &&
+        (this.state === "running" || this.state === "paused")) {
+      let offset = 0;
+      const stage = phase.stages.findIndex(item => {
+        const end = offset + item.durationMs;
+        if (elapsed < end) return true;
+        offset = end;
+        return false;
+      });
+      if (stage >= 0) {
+        stageIndex = stage;
+        stageLabel = phase.stages[stage].label;
+        stageElapsedMs = Math.max(0, Math.floor(elapsed - offset));
+      }
+    }
     const result = {
       state: this.state,
       blockIndex: phase ? this.index : null,
@@ -377,6 +400,9 @@ export class TimerEngine {
       totalElapsedMs: Math.floor(this.totalElapsedMs + ((this.state === "running" || this.state === "paused") ? elapsed : 0)),
       totalRemainingMs: remainingTotal === null ? null : Math.ceil(remainingTotal),
       round: rounds,
+      stageIndex,
+      stageLabel,
+      stageElapsedMs,
       completionReason: this.completionReason,
       can: {
         start: this.state === "idle",
