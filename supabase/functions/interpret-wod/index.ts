@@ -145,7 +145,7 @@ function normalizeTimerPlan(timer: any) {
 
 function normalizeExplicitLadderFormat(workout: any, sourceText: string) {
   if (workout?.format === "for_time" && workout?.structure?.type === "ladder" &&
-      /\\bladder\\b/i.test(sourceText)) {
+      /\bladder\b/i.test(sourceText)) {
     return { ...workout, format: "ladder" };
   }
   return workout;
@@ -653,7 +653,7 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
         correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, 8000);
         if (selectedProvider === "groq" && correctedResponse.status === 429) {
           const rateLimitDetail = await correctedResponse.text();
-          const retryMatch = rateLimitDetail.match(/try again in ([\\d.]+)\\s*ms/i);
+          const retryMatch = rateLimitDetail.match(/try again in ([\d.]+)\s*ms/i);
           const retryDelayMs = retryMatch
             ? Math.min(1500, Math.max(250, Math.ceil(Number(retryMatch[1]) + 150)))
             : 700;
