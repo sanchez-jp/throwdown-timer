@@ -431,9 +431,13 @@ function updateTimerDescriptionActive(snapshot) {
   const schedule = document.querySelector(".timer-emom-schedule");
   if (!schedule) return;
   const items = [...schedule.querySelectorAll("[data-interval-index]")];
-  const current = snapshot.state === "running" && snapshot.blockType === "emom" && snapshot.round
-    ? (snapshot.round.current - 1) % items.length : -1;
-  items.forEach((item, index) => item.classList.toggle("is-active", index === current));
+  const hasCurrentStage = ["running", "paused"].includes(snapshot.state) && snapshot.blockType === "emom" && snapshot.round;
+  const current = hasCurrentStage ? (snapshot.round.current - 1) % items.length : -1;
+  items.forEach((item, index) => {
+    const active = index === current;
+    item.classList.toggle("is-active", active);
+    item.classList.toggle("is-paused", active && snapshot.state === "paused");
+  });
 }
 
 function showTimer(w = presets[selected], sourceView = "home") {
