@@ -103,16 +103,16 @@ function repairEmptyAmrapLoadProgression(workout: any, sourceText: string) {
 
   const groups = structure.items;
   const isEmptyRoundGroup = (group: any) => group?.type === "rounds" && group.count === 1 &&
-    typeof group.label === "string" && /^ronda\\s+\\d+(?:\\s*\\([^)]*\\))?$/i.test(group.label.trim()) &&
+    typeof group.label === "string" && /^ronda\s+\d+(?:\s*\([^)]*\))?$/i.test(group.label.trim()) &&
     (!Array.isArray(group.items) || group.items.length === 0);
   if (groups.length < 2 || !groups.every(isEmptyRoundGroup)) return workout;
 
   const progression = sourceText.match(
-    /(?:añad(?:e|ir)|increment(?:a|ar)|aument(?:a|ar)|sub(?:e|ir)|add|increase)\\s+(?:en\\s+)?(\\d+(?:[.,]\\d+)?\\s*\\/\\s*\\d+(?:[.,]\\d+)?)\\s*kg\\s+en\\s+cada\\s+ronda/i
+    /(?:añad(?:e|ir)|increment(?:a|ar)|aument(?:a|ar)|sub(?:e|ir)|add|increase)\s+(?:en\s+)?(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\s+en\s+cada\s+ronda/i
   );
   if (!progression) return workout;
 
-  const increment = progression[1].replace(/\\s/g, "").replace(/,/g, ".");
+  const increment = progression[1].replace(/\s/g, "").replace(/,/g, ".");
   const items = movements.map((movement: any) => {
     if (!movement || typeof movement.id !== "string" || !movement.id) return null;
     const load = typeof movement.load === "string" && movement.load.trim()
