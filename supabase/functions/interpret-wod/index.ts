@@ -1041,11 +1041,11 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
 
 `;
 
-    const imageParts = hasImage ? [{ inlineData: { mimeType: image.mimeType, data: image.data } }] : [];
+    const imageParts = hasImage ? [{ inlineData: { mimeType: image.mimeType, data: image.data }, mediaResolution: "HIGH" }] : [];
     let prompt = hasImage
       ? `Interpreta el WOD que aparece en la imagen adjunta. Lee cuidadosamente todo el texto, incluidos encabezados, notas, cargas, unidades, alternativas y anotaciones manuscritas legibles. Conserva el orden y la estructura visual. Devuelve además en el campo superior sourceText una transcripción fiel del contenido visible, conservando el orden de las líneas. Marca como [ilegible] cualquier fragmento que no puedas leer con seguridad y añade una observación para que el usuario lo revise. No inventes datos. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nWOD EN LA IMAGEN ADJUNTA.`
       : `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nDESCRIPCIÓN DEL WOD:\\n${sourceText}`
-    const requestGemini = async (model: string, timeoutMs = 12000, requestPrompt = prompt, requestSystem = systemPrompt, schema: any = hasImage ? imageResponseSchema : responseSchema) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const requestGemini = async (model: string, timeoutMs = hasImage ? 20000 : 12000, requestPrompt = prompt, requestSystem = systemPrompt, schema: any = hasImage ? imageResponseSchema : responseSchema) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: AbortSignal.timeout(timeoutMs),
@@ -1099,7 +1099,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       console.warn("Gemini fallback is overloaded; retrying once after backoff", retryDelayMs);
       await new Promise(resolve => setTimeout(resolve, retryDelayMs));
       try {
-        const retryResponse = await requestGemini(fallbackModel, 8000);
+        const retryResponse = await requestGemini(fallbackModel, hasImage ? 16000 : 8000);
         if (retryResponse.status !== 503) response = retryResponse;
         else await retryResponse.body?.cancel();
       } catch (retryError) {
@@ -1170,7 +1170,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       prompt = correctionPrompt;
       let correctedResponse: Response;
       try {
-        correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, 8000);
+        correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, hasImage ? 14000 : 8000);
         if (selectedProvider === "groq" && correctedResponse.status === 429) {
           const rateLimitDetail = await correctedResponse.text();
           const retryAfterSeconds = Number(correctedResponse.headers.get("retry-after"));
@@ -1237,7 +1237,7 @@ Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corr
     try {
       const reviewResponse = selectedProvider === "groq"
         ? await requestGroq(7000, selectedModel, reviewPrompt, reviewSystemPrompt)
-        : await requestGemini(selectedModel, 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema);
+        : await requestGemini(selectedModel, hasImage ? 12000 : 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema);
       if (reviewResponse.ok) {
         const reviewText = await extractText(reviewResponse);
         const review = JSON.parse(reviewText);
