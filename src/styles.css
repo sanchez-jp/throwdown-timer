@@ -377,7 +377,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
 
 /* AI WOD import */
-.ai-import-panel{margin:22px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+/* El panel de importación usa el espaciado de editor-section-content. */
 .ai-import-panel .movement-editor-heading{align-items:center}
 .ai-source-input{min-height:112px;resize:vertical}
 .ai-interpret-button{width:100%;margin-top:12px}
@@ -414,7 +414,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .editor-section-content{padding:0 14px 15px;border-top:1px solid rgba(43,58,77,.65)}
 .editor-section-content>.field-label:first-child{margin-top:14px}
 .editor-section .movement-editor-heading{margin-top:14px}
-.editor-section .ai-import-panel,.editor-section .semantic-structure-editor{margin:0;padding:0;border:0;background:transparent}
+.editor-section .semantic-structure-editor{margin:0;padding:0;border:0;background:transparent}
 .editor-section .movement-editor-list{margin-top:14px}
 .editor-section .movement-editor-row{grid-template-columns:1fr 1fr;gap:9px;padding:12px}
 .editor-section .movement-editor-row .movement-field[name="name"],
