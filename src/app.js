@@ -1786,7 +1786,7 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     editingStructureSupported = isStructureEditorCompatible(result.workout.structure) &&
       $("structureType").value === result.workout.structure.type;
     renderTimerBlocks(result.timer);
-    aiSourceText = sourceText || null;
+    aiSourceText = sourceText || result.sourceText || null;
     aiReviewRequired = true;
     $("aiReviewConfirmation").classList.remove("hidden");
     $("aiReviewConfirmed").checked = false;
