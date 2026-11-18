@@ -280,6 +280,11 @@ function toggleWorkoutDetails() {
   button.textContent = open ? "CERRAR DESCRIPCIÓN" : "VER DESCRIPCIÓN";
 }
 
+function formatLoadProgression(progression) {
+  if (!progression || progression.every !== "round" || !progression.increment) return "";
+  return "+" + progression.increment + " " + (progression.unit || "kg") + " por ronda";
+}
+
 function renderTimerDescription(workout) {
   const panel = $("timerDescription");
   panel.replaceChildren();
@@ -312,7 +317,7 @@ function renderTimerDescription(workout) {
       const item = document.createElement("li");
       if (entry?.type === "movement") {
         const movement = movementById.get(entry.movementId);
-        item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load].filter(Boolean).join(" · ");
+        item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load, formatLoadProgression(entry.loadProgression)].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
         const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
         const heading = document.createElement("h4"); heading.textContent = entry.label || ((Number(entry.count) || 1) + ((Number(entry.count) || 1) === 1 ? " RONDA" : " RONDAS"));
@@ -1036,10 +1041,12 @@ function createStructureItemRow(item = {}) {
   const movement = movementSelect(item.movementId || currentMovementOptions()[0]?.id);
   const prescription = document.createElement("input"); prescription.className = "editor-input"; prescription.name = "prescription"; prescription.placeholder = "Ej. 12 repeticiones"; prescription.value = item.prescription || "";
   const load = document.createElement("input"); load.className = "editor-input"; load.name = "itemLoad"; load.placeholder = "Ej. 60/40 kg"; load.value = item.load || "";
+  const progression = document.createElement("input"); progression.className = "editor-input"; progression.name = "loadProgression"; progression.placeholder = "Ej. 10/5"; progression.value = item.loadProgression?.increment || "";
   row.append(
     structureField("Movimiento", movement),
     structureField("Repeticiones / prescripción", prescription),
-    structureField("Carga (opcional)", load),
+    structureField("Carga inicial (opcional)", load),
+    structureField("Incremento por ronda en kg (opcional)", progression),
     structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove())
   ); return row;
 }
@@ -1239,9 +1246,16 @@ function collectSemanticStructure() {
       if (alternatives.length < 2 || alternatives.some(option => !option.label || !option.items.length)) throw new Error("Cada elección necesita al menos dos alternativas completas.");
       return {type:"choice",alternatives};
     }
+    const load = row.querySelector('[name="itemLoad"]').value.trim();
+    const increment = row.querySelector('[name="loadProgression"]').value.trim().replace(/,/g, ".");
+    if (increment && !/^\\d+(?:\\.\\d+)?(?:\\s*\\/\\s*\\d+(?:\\.\\d+)?)?$/.test(increment)) {
+      throw new Error("El incremento por ronda debe ser un número o dos valores separados por /, por ejemplo 10/5.");
+    }
+    if (increment && !load) throw new Error("Indica también la carga inicial para aplicar un incremento por ronda.");
     return {type:"movement",movementId:row.querySelector('[name="movementId"]').value,
       ...(row.querySelector('[name="prescription"]').value.trim()?{prescription:row.querySelector('[name="prescription"]').value.trim()}:{}),
-      ...(row.querySelector('[name="itemLoad"]').value.trim()?{load:row.querySelector('[name="itemLoad"]').value.trim()}:{})};
+      ...(load?{load}:{}),
+      ...(increment?{loadProgression:{increment,unit:"kg",every:"round"}}:{})};
   });
   if (["sequence", "rounds", "chipper"].includes(type)) {
     const items = collectNodes($("structureSettings").querySelector(".structure-items"));
