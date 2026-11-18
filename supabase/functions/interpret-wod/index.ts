@@ -1041,7 +1041,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
 
 `;
 
-    const imageParts = hasImage ? [{ inlineData: { mimeType: image.mimeType, data: image.data }, mediaResolution: "HIGH" }] : [];
+    const imageParts = hasImage ? [{ inlineData: { mimeType: image.mimeType, data: image.data } }] : [];
     let prompt = hasImage
       ? `Interpreta el WOD que aparece en la imagen adjunta. Lee cuidadosamente todo el texto, incluidos encabezados, notas, cargas, unidades, alternativas y anotaciones manuscritas legibles. Conserva el orden y la estructura visual. Devuelve además en el campo superior sourceText una transcripción fiel del contenido visible, conservando el orden de las líneas. Marca como [ilegible] cualquier fragmento que no puedas leer con seguridad y añade una observación para que el usuario lo revise. No inventes datos. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nWOD EN LA IMAGEN ADJUNTA.`
       : `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nDESCRIPCIÓN DEL WOD:\\n${sourceText}`
@@ -1052,7 +1052,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: requestSystem }] },
         contents: [{ role: "user", parts: [...imageParts, { text: requestPrompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: "application/json", responseSchema: schema },
+        generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: "application/json", responseSchema: schema, ...(hasImage ? { mediaResolution: "MEDIA_RESOLUTION_HIGH" } : {}) },
       }),
     });
     const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
