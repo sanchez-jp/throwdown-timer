@@ -186,3 +186,41 @@ test("all timed phases cue only in the final three seconds", () => {
   snapshot.phaseRemainingMs = 1000;
   assert.equal(getCountdownCueSecond(snapshot), 1);
 });
+
+test("count-up exposes timed stages and changes stage at the exact boundary", () => {
+  const c = clock();
+  const timer = new TimerEngine(plan({
+    type:"countup",label:"Running clock",timeCapSeconds:660,rounds:null,
+    stages:[
+      {label:"Bike Erg",durationSeconds:300},
+      {label:"Clean & Jerk + Snatch",durationSeconds:360}
+    ]
+  }), {now:c.now});
+  timer.start();
+  assert.equal(timer.snapshot().stageIndex, 0);
+  assert.equal(timer.snapshot().stageLabel, "Bike Erg");
+  c.advance(299999);
+  assert.equal(timer.tick().stageIndex, 0);
+  c.advance(1);
+  const next = timer.tick();
+  assert.equal(next.stageIndex, 1);
+  assert.equal(next.stageLabel, "Clean & Jerk + Snatch");
+  assert.equal(next.stageElapsedMs, 0);
+  c.advance(1000);
+  timer.pause();
+  assert.equal(timer.snapshot().stageIndex, 1);
+  assert.equal(timer.snapshot().stageElapsedMs, 1000);
+});
+
+test("count-up stages are inactive before start and after time cap", () => {
+  const c = clock();
+  const timer = new TimerEngine(plan({
+    type:"countup",label:"Running clock",timeCapSeconds:10,rounds:null,
+    stages:[{label:"A",durationSeconds:5},{label:"B",durationSeconds:5}]
+  }), {now:c.now});
+  assert.equal(timer.snapshot().stageIndex, null);
+  timer.start();
+  c.advance(10000);
+  assert.equal(timer.tick().state, "capped");
+  assert.equal(timer.snapshot().stageIndex, null);
+});
