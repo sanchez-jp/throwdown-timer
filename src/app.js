@@ -329,7 +329,12 @@ function renderTimerDescription(workout, timerPlan = null) {
       if (isEmomSequence) item.dataset.intervalIndex = String(index);
       if (entry?.type === "movement") {
         const movement = movementById.get(entry.movementId);
-        item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load, formatLoadProgression(entry.loadProgression), movement?.notes].filter(Boolean).join(" · ");
+        const movementName = movement?.name || "Movimiento no disponible";
+        const prescription = entry.prescription || movement?.prescription;
+        const visiblePrescription = prescription && !movementName.toLocaleLowerCase().includes(String(prescription).toLocaleLowerCase()) ? prescription : null;
+        const visibleNotes = String(movement?.notes || "").split(" · ")
+          .map(note => note.trim()).filter(note => note && !movementName.toLocaleLowerCase().includes(note.toLocaleLowerCase()));
+        item.textContent = [visiblePrescription, movementName, entry.load || movement?.load, formatLoadProgression(entry.loadProgression), ...visibleNotes].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
         const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
         const heading = document.createElement("h4"); heading.textContent = entry.label || ((Number(entry.count) || 1) + ((Number(entry.count) || 1) === 1 ? " RONDA" : " RONDAS"));
