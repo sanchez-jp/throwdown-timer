@@ -212,6 +212,13 @@ test("count-up exposes timed stages and changes stage at the exact boundary", ()
   assert.equal(timer.snapshot().stageElapsedMs, 1000);
 });
 
+test("count-up rejects stages whose durations do not match the time cap", () => {
+  assert.throws(() => new TimerEngine(plan({
+    type:"countup",label:"Running clock",timeCapSeconds:660,rounds:null,
+    stages:[{label:"Bike Erg",durationSeconds:300},{label:"Lifts",durationSeconds:300}]
+  }), {now:()=>0}), error => error instanceof TimerError && error.code === "INVALID_STAGES");
+});
+
 test("count-up stages are inactive before start and after time cap", () => {
   const c = clock();
   const timer = new TimerEngine(plan({
