@@ -327,7 +327,9 @@ function validateBlock(block: any, depth = 0): string | null {
     (block.rounds === null || positive(block.rounds)) ? null : "El bloque For Time tiene valores no válidos.";
   if (block.type === "emom") return positive(block.durationSeconds) && positive(block.intervalSeconds) &&
     block.durationSeconds % block.intervalSeconds === 0 &&
-    block.rounds === block.durationSeconds / block.intervalSeconds ? null : "El EMOM no tiene una duración e intervalos coherentes.";
+    block.rounds === block.durationSeconds / block.intervalSeconds &&
+    (block.intervalLabels === undefined || (Array.isArray(block.intervalLabels) && block.intervalLabels.length > 0 &&
+      block.intervalLabels.every((label: any) => typeof label === "string" && label.trim()))) ? null : "El EMOM no tiene una duración, intervalos o etiquetas coherentes.";
   if (block.type === "intervals") return positive(block.rounds) && positive(block.workSeconds) &&
     Number.isInteger(block.restSeconds) && block.restSeconds >= 0 && typeof block.startWithRest === "boolean"
     ? null : "Los intervalos tienen valores no válidos.";
@@ -338,6 +340,44 @@ function validateBlock(block: any, depth = 0): string | null {
     return null;
   }
   return "El plan contiene un bloque de temporizador no compatible.";
+}
+
+function normalizeEmomIntervalLabels(result: any, sourceText: string) {
+  if (!["emom", "e2mom"].includes(result?.workout?.format) || !Array.isArray(result?.timer?.blocks)) return result;
+  const emomBlocks = result.timer.blocks.filter((block: any) => block?.type === "emom");
+  if (!emomBlocks.length) return result;
+  const numberedSlots = [...sourceText.matchAll(/(?:^|\s)(\d+)\s*[).:-]\s*([\s\S]*?)(?=\s+\d+\s*[).:-]\s*|$)/g)]
+    .map(match => ({ number: Number(match[1]), text: String(match[2] || "").trim() }))
+    .filter(slot => slot.number > 0 && slot.text);
+  const movementNodes: any[] = [];
+  const visit = (items: any[]) => {
+    for (const item of items || []) {
+      if (item?.type === "movement") movementNodes.push(item);
+      else if (item?.type === "rounds") visit(item.items || []);
+      else if (item?.type === "choice") for (const option of item.alternatives || []) visit(option.items || []);
+    }
+  };
+  visit(result.workout?.structure?.items || []);
+  const movements = result.workout?.movements || [];
+  const labelsFromStructure = movementNodes.map(node => {
+    const movement = movements.find((item: any) => item?.id === node.movementId);
+    return [node.prescription || movement?.prescription, movement?.name, node.load || movement?.load]
+      .filter(Boolean).join(" · ");
+  }).filter(Boolean);
+  let labels = labelsFromStructure;
+  if (numberedSlots.length > 1) {
+    let movementIndex = 0;
+    labels = numberedSlots.map(slot => {
+      if (/\b(rest|descanso)\b/i.test(slot.text)) return "DESCANSO";
+      const label = labelsFromStructure[movementIndex++];
+      return label || slot.text.replace(/\s+/g, " ").slice(0, 100);
+    });
+  } else if (/\b(rest|descanso)\b/i.test(sourceText) && labels.length) {
+    labels = [...labels, "DESCANSO"];
+  }
+  if (!labels.length) return result;
+  for (const block of emomBlocks) block.intervalLabels = labels;
+  return result;
 }
 
 function validatePlan(timer: any): string | null {
@@ -658,6 +698,7 @@ const responseSchema = {
               timeCapSeconds: { type: "integer", nullable: true },
               rounds: { type: "integer", nullable: true },
               intervalSeconds: { type: "integer", nullable: true },
+              intervalLabels: { type: "array", items: { type: "string" }, nullable: true },
               workSeconds: { type: "integer", nullable: true },
               restSeconds: { type: "integer", nullable: true },
               startWithRest: { type: "boolean", nullable: true },
@@ -760,6 +801,7 @@ REGLAS DE INTERPRETACIÓN:
    - AMRAP con duración explícita: countdown con duración en segundos.
    - For Time: countup. timeCapSeconds será el Time Cap explícito o null. rounds será el número explícito de rondas o null.
    - EMOM/E2MOM: emom con durationSeconds, intervalSeconds y rounds coherentes. EMOM usa 60 s por intervalo; E2MOM 120 s solo si el texto identifica E2MOM. No inventes duración total.
+   - Si el EMOM describe tareas numeradas por minuto (por ejemplo 1) Ski, 2) HSW, 3) Burpees, 4) Rest), añade timer.intervalLabels con una etiqueta por cada posición, en el mismo orden. La lista representa un ciclo que se repite hasta completar durationSeconds; incluye explícitamente "DESCANSO" para cada minuto de descanso. No omitas los descansos ni los conviertas en un movimiento del WOD.
    - Tabata/intervalos: intervals solo si están indicados rounds, trabajo y descanso; startWithRest normalmente false salvo que el texto diga lo contrario.
    - Descanso temporizado explícito: rest. Segmentos temporizados consecutivos: varios bloques en el orden real.
    - Si falta duración esencial, devuelve timer:null y añade issue blocking TIMER_DETAILS_MISSING con pregunta concreta.
@@ -805,7 +847,7 @@ Criterio: format chipper; structure chipper con cinco apariciones en ese orden; 
 
 EJEMPLO 4 — EMOM:
 Entrada: EMOM 12 minutes: minute 1 12/10 cal Bike, minute 2 10 Burpees.
-Criterio: format emom; structure sequence con Bike y Burpees en el orden descrito; timer emom durationSeconds 720, intervalSeconds 60, rounds 12. No confundas los dos movimientos alternos con solo dos rondas.
+Criterio: format emom; structure sequence con Bike y Burpees en el orden descrito; timer emom durationSeconds 720, intervalSeconds 60, rounds 12, intervalLabels ["12/10 cal Bike","10 Burpees"]. No confundas los dos movimientos alternos con solo dos rondas.
 
 EJEMPLO 5 — INTERVALOS CON PROGRESIÓN DESCENDENTE:
 Entrada: 5 intervalos de 2 min de trabajo y 1 min de descanso: 20 Chest-to-Bar, 20 HSPU y máximo Box Jump Over. Resta 2 repeticiones a los movimientos contados en cada intervalo sucesivo.
@@ -1064,6 +1106,7 @@ Devuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
       });
     }
 
+    result = normalizeEmomIntervalLabels(result, sourceText);
     const structure = result.workout?.structure;
     const hasProgression = (nodes: any[]): boolean => nodes.some((node: any) =>
       node?.loadProgression?.every === "round" ||
