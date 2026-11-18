@@ -134,6 +134,7 @@ function renderTimer(snapshot) {
   const emomMinute = snapshot.blockType === "emom" && snapshot.round
     ? `MINUTO ${snapshot.round.current}/${snapshot.round.total} · ${phase?.label || "EMOM"}`
     : null;
+  const countupStage = snapshot.blockType === "countup" ? snapshot.stageLabel : null;
   updateTimerDescriptionActive(snapshot);
   const countup = snapshot.blockType === "countup";
   const time = countup ? snapshot.phaseElapsedMs : snapshot.phaseRemainingMs;
@@ -142,9 +143,9 @@ function renderTimer(snapshot) {
   $("clock").classList.toggle("urgent",!countup && time !== null && time <= 10000 && snapshot.state==="running");
   $("timerLabel").textContent = countup ? "TIME ELAPSED" : snapshot.phase === "rest" ? "REST" : "TIME REMAINING";
   $("phaseLabel").textContent = snapshot.state==="completed" ? "COMPLETADO" : snapshot.state==="capped" ? "TIME CAP" :
-    snapshot.state==="paused" ? (emomMinute ? "PAUSADO · " + emomMinute : "PAUSADO") :
+    snapshot.state==="paused" ? (emomMinute ? "PAUSADO · " + emomMinute : countupStage ? "PAUSADO · " + countupStage.toUpperCase() : "PAUSADO") :
     snapshot.phase==="rest" ? (emomMinute ? "DESCANSO · MINUTO " + snapshot.round.current + "/" + snapshot.round.total : "DESCANSO") :
-    emomMinute || (snapshot.state==="idle" ? "PREPARADO" : (phase?.label || "EN CURSO").toUpperCase());
+    emomMinute || (countupStage ? countupStage.toUpperCase() : (snapshot.state==="idle" ? "PREPARADO" : (phase?.label || "EN CURSO").toUpperCase()));
   $("roundValue").textContent = snapshot.round ? `${snapshot.round.current} / ${snapshot.round.total}` : "—";
   const totalLabel = countup ? (snapshot.totalRemainingMs === null ? "TIEMPO TRANSCURRIDO" : "HASTA TIME CAP") : "TIEMPO RESTANTE";
   $("totalLabel").textContent = totalLabel;
@@ -319,6 +320,7 @@ function renderTimerDescription(workout, timerPlan = null) {
   }
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
   const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
+  const timedStageBlock = timerPlan?.blocks?.find(block => block?.type === "countup" && Array.isArray(block.stages) && block.stages.length);
   const renderStructureNodes = (items, container, isEmomSequence = false) => {
     const list = document.createElement("ul");
     list.className = "timer-description-list" + (isEmomSequence ? " timer-emom-schedule" : "");
@@ -327,7 +329,7 @@ function renderTimerDescription(workout, timerPlan = null) {
       if (isEmomSequence) item.dataset.intervalIndex = String(index);
       if (entry?.type === "movement") {
         const movement = movementById.get(entry.movementId);
-        item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load, formatLoadProgression(entry.loadProgression)].filter(Boolean).join(" · ");
+        item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load, formatLoadProgression(entry.loadProgression), movement?.notes].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
         const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
         const heading = document.createElement("h4"); heading.textContent = entry.label || ((Number(entry.count) || 1) + ((Number(entry.count) || 1) === 1 ? " RONDA" : " RONDAS"));
@@ -354,8 +356,10 @@ function renderTimerDescription(workout, timerPlan = null) {
     });
     container.append(list);
   };
-  const addStructureGroup = (label, items) => {
-    const group = document.createElement("section"); group.className = "timer-description-structure-group";
+  const addStructureGroup = (label, items, stageIndex = null) => {
+    const group = document.createElement("section");
+    group.className = "timer-description-structure-group" + (stageIndex === null ? "" : " timer-description-stage");
+    if (stageIndex !== null) group.dataset.timerStageIndex = String(stageIndex);
     const heading = document.createElement("h3"); heading.textContent = label;
     group.append(heading);
     const isEmomSequence = label === "SECUENCIA" && emomBlock;
@@ -390,8 +394,9 @@ function renderTimerDescription(workout, timerPlan = null) {
     const heading = document.createElement("h3");
     heading.textContent = "ESTRUCTURA POR SECCIONES";
     panel.append(heading);
+    const hasTimedStages = timedStageBlock && timedStageBlock.stages.length === structure.sections.length;
     structure.sections.forEach((section, index) =>
-      addStructureGroup(section.name || "SECCIÓN " + (index + 1), section.structure?.items)
+      addStructureGroup(section.name || "SECCIÓN " + (index + 1), section.structure?.items, hasTimedStages ? index : null)
     );
   } else if (movements.length) {
     const label = document.createElement("h3");
@@ -428,13 +433,21 @@ function renderTimerDescription(workout, timerPlan = null) {
 }
 
 function updateTimerDescriptionActive(snapshot) {
+  const activeState = ["running", "paused"].includes(snapshot.state);
   const schedule = document.querySelector(".timer-emom-schedule");
-  if (!schedule) return;
-  const items = [...schedule.querySelectorAll("[data-interval-index]")];
-  const hasCurrentStage = ["running", "paused"].includes(snapshot.state) && snapshot.blockType === "emom" && snapshot.round;
-  const current = hasCurrentStage ? (snapshot.round.current - 1) % items.length : -1;
-  items.forEach((item, index) => {
-    const active = index === current;
+  if (schedule) {
+    const items = [...schedule.querySelectorAll("[data-interval-index]")];
+    const current = activeState && snapshot.blockType === "emom" && snapshot.round
+      ? (snapshot.round.current - 1) % items.length : -1;
+    items.forEach((item, index) => {
+      const active = index === current;
+      item.classList.toggle("is-active", active);
+      item.classList.toggle("is-paused", active && snapshot.state === "paused");
+    });
+  }
+  document.querySelectorAll("[data-timer-stage-index]").forEach(item => {
+    const active = activeState && snapshot.blockType === "countup" &&
+      Number(item.dataset.timerStageIndex) === snapshot.stageIndex;
     item.classList.toggle("is-active", active);
     item.classList.toggle("is-paused", active && snapshot.state === "paused");
   });
