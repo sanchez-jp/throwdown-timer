@@ -68,6 +68,11 @@ function formatLoadValues(values) {
   return values.map(value => Number.isInteger(value) ? String(value) : String(value).replace(".", ",")).join("/");
 }
 
+function extractLoadValues(value) {
+  return (String(value).match(/\d+(?:[.,]\d+)?/g) || [])
+    .map(part => Number(part.replace(",", ".")));
+}
+
 export function expandProgressiveLoadLadder(raw, sourceText = "") {
   const structure = raw?.workout?.structure;
   if (structure?.type !== "ladder" || !Array.isArray(structure.steps) || structure.steps.length < 2) return raw;
@@ -91,9 +96,11 @@ export function expandProgressiveLoadLadder(raw, sourceText = "") {
   const loadedMovements = movements.filter(movement =>
     referencedIds.has(movement?.id) && typeof movement?.load === "string" && movement.load.trim()
   );
-  const matchingMovements = loadedMovements.filter(movement =>
-    movement.load.replace(/\s/g, "").replace(/,/g, ".").includes(baseText)
-  );
+  const matchingMovements = loadedMovements.filter(movement => {
+    const values = extractLoadValues(movement.load);
+    return values.length === startingLoads.length &&
+      values.every((value, index) => Math.abs(value - startingLoads[index]) < 0.001);
+  });
   const targets = matchingMovements.length
     ? matchingMovements
     : loadedMovements.length === 1 ? loadedMovements : [];
