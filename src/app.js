@@ -123,7 +123,7 @@ function processEvents() {
   for (const event of engine.drainEvents()) {
     if (event.type === "phase_changed") {
       lastCountdownCue=null;
-      playTone(1046,.16);
+      playTone(1046,.42);
     } else if (event.type === "time_cap_reached" || event.type === "timer_completed") {
       playTone(440,.45);
     }
@@ -131,13 +131,20 @@ function processEvents() {
 }
 function renderTimer(snapshot) {
   const phase = engine.phases[snapshot.blockIndex ?? 0];
+  const emomMinute = snapshot.blockType === "emom" && snapshot.round
+    ? `MINUTO ${snapshot.round.current}/${snapshot.round.total} · ${phase?.label || "EMOM"}`
+    : null;
+  updateTimerDescriptionActive(snapshot);
   const countup = snapshot.blockType === "countup";
   const time = countup ? snapshot.phaseElapsedMs : snapshot.phaseRemainingMs;
   $("clock").textContent = time == null ? "00:00" : formatTime(time, countup && time < 60000);
   $("clock").classList.toggle("countup",countup);
   $("clock").classList.toggle("urgent",!countup && time !== null && time <= 10000 && snapshot.state==="running");
   $("timerLabel").textContent = countup ? "TIME ELAPSED" : snapshot.phase === "rest" ? "REST" : "TIME REMAINING";
-  $("phaseLabel").textContent = snapshot.state==="completed" ? "COMPLETADO" : snapshot.state==="capped" ? "TIME CAP" : snapshot.state==="paused" ? "PAUSADO" : snapshot.state==="idle" ? "PREPARADO" : snapshot.phase==="rest" ? "DESCANSO" : (phase?.label || "EN CURSO").toUpperCase();
+  $("phaseLabel").textContent = snapshot.state==="completed" ? "COMPLETADO" : snapshot.state==="capped" ? "TIME CAP" :
+    snapshot.state==="paused" ? (emomMinute ? "PAUSADO · " + emomMinute : "PAUSADO") :
+    snapshot.phase==="rest" ? (emomMinute ? "DESCANSO · MINUTO " + snapshot.round.current + "/" + snapshot.round.total : "DESCANSO") :
+    emomMinute || (snapshot.state==="idle" ? "PREPARADO" : (phase?.label || "EN CURSO").toUpperCase());
   $("roundValue").textContent = snapshot.round ? `${snapshot.round.current} / ${snapshot.round.total}` : "—";
   const totalLabel = countup ? (snapshot.totalRemainingMs === null ? "TIEMPO TRANSCURRIDO" : "HASTA TIME CAP") : "TIEMPO RESTANTE";
   $("totalLabel").textContent = totalLabel;
@@ -168,7 +175,7 @@ function updateCountdownCue(snapshot) {
   }
   if (second !== lastCountdownCue) {
     lastCountdownCue = second;
-    playTone(second <= 3 ? 1320 : 880, .075);
+    playTone(880, .075);
   }
 }
 function stopDisplayLoop() { if(displayFrame!==null) cancelAnimationFrame(displayFrame); displayFrame=null; }
@@ -285,7 +292,7 @@ function formatLoadProgression(progression) {
   return "+" + progression.increment + " " + (progression.unit || "kg") + " por ronda";
 }
 
-function renderTimerDescription(workout) {
+function renderTimerDescription(workout, timerPlan = null) {
   const panel = $("timerDescription");
   panel.replaceChildren();
   const heading = document.createElement("div");
@@ -384,6 +391,25 @@ function renderTimerDescription(workout) {
     panel.append(list);
   }
 
+  const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
+  if (emomBlock) {
+    const schedule = document.createElement("section");
+    schedule.className = "timer-description-emom";
+    const scheduleHeading = document.createElement("h3");
+    scheduleHeading.textContent = "SECUENCIA DE MINUTOS";
+    schedule.append(scheduleHeading);
+    const list = document.createElement("ol");
+    list.className = "timer-description-list timer-description-ordered timer-emom-schedule";
+    emomBlock.intervalLabels.forEach((label, index) => {
+      const item = document.createElement("li");
+      item.dataset.intervalIndex = String(index);
+      item.textContent = `MINUTO ${index + 1} · ${label}`;
+      list.append(item);
+    });
+    schedule.append(list);
+    panel.append(schedule);
+  }
+
   const notesText = workout.notes || workout.workout?.notes;
   if (notesText) {
     const notes = document.createElement("p");
@@ -402,6 +428,15 @@ function renderTimerDescription(workout) {
   panel.classList.remove("hidden");
 }
 
+function updateTimerDescriptionActive(snapshot) {
+  const schedule = document.querySelector(".timer-emom-schedule");
+  if (!schedule) return;
+  const items = [...schedule.querySelectorAll("[data-interval-index]")];
+  const current = snapshot.blockType === "emom" && snapshot.round
+    ? (snapshot.round.current - 1) % items.length : -1;
+  items.forEach((item, index) => item.classList.toggle("is-active", index === current));
+}
+
 function showTimer(w = presets[selected], sourceView = "home") {
   returnView = sourceView;
   const plan = w.plan || w.timer;
@@ -411,7 +446,7 @@ function showTimer(w = presets[selected], sourceView = "home") {
   $("timerPanel").classList.remove("hidden");
   $("timerFormat").textContent=w.tag || String(w.workout?.format || "WOD").replaceAll("_"," ").toUpperCase();
   $("timerWorkoutName").textContent=w.name || w.title;
-  renderTimerDescription(w);
+  renderTimerDescription(w, plan);
   const movements = w.movements || (w.workout?.movements || []).map(m => [m.prescription, m.name, m.load].filter(Boolean).join(" · "));
   $("timerMovements").replaceChildren(...movements.map(m=>{const s=document.createElement("span");s.textContent=m;return s;}));
   lastCountdownCue=null;
@@ -806,6 +841,20 @@ function renderTimerBlockFields(row, block = {}) {
   } else if (type === "emom") {
     addTime("duration", "Duración total", block.durationSeconds);
     addTime("interval", "Duración de cada intervalo", block.intervalSeconds);
+    const wrap = document.createElement("div");
+    wrap.className = "wide-field";
+    const caption = document.createElement("label");
+    caption.className = "field-label";
+    caption.textContent = "Qué toca en cada minuto (uno por línea)";
+    const input = document.createElement("textarea");
+    input.className = "editor-input";
+    input.name = "intervalLabels";
+    input.rows = Math.min(8, Math.max(3, block.intervalLabels?.length || 3));
+    input.value = (block.intervalLabels || []).join("\n");
+    caption.htmlFor = "timer-emom-labels-" + Math.random().toString(36).slice(2, 8);
+    input.id = caption.htmlFor;
+    wrap.append(caption, input);
+    fields.append(wrap);
     const rounds = block.rounds ? String(block.rounds) + " intervalos" : "Se calcularán al guardar";
     const hint = document.createElement("div");
     hint.className = "timer-plan-help wide-field";
@@ -939,6 +988,9 @@ function collectTimerBlocks(list = $("timerBlockList")) {
         block.intervalSeconds = readTimerSeconds(row, "interval", { label: "La duración del intervalo" });
         if (block.durationSeconds % block.intervalSeconds !== 0) throw new Error("En un EMOM, la duración total debe ser múltiplo exacto del intervalo.");
         block.rounds = block.durationSeconds / block.intervalSeconds;
+        const labelsInput = row.querySelector('[name="intervalLabels"]')?.value ?? "";
+        const intervalLabels = labelsInput.split(/\r?\n/).map(label => label.trim()).filter(Boolean);
+        if (intervalLabels.length) block.intervalLabels = intervalLabels;
         block.allowSkip = checked("allowSkip");
       } else if (type === "intervals") {
         const rounds = value("rounds");
