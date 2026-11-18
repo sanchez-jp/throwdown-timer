@@ -71,21 +71,24 @@ function validateStructure(workout: any): string | null {
       if (movement[field] != null && typeof movement[field] !== "string") return "Una prescripción, carga o nota tiene un formato no válido.";
     }
   }
-  const checkItems = (items: any[]) => Array.isArray(items) && items.length > 0 && items.every(item =>
-    item?.type === "movement" && typeof item.movementId === "string" && ids.has(item.movementId) &&
-    (item.prescription === undefined || item.prescription === null || typeof item.prescription === "string") &&
-    (item.load === undefined || item.load === null || typeof item.load === "string")
-  );
-  if (["sequence", "chipper"].includes(structure.type)) return checkItems(structure.items) ? null : "La secuencia contiene referencias de movimiento no válidas.";
-  if (structure.type === "rounds") return Number.isInteger(structure.count) && structure.count > 0 && checkItems(structure.items) ? null : "La estructura de rondas no es válida.";
+  const checkNodes = (items: any[], depth = 0): boolean => Array.isArray(items) && items.length > 0 && depth <= 8 && items.every(item => {
+    if (item?.type === "movement") return typeof item.movementId === "string" && ids.has(item.movementId) &&
+      (item.prescription === undefined || item.prescription === null || typeof item.prescription === "string") &&
+      (item.load === undefined || item.load === null || typeof item.load === "string");
+    if (item?.type === "rounds") return Number.isInteger(item.count) && item.count > 0 && checkNodes(item.items, depth + 1);
+    if (item?.type === "choice") return Array.isArray(item.alternatives) && item.alternatives.length >= 2 && item.alternatives.every((option: any) => typeof option.label === "string" && option.label.trim() && checkNodes(option.items, depth + 1));
+    return false;
+  });
+  if (["sequence", "chipper"].includes(structure.type)) return checkNodes(structure.items) ? null : "La secuencia contiene referencias de movimiento no válidas.";
+  if (structure.type === "rounds") return Number.isInteger(structure.count) && structure.count > 0 && checkNodes(structure.items) ? null : "La estructura de rondas no es válida.";
   if (structure.type === "ladder") {
     if (!["ascending", "descending", "alternating", "custom"].includes(structure.direction) || !Array.isArray(structure.steps) || !structure.steps.length) return "La ladder no tiene peldaños válidos.";
-    return structure.steps.every((step: any) => typeof step.label === "string" && step.label.trim() && checkItems(step.items)) ? null : "Hay un peldaño de ladder incompleto.";
+    return structure.steps.every((step: any) => typeof step.label === "string" && step.label.trim() && checkNodes(step.items)) ? null : "Hay un peldaño de ladder incompleto.";
   }
   if (structure.type === "sections") {
     if (!Array.isArray(structure.sections) || !structure.sections.length) return "No hay secciones válidas.";
     return structure.sections.every((section: any) => typeof section.name === "string" && section.name.trim() &&
-      section.structure?.type === "sequence" && checkItems(section.structure.items)) ? null : "Hay una sección incompleta.";
+      section.structure?.type === "sequence" && checkNodes(section.structure.items)) ? null : "Hay una sección incompleta.";
   }
   return "El tipo de estructura no está soportado.";
 }
@@ -294,12 +297,22 @@ const responseSchema = {
               items: {
                 type: "object",
                 properties: {
-                  type: { type: "string", enum: ["movement"] },
-                  movementId: { type: "string" },
-                  prescription: { type: "string", nullable: true },
-                  load: { type: "string", nullable: true },
+                  type: { type: "string", enum: ["movement", "rounds", "choice"] },
+                  movementId: { type: "string", nullable: true }, prescription: { type: "string", nullable: true },
+                  load: { type: "string", nullable: true }, count: { type: "integer", nullable: true },
+                  items: { type: "array", items: { type: "object", properties: {
+                    type: { type: "string", enum: ["movement"] }, movementId: { type: "string" },
+                    prescription: { type: "string", nullable: true }, load: { type: "string", nullable: true },
+                  }, required: ["type", "movementId", "prescription", "load"] } },
+                  alternatives: { type: "array", items: { type: "object", properties: {
+                    label: { type: "string" },
+                    items: { type: "array", items: { type: "object", properties: {
+                      type: { type: "string", enum: ["movement"] }, movementId: { type: "string" },
+                      prescription: { type: "string", nullable: true }, load: { type: "string", nullable: true },
+                    }, required: ["type", "movementId", "prescription", "load"] } },
+                  }, required: ["label", "items"] } },
                 },
-                required: ["type", "movementId", "prescription", "load"],
+                required: ["type"],
               },
             },
             direction: { type: "string", enum: ["ascending", "descending", "alternating", "custom"] },
@@ -454,10 +467,12 @@ REGLAS DE INTERPRETACIÓN:
 3. Conserva exactamente el orden de ejecución. El catálogo movements contiene cada movimiento una sola vez; structure contiene cada aparición en su posición real. Un movimiento puede aparecer muchas veces en structure.
 4. Cada movimiento debe tener id único, corto y estable (minúsculas, números y guiones), name y los campos prescription, load y notes. Usa null cuando no exista un dato.
 4 bis. Incluye workout.team: athletes (1 a 4) y mode. Usa individual para un atleta; i_go_you_go cuando cada atleta completa su turno y después cambia; synchro cuando trabajan simultáneamente; shared cuando el equipo reparte libremente el total; team cuando se combina más de una dinámica. En i_go_you_go añade rotation: complete, reps o free según el criterio de cambio. No deduzcas synchro si no se indica.
-5. En cada nodo de structure usa type:"movement", movementId exacto y prescription como texto específico de esa aparición o null. No incluyas movimientos que no aparezcan en el WOD.
+5. Structure admite nodos anidados: movement, rounds y choice. Un nodo rounds contiene count e items y repite juntos todos esos items ese número de veces. Un nodo choice contiene alternatives; cada alternativa tiene label e items y significa que se ejecuta UNA sola alternativa, nunca todas. No aplanes rondas interiores ni elecciones de equipamiento en una lista lineal. Cada nodo movement usa movementId exacto y prescription específico de esa aparición o null.
 6. Elige la estructura más fiel:
    - sequence: lista ordenada literal. Es la opción correcta para esquemas descendentes o irregulares como 21-15-9 cuando las repeticiones cambian en cada vuelta.
-   - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda. En un WOD explícito de N rondas con repeticiones/cargas que progresan, usa ladder con N steps, aunque el formato sea rounds_for_time.
+   - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda. También puede aparecer dentro de otra estructura para representar subrondas anidadas.
+   - choice: cuando el atleta debe elegir una sola modalidad. Ejemplo: 30/24 cal Row o Ski O 24/18 cal Bike = choice con dos alternativas y sus propias prescripciones; nunca representes ambas como ejercicios consecutivos.
+   - En un WOD explícito de N rondas con repeticiones/cargas que progresan, usa ladder con N steps, aunque el formato sea rounds_for_time.
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items. Úsalo cuando las repeticiones cambien entre rondas o intervalos, aunque el temporizador sea intervals. Si el texto indica una reducción o aumento y aporta valor inicial, paso y número de rondas, representa cada peldaño explícitamente. No inventes progresiones. Si una carga comienza en un peso y aumenta una cantidad fija después de cada ronda, incluye en la etiqueta de cada peldaño el peso exacto de esa ronda, calculándolo desde el peso inicial y el incremento.
    - sections: bloques nombrados, cada uno con structure de tipo sequence. Úsalo para Strength + WOD u otros segmentos diferenciados.
