@@ -167,3 +167,27 @@ test("rejects a non-text load override on a structure movement", () => {
   });
   assert.throws(() => validateWodV2(value), error => error.code === "INVALID_MOVEMENT_LOAD");
 });
+
+
+test("accepts nested rounds and mutually exclusive cardio alternatives", () => {
+  const value = wod({workout:{
+    format:"rounds_for_time",description:"3 rondas con cardio a elegir y 5 subrondas",
+    movements:[
+      {id:"row-ski",name:"Row o Ski",prescription:null,load:null,notes:null},
+      {id:"bike",name:"Bike",prescription:null,load:null,notes:null},
+      {id:"pcj",name:"Power Clean and Jerk",prescription:null,load:null,notes:null},
+      {id:"bbo",name:"Burpee Over the Bar",prescription:null,load:null,notes:null}
+    ],
+    structure:{type:"rounds",count:3,items:[
+      {type:"choice",alternatives:[
+        {label:"Row o Ski",items:[{type:"movement",movementId:"row-ski",prescription:"30/24 cal"}]},
+        {label:"Bike",items:[{type:"movement",movementId:"bike",prescription:"24/18 cal"}]}
+      ]},
+      {type:"rounds",count:5,items:[
+        {type:"movement",movementId:"pcj",prescription:"3",load:"60/40 kg"},
+        {type:"movement",movementId:"bbo",prescription:"3"}
+      ]}
+    ]}
+  }});
+  assert.equal(validateWodV2(value),true);
+});
