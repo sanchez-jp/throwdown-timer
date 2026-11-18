@@ -297,6 +297,14 @@ function renderTimerDescription(workout) {
   const workoutData = workout.workout || workout;
   const movements = Array.isArray(workoutData.movements) ? workoutData.movements : [];
   const structure = workoutData.structure;
+  const team = normalizeTeamSettings(workoutData.team);
+  if (team.athletes > 1) {
+    const teamSummary = document.createElement("p");
+    teamSummary.className = "timer-description-team";
+    teamSummary.textContent = [team.athletes + (team.athletes === 2 ? " atletas" : " atletas"), teamModeLabels[team.mode],
+      team.mode === "i_go_you_go" ? teamRotationLabels[team.rotation] : null].filter(Boolean).join(" · ");
+    panel.append(teamSummary);
+  }
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
   const makeMovementList = (items, groupLabel = "") => {
     const list = document.createElement("ol");
@@ -624,6 +632,7 @@ async function openEditor(id) {
     $("editTitle").value = record.title;
     $("editFormat").value = record.workout.format;
     $("editDescription").value = record.workout.description || "";
+    renderTeamSettings(record.workout.team);
     $("movementEditorList").replaceChildren(...record.workout.movements.map(createMovementEditorRow));
     record.workout.movements.forEach((movement, index) => { $("movementEditorList").children[index].dataset.movementId = movement.id || "legacy-movement-" + (index + 1); });
     setStructureEditorVisible(record.schemaVersion === 2);
@@ -649,6 +658,7 @@ async function openNewEditor(sourceView = "library") {
   $("editTitle").value = "";
   $("editFormat").value = "custom";
   $("editDescription").value = "";
+  renderTeamSettings({ athletes: 1, mode: "individual" });
   $("movementEditorList").replaceChildren(createMovementEditorRow());
   $("movementEditorList").firstElementChild.dataset.movementId = "movement-1";
   setStructureEditorVisible(true);
@@ -1024,6 +1034,45 @@ function createSectionRow(section = {}) {
   row.append(children);
   return row;
 }
+const teamModeLabels = {
+  individual: "Individual",
+  i_go_you_go: "I Go, You Go",
+  synchro: "Synchro",
+  shared: "Repartido libremente",
+  team: "Team / Combinado"
+};
+const teamRotationLabels = {
+  complete: "Al completar el bloque o ronda",
+  reps: "Cada número de repeticiones establecido",
+  free: "Libre elección del equipo"
+};
+function normalizeTeamSettings(team = null) {
+  const athletes = [1, 2, 3, 4].includes(Number(team?.athletes)) ? Number(team.athletes) : 1;
+  const mode = athletes === 1 ? "individual" :
+    ["i_go_you_go", "synchro", "shared", "team"].includes(team?.mode) ? team.mode : "i_go_you_go";
+  const rotation = ["complete", "reps", "free"].includes(team?.rotation) ? team.rotation : "complete";
+  return { athletes, mode, ...(mode === "i_go_you_go" ? { rotation } : {}) };
+}
+function renderTeamSettings(team = null) {
+  const value = normalizeTeamSettings(team);
+  $("teamAthletes").value = String(value.athletes);
+  $("teamMode").value = value.mode;
+  $("teamRotation").value = value.rotation || "complete";
+  $("teamRotationSettings").classList.toggle("hidden", value.mode !== "i_go_you_go");
+}
+function collectTeamSettings() {
+  const athletes = Number($("teamAthletes").value);
+  let mode = $("teamMode").value;
+  if (![1, 2, 3, 4].includes(athletes)) throw new Error("Selecciona entre 1 y 4 participantes.");
+  if (athletes === 1) mode = "individual";
+  if (athletes > 1 && mode === "individual") mode = "i_go_you_go";
+  if (!Object.hasOwn(teamModeLabels, mode)) throw new Error("Selecciona un modo de trabajo válido.");
+  return {
+    athletes,
+    mode,
+    ...(mode === "i_go_you_go" ? { rotation: $("teamRotation").value } : {})
+  };
+}
 function renderStructureSettings(structure = null) {
   const type = $("structureType").value;
   const settings = $("structureSettings");
@@ -1157,6 +1206,17 @@ $("editorBackButton").addEventListener("click", () => {
   $(editorReturnView === "home" ? "setupPanel" : "libraryPanel").classList.remove("hidden");
 });
 $("structureType").addEventListener("change", () => renderStructureSettings());
+$("teamAthletes").addEventListener("change", () => {
+  const athletes = Number($("teamAthletes").value);
+  if (athletes === 1) $("teamMode").value = "individual";
+  else if ($("teamMode").value === "individual") $("teamMode").value = "i_go_you_go";
+  renderTeamSettings({ athletes, mode: $("teamMode").value, rotation: $("teamRotation").value });
+});
+$("teamMode").addEventListener("change", () => {
+  if ($("teamMode").value === "individual") $("teamAthletes").value = "1";
+  else if (Number($("teamAthletes").value) === 1) $("teamAthletes").value = "2";
+  renderTeamSettings({ athletes: Number($("teamAthletes").value), mode: $("teamMode").value, rotation: $("teamRotation").value });
+});
 $("editFormat").addEventListener("change", () => {
   if (editingSchemaVersion !== 2) return;
   let current = null;
@@ -1230,6 +1290,7 @@ $("workoutEditor").addEventListener("submit", async event => {
     const workout = {
       format,
       description: $("editDescription").value.trim(),
+      team: collectTeamSettings(),
       movements: editingSchemaVersion === 2 ? movements.map((movement, index) => ({
         id: movement.id || "movement-" + (index + 1),
         name: movement.name,
@@ -1301,6 +1362,7 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     $("editTitle").value = result.title;
     $("editFormat").value = result.workout.format;
     $("editDescription").value = result.workout.description;
+    renderTeamSettings(result.workout.team);
     const movementRows = result.workout.movements.map(movement => createMovementEditorRow(movement));
     $("movementEditorList").replaceChildren(...movementRows);
     result.workout.movements.forEach((movement, index) => {
