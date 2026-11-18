@@ -143,6 +143,14 @@ function normalizeTimerPlan(timer: any) {
   };
 }
 
+function normalizeExplicitLadderFormat(workout: any, sourceText: string) {
+  if (workout?.format === "for_time" && workout?.structure?.type === "ladder" &&
+      /\\bladder\\b/i.test(sourceText)) {
+    return { ...workout, format: "ladder" };
+  }
+  return workout;
+}
+
 function normalizeCommonStructureDrift(workout: any, timer: any) {
   const structure = workout?.structure;
   if (workout?.format !== "rounds_for_time" || structure?.type !== "ladder" ||
@@ -172,7 +180,10 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
   raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);
   raw = normalizeLadderDirection(raw);
-  if (raw?.workout) raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
+  if (raw?.workout) {
+    raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
+    raw.workout = normalizeExplicitLadderFormat(raw.workout, sourceTextForNormalization);
+  }
   raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
@@ -450,7 +461,7 @@ REGLAS DE INTERPRETACIÓN:
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items. Úsalo cuando las repeticiones cambien entre rondas o intervalos, aunque el temporizador sea intervals. Si el texto indica una reducción o aumento y aporta valor inicial, paso y número de rondas, representa cada peldaño explícitamente. No inventes progresiones. Si una carga comienza en un peso y aumenta una cantidad fija después de cada ronda, incluye en la etiqueta de cada peldaño el peso exacto de esa ronda, calculándolo desde el peso inicial y el incremento.
    - sections: bloques nombrados, cada uno con structure de tipo sequence. Úsalo para Strength + WOD u otros segmentos diferenciados.
-7. Compatibilidad: rounds_for_time=rounds o ladder (ladder cuando las prescripciones cambian entre rondas); chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/ladder/sections; death_by=sequence/ladder/sections; custom admite cualquiera.
+7. Compatibilidad: rounds_for_time=rounds o ladder (ladder cuando las prescripciones cambian entre rondas); chipper=chipper; ladder=ladder; strength_plus_wod=sections; for_time=sequence/rounds/chipper/sections; amrap=sequence/rounds/sections; emom/e2mom/tabata=sequence/sections; intervals=sequence/rounds/ladder/sections; death_by=sequence/ladder/sections; custom admite cualquiera. Si el texto identifica explícitamente el formato como LADDER y la estructura contiene steps, usa format:"ladder", no "for_time".
 8. Diferencia formato del WOD y temporizador. El temporizador no registra la finalización de movimientos.
 9. Temporizador:
    - AMRAP con duración explícita: countdown con duración en segundos.
@@ -640,6 +651,16 @@ Criterio: format strength_plus_wod; structure sections Strength y Conditioning, 
       let correctedResponse: Response;
       try {
         correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, 8000);
+        if (selectedProvider === "groq" && correctedResponse.status === 429) {
+          const rateLimitDetail = await correctedResponse.text();
+          const retryMatch = rateLimitDetail.match(/try again in ([\\d.]+)\\s*ms/i);
+          const retryDelayMs = retryMatch
+            ? Math.min(1500, Math.max(250, Math.ceil(Number(retryMatch[1]) + 150)))
+            : 700;
+          console.warn("Groq correction rate limited; retrying once after bounded backoff", retryDelayMs);
+          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+          correctedResponse = await requestGroq(10000);
+        }
       } catch (correctionError) {
         console.error("AI correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
         return json({ error: "La interpretación necesita una corrección, pero el modelo no ha respondido a tiempo. Inténtalo de nuevo." }, 503, allowedOrigin);
