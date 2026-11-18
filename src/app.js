@@ -315,7 +315,7 @@ function renderTimerDescription(workout) {
         item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
         const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
-        const heading = document.createElement("h4"); heading.textContent = (Number(entry.count) || 1) + " RONDAS";
+        const heading = document.createElement("h4"); heading.textContent = entry.label || ((Number(entry.count) || 1) + ((Number(entry.count) || 1) === 1 ? " RONDA" : " RONDAS"));
         nested.append(heading); renderStructureNodes(entry.items, nested); item.append(nested);
       } else if (entry?.type === "choice") {
         const choice = document.createElement("section"); choice.className = "timer-description-choice";
