@@ -69,8 +69,19 @@ function compilePlan(plan) {
       case "countup":
         if (block.timeCapSeconds !== null) positiveInteger(block.timeCapSeconds, "timeCapSeconds");
         if (block.rounds !== null) positiveInteger(block.rounds, "rounds");
+        if (block.stages !== undefined) {
+          if (!Array.isArray(block.stages) || !block.stages.length ||
+              block.stages.some(stage => !stage || typeof stage.label !== "string" || !stage.label.trim())) {
+            throw new TimerError("INVALID_STAGES", "Count-up stages must have labels and durations.");
+          }
+          block.stages.forEach(stage => positiveInteger(stage.durationSeconds, "stage.durationSeconds"));
+          if (block.timeCapSeconds === null ||
+              block.stages.reduce((sum, stage) => sum + stage.durationSeconds, 0) !== block.timeCapSeconds) {
+            throw new TimerError("INVALID_STAGES", "Count-up stage durations must add up to the time cap.");
+          }
+        }
         const stages = Array.isArray(block.stages) ? block.stages.map(stage => ({
-          label: stage.label,
+          label: stage.label.trim(),
           durationMs: stage.durationSeconds * 1000
         })) : null;
         add({
