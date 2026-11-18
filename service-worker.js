@@ -9,7 +9,7 @@ const APP_SHELL = [
   "assets/apple-touch-icon.png",
   "assets/icon-192.png",
   "assets/icon-512.png",
-  "src/styles.css?v=55",
+  "src/styles.css?v=56",
   "src/app.js?v=11",
   "src/audio-cues.js",
   "src/timer-engine.js",
