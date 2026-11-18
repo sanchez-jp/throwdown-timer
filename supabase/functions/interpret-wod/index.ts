@@ -684,6 +684,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
     workout,
     timer: raw.timer,
     interpretation: { status: issues.some(item => item.severity === "blocking") ? "needs_review" : "ready", issues },
+    sourceText: sourceTextForNormalization.slice(0, 8000) || null,
   };
 }
 
@@ -886,6 +887,12 @@ const responseSchema = {
   required: ["schemaVersion", "title", "workout", "timer", "interpretation"],
 };
 
+const imageResponseSchema = {
+  ...responseSchema,
+  properties: { ...responseSchema.properties, sourceText: { type: "string" } },
+  required: [...responseSchema.required, "sourceText"],
+};
+
 const semanticReviewSchema = {
   type: "object",
   properties: {
@@ -1035,10 +1042,10 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
 `;
 
     const imageParts = hasImage ? [{ inlineData: { mimeType: image.mimeType, data: image.data } }] : [];
-    const prompt = hasImage
-      ? `Interpreta el WOD que aparece en la imagen adjunta. Lee cuidadosamente todo el texto, incluidos encabezados, notas, cargas, unidades, alternativas y anotaciones manuscritas legibles. Conserva el orden y la estructura visual. Si un dato no se distingue con seguridad, no lo inventes: añade una observación para que el usuario lo revise. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nWOD EN LA IMAGEN ADJUNTA.`
+    let prompt = hasImage
+      ? `Interpreta el WOD que aparece en la imagen adjunta. Lee cuidadosamente todo el texto, incluidos encabezados, notas, cargas, unidades, alternativas y anotaciones manuscritas legibles. Conserva el orden y la estructura visual. Devuelve además en el campo superior sourceText una transcripción fiel del contenido visible, conservando el orden de las líneas. Marca como [ilegible] cualquier fragmento que no puedas leer con seguridad y añade una observación para que el usuario lo revise. No inventes datos. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nWOD EN LA IMAGEN ADJUNTA.`
       : `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nDESCRIPCIÓN DEL WOD:\\n${sourceText}`
-    const requestGemini = async (model: string, timeoutMs = 12000, requestPrompt = prompt, requestSystem = systemPrompt, schema: any = responseSchema) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const requestGemini = async (model: string, timeoutMs = 12000, requestPrompt = prompt, requestSystem = systemPrompt, schema: any = hasImage ? imageResponseSchema : responseSchema) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: AbortSignal.timeout(timeoutMs),
@@ -1149,7 +1156,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       let parsed: any;
       try { parsed = JSON.parse(output); }
       catch { throw new Error("La respuesta de IA no contiene JSON válido."); }
-      return normalizeResult(parsed, sourceText);
+      return normalizeResult(parsed, sourceText || (hasImage && typeof parsed.sourceText === "string" ? parsed.sourceText : ""));
     };
 
     let output = await extractText(response);
@@ -1236,7 +1243,7 @@ Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corr
         const review = JSON.parse(reviewText);
         if (review.status === "corrected" && review.correctedResult) {
           try {
-            result = normalizeResult(review.correctedResult, sourceText);
+            result = normalizeResult(review.correctedResult, sourceText || result.sourceText || review.correctedResult.sourceText || "");
             console.info("AI semantic review corrected interpretation", {
               provider: selectedProvider, model: selectedModel,
               durationMs: Date.now() - semanticReviewStartedAt,
