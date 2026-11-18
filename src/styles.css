@@ -469,3 +469,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   .structure-nested-heading .structure-field{max-width:none}
   .structure-node-actions .structure-add-button{flex:1 1 auto}
 }
+
+/* Keep remove controls after the fields instead of overlaying their labels. */
+.structure-item-row>.remove-movement-button,.structure-choice-alternative>.remove-movement-button{grid-row:auto;grid-column:2;justify-self:end}
