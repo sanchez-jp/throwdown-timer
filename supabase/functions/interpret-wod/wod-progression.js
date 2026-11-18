@@ -85,21 +85,26 @@ export function expandProgressiveLoadLadder(raw, sourceText = "") {
 
   const movements = Array.isArray(raw.workout.movements) ? raw.workout.movements : [];
   const baseText = progression[1].replace(/\s/g, "").replace(/,/g, ".");
-  const loadedMovements = movements.filter(movement => typeof movement?.load === "string" && movement.load.trim());
+  const referencedIds = new Set(structure.steps.flatMap(step =>
+    (Array.isArray(step.items) ? step.items : []).map(item => item?.movementId).filter(Boolean)
+  ));
+  const loadedMovements = movements.filter(movement =>
+    referencedIds.has(movement?.id) && typeof movement?.load === "string" && movement.load.trim()
+  );
   const matchingMovements = loadedMovements.filter(movement =>
     movement.load.replace(/\s/g, "").replace(/,/g, ".").includes(baseText)
   );
-  const target = matchingMovements.length === 1
-    ? matchingMovements[0]
-    : matchingMovements.length > 1 ? null
-      : (loadedMovements.length === 1 ? loadedMovements[0] : null);
-  if (!target) return raw;
+  const targets = matchingMovements.length
+    ? matchingMovements
+    : loadedMovements.length === 1 ? loadedMovements : [];
+  if (!targets.length) return raw;
 
+  const targetNames = targets.map(movement => movement.name).filter(Boolean).join(" / ");
   const steps = structure.steps.map((step, index) => {
     const label = String(step.label || "Ronda " + (index + 1));
     const cleanLabel = label.replace(/\s*[·|–—-]\s*.*$/, "").trim() || "Ronda " + (index + 1);
     const values = startingLoads.map((value, position) => Number((value + increments[position] * index).toFixed(2)));
-    return { ...step, label: cleanLabel + " · " + target.name + " " + formatLoadValues(values) + " kg" };
+    return { ...step, label: cleanLabel + " · " + targetNames + " " + formatLoadValues(values) + " kg" };
   });
 
   return {
