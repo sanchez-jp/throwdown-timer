@@ -315,7 +315,8 @@ function renderTimerDescription(workout) {
       const name = movement?.name || "Movimiento no disponible";
       const loadShownInLabel = /\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?\s*kg\b/i.test(groupLabel) &&
         groupLabel.toLowerCase().includes(name.toLowerCase());
-      item.textContent = [entry?.prescription || movement?.prescription, name, loadShownInLabel ? null : movement?.load]
+      item.textContent = [entry?.prescription || movement?.prescription, name,
+        entry?.load || (loadShownInLabel ? null : movement?.load)]
         .filter(Boolean).join(" · ");
       list.append(item);
     });
@@ -985,9 +986,14 @@ function createStructureItemRow(item = {}) {
   const prescription = document.createElement("input");
   prescription.className = "editor-input";
   prescription.name = "prescription";
-  prescription.placeholder = "Prescripción opcional";
+  prescription.placeholder = "Prescripción";
   prescription.value = item.prescription || "";
-  row.append(prescription);
+  const load = document.createElement("input");
+  load.className = "editor-input";
+  load.name = "itemLoad";
+  load.placeholder = "Carga específica";
+  load.value = item.load || "";
+  row.append(prescription, load);
   row.append(structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove()));
   return row;
 }
@@ -1161,7 +1167,8 @@ function collectSemanticStructure() {
   const movementItems = container => [...container.querySelectorAll(":scope > .structure-item-row")].map(row => ({
     type: "movement",
     movementId: row.querySelector('[name="movementId"]').value,
-    ...(row.querySelector('[name="prescription"]').value.trim() ? { prescription: row.querySelector('[name="prescription"]').value.trim() } : {})
+    ...(row.querySelector('[name="prescription"]').value.trim() ? { prescription: row.querySelector('[name="prescription"]').value.trim() } : {}),
+    ...(row.querySelector('[name="itemLoad"]').value.trim() ? { load: row.querySelector('[name="itemLoad"]').value.trim() } : {})
   }));
   if (["sequence", "rounds", "chipper"].includes(type)) {
     const items = movementItems($("structureSettings").querySelector(".structure-items"));
