@@ -1420,7 +1420,7 @@ function resetAiReview() {
   if ($("aiInterpretationStatus")) $("aiInterpretationStatus").textContent = "";
   if ($("interpretWithAiButton")) {
     $("interpretWithAiButton").disabled = false;
-    $("interpretWithAiButton").textContent = "interpretar";
+    $("interpretWithAiButton").textContent = "INTERPRETAR";
   }
 }
 
@@ -1478,7 +1478,7 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     status.textContent = error.message || "No se ha podido interpretar el WOD. Comprueba tu conexión e inténtalo de nuevo.";
   } finally {
     button.disabled = false;
-    button.textContent = "interpretar";
+    button.textContent = "INTERPRETAR";
   }
 });
 
