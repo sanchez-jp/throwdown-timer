@@ -101,37 +101,64 @@ function repairEmptyAmrapLoadProgression(workout: any, sourceText: string) {
   if (workout?.format !== "amrap" || structure?.type !== "sequence" ||
       !Array.isArray(structure.items) || !Array.isArray(movements) || !movements.length) return workout;
 
-  const groups = structure.items;
-  const isEmptyRoundGroup = (group: any) => group?.type === "rounds" && group.count === 1 &&
-    typeof group.label === "string" && /^ronda\s+\d+(?:\s*\([^)]*\))?$/i.test(group.label.trim()) &&
-    (!Array.isArray(group.items) || group.items.length === 0);
-  if (groups.length < 2 || !groups.every(isEmptyRoundGroup)) return workout;
-
   const progression = sourceText.match(
-    /(?:añad(?:e|ir)|increment(?:a|ar)|aument(?:a|ar)|sub(?:e|ir)|add|increase)\s+(?:en\s+)?(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\s+en\s+cada\s+ronda/i
+    /(?:añad(?:e|ir)|increment(?:a|ar)|aument(?:a|ar)|sub(?:e|ir)|add|increase)\\s+(?:en\\s+)?(\\d+(?:[.,]\\d+)?\\s*\\/\\s*\\d+(?:[.,]\\d+)?)\\s*kg\\s+(?:en\\s+cada\\s+ronda|each\\s+round)/i
   );
   if (!progression) return workout;
 
-  const increment = progression[1].replace(/\s/g, "").replace(/,/g, ".");
-  const items = movements.map((movement: any) => {
-    if (!movement || typeof movement.id !== "string" || !movement.id) return null;
-    const load = typeof movement.load === "string" && movement.load.trim()
-      ? movement.load.trim()
-      : null;
-    return {
-      type: "movement",
-      movementId: movement.id,
-      prescription: typeof movement.prescription === "string" ? movement.prescription : null,
-      load,
-      ...(load ? { loadProgression: { increment, unit: "kg", every: "round" } } : {}),
-    };
-  });
-  if (items.some((item: any) => !item)) return workout;
+  const increment = progression[1].replace(/\\s/g, "").replace(/,/g, ".");
+  const movementById = new Map(movements.filter((movement: any) => movement?.id).map((movement: any) => [movement.id, movement]));
+  const isEmptyRoundGroup = (group: any) => group?.type === "rounds" && group.count === 1 &&
+    typeof group.label === "string" && /^ronda\\s+\\d+(?:\\s*\\([^)]*\\))?$/i.test(group.label.trim()) &&
+    (!Array.isArray(group.items) || group.items.length === 0);
+  const groups = structure.items;
+  let items: any[];
+
+  if (groups.length >= 2 && groups.every(isEmptyRoundGroup)) {
+    items = movements.map((movement: any) => {
+      if (!movement || typeof movement.id !== "string" || !movement.id) return null;
+      const load = typeof movement.load === "string" && movement.load.trim() ? movement.load.trim() : null;
+      return {
+        type: "movement",
+        movementId: movement.id,
+        prescription: typeof movement.prescription === "string" ? movement.prescription : null,
+        load,
+        ...(load ? { loadProgression: { increment, unit: "kg", every: "round" } } : {}),
+      };
+    });
+    if (items.some((item: any) => !item)) return workout;
+  } else {
+    const applyProgression = (nodes: any[]): any[] => nodes.map((node: any) => {
+      if (node?.type === "movement") {
+        const movement: any = movementById.get(node.movementId);
+        const load = typeof node.load === "string" && node.load.trim()
+          ? node.load.trim()
+          : typeof movement?.load === "string" && movement.load.trim() ? movement.load.trim() : null;
+        return {
+          ...node,
+          ...(load ? { load, loadProgression: { increment, unit: "kg", every: "round" } } : {}),
+        };
+      }
+      if (node?.type === "rounds" && Array.isArray(node.items)) return { ...node, items: applyProgression(node.items) };
+      if (node?.type === "choice" && Array.isArray(node.alternatives)) {
+        return { ...node, alternatives: node.alternatives.map((option: any) => ({ ...option, items: applyProgression(option.items || []) })) };
+      }
+      return node;
+    });
+    items = applyProgression(groups);
+  }
+
+  const hasProgression = (nodes: any[]): boolean => nodes.some((node: any) =>
+    node?.loadProgression?.every === "round" ||
+    (Array.isArray(node?.items) && hasProgression(node.items)) ||
+    (Array.isArray(node?.alternatives) && node.alternatives.some((option: any) => hasProgression(option.items || [])))
+  );
+  if (!hasProgression(items)) return workout;
 
   console.info("AI AMRAP progressive load normalized as open-ended sequence", {
     movements: items.length, increment: increment + " kg",
   });
-  return { ...workout, structure: { type: "sequence", items } };
+  return { ...workout, structure: { ...structure, items } };
 }
 
 function repairEmptyRoundGroups(workout: any) {
@@ -1038,8 +1065,13 @@ Devuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
     }
 
     const structure = result.workout?.structure;
+    const hasProgression = (nodes: any[]): boolean => nodes.some((node: any) =>
+      node?.loadProgression?.every === "round" ||
+      (Array.isArray(node?.items) && hasProgression(node.items)) ||
+      (Array.isArray(node?.alternatives) && node.alternatives.some((option: any) => hasProgression(option.items || [])))
+    );
     if (result.workout?.format === "amrap" && structure?.type === "sequence" &&
-        Array.isArray(structure.items) && structure.items.some((item: any) => item?.loadProgression?.every === "round")) {
+        Array.isArray(structure.items) && hasProgression(structure.items)) {
       result.interpretation.issues = (result.interpretation.issues || []).filter((item: any) =>
         !/AMRAP.*(?:número fijo|rondas)|(?:representación estática|ambigua).*carga/i.test(item.message || ""));
     }
