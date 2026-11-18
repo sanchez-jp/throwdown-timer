@@ -24,10 +24,14 @@ async function ensureAnonymousSession() {
   return data.session;
 }
 
-export async function interpretWod(sourceText) {
+export async function interpretWod(source) {
+  const body = typeof source === "string" ? { sourceText: source } : source;
+  if (!body || (typeof body.sourceText !== "string" && !body.image)) {
+    throw new Error("Introduce un WOD o selecciona una imagen para interpretarlo.");
+  }
   await ensureAnonymousSession();
   const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
-    body: { sourceText },
+    body,
   });
   if (error) {
     if (error instanceof FunctionsHttpError) {
