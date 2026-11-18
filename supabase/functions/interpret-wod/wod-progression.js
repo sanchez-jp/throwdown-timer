@@ -100,11 +100,19 @@ export function expandProgressiveLoadLadder(raw, sourceText = "") {
   if (!targets.length) return raw;
 
   const targetNames = targets.map(movement => movement.name).filter(Boolean).join(" / ");
+  const targetIds = new Set(targets.map(movement => movement.id));
   const steps = structure.steps.map((step, index) => {
     const label = String(step.label || "Ronda " + (index + 1));
     const cleanLabel = label.replace(/\s*[·|–—-]\s*.*$/, "").trim() || "Ronda " + (index + 1);
     const values = startingLoads.map((value, position) => Number((value + increments[position] * index).toFixed(2)));
-    return { ...step, label: cleanLabel + " · " + targetNames + " " + formatLoadValues(values) + " kg" };
+    const load = formatLoadValues(values) + " kg";
+    return {
+      ...step,
+      label: cleanLabel + " · " + targetNames + " " + load,
+      items: (Array.isArray(step.items) ? step.items : []).map(item =>
+        targetIds.has(item?.movementId) ? { ...item, load } : item
+      ),
+    };
   });
 
   return {
