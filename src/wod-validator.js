@@ -50,6 +50,9 @@ function validateStructure(node, movementIds, path = "workout.structure", depth 
       if (node.prescription !== undefined && node.prescription !== null && typeof node.prescription !== "string") {
         fail("INVALID_PRESCRIPTION", "La prescripción de esta aparición debe ser texto o null.", path + ".prescription");
       }
+      if (node.load !== undefined && node.load !== null && typeof node.load !== "string") {
+        fail("INVALID_MOVEMENT_LOAD", "La carga de esta aparición debe ser texto o null.", path + ".load");
+      }
       return;
     case "sequence":
     case "rounds":
