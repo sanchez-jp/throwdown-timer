@@ -574,6 +574,19 @@ function normalizeCommonStructureDrift(workout: any, timer: any) {
   };
 }
 
+function normalizeWorkoutDescription(description: string, sourceText: string) {
+  const value = description.trim();
+  if (!value) return "";
+  const normalize = (text: string) => text.toLowerCase()
+    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  const normalizedDescription = normalize(value);
+  const repeatsSourceLine = sourceText.split(/\\r?\\n/)
+    .map((line: string) => normalize(line.replace(/^\\s*(?:[-*•]|\\d+[.)])\\s*/, "")))
+    .some((line: string) => line.length >= 24 && line === normalizedDescription);
+  return repeatsSourceLine ? "" : value;
+}
+
 function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
@@ -658,7 +671,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   }
   const workout = {
     format: raw.workout.format,
-    description: raw.workout.description.slice(0, 2000),
+    description: normalizeWorkoutDescription(raw.workout.description.slice(0, 2000), sourceTextForNormalization),
     team: (() => {
       const team = raw.workout.team;
       const athletes = Number.isInteger(team?.athletes) && team.athletes >= 1 && team.athletes <= 4 ? team.athletes : 1;
@@ -984,7 +997,7 @@ REGLAS DE INTERPRETACIÓN:
 10 quinquies. Si el texto indica I Go, You Go, identifica el número de atletas, la unidad que completa cada atleta antes del cambio y si las repeticiones indicadas son por atleta o totales del equipo. No dividas un movimiento alternado repetición a repetición en bloques consecutivos; describe esa alternancia como regla de ejecución.
 10 sexies. Alineación de progresiones con rondas: si el WOD indica N rondas con un circuito de varios movimientos y, a continuación, aparece una progresión de exactamente N valores para un movimiento adicional (por ejemplo, 4 ROUNDS ... 20-15-10-5 Synchro Burpees), interpreta por defecto que ese movimiento cierra cada ronda con el valor correspondiente, siempre que no haya una indicación explícita de que sea un finisher separado ("then", "after all rounds", "finisher", "al terminar las rondas", etc.). Representa el circuito como structure.type:"sequence" con N nodos rounds de count:1 y label:"RONDA 1" ... "RONDA N"; cada nodo contiene el circuito completo y la prescripción correspondiente de esa progresión. Si el texto indica expresamente que la progresión va después de completar todas las rondas, déjala fuera. Si el número de valores no coincide con N o el alcance no puede determinarse con seguridad, no fuerces la asociación: conserva la interpretación más fiel y añade una issue warning que solicite confirmación. Esta regla es general y se aplica a cualquier movimiento/progresión, no solo a burpees ni a movimientos sincronizados.
 10 septies. Si un WOD en parejas/equipo indica que todo se reparte libremente EXCEPTO un movimiento marcado explícitamente como "Synchro", usa el modo global shared y conserva la excepción en notes del movimiento sincronizado: ambos atletas realizan esas repeticiones simultáneamente. No conviertas todo el WOD a synchro ni pierdas la excepción.
-12. Devuelve exclusivamente el objeto JSON definido por el esquema. No añadas Markdown ni texto externo.`;
+10 octies. workout.description es solo para aclaraciones útiles que no estén ya representadas en movements, structure, team o timer (por ejemplo, una regla especial de ejecución). No copies el encabezado, el formato, la duración ni la lista de movimientos del WOD. Si toda la información ya está reflejada en los campos estructurados, devuelve description como cadena vacía.\n  12. Devuelve exclusivamente el objeto JSON definido por el esquema. No añadas Markdown ni texto externo.`;
 
     const examples = `EJEMPLO 1 — FRAN:
 Entrada: FRAN. 21-15-9 reps for time: Thrusters 43/30 kg, Pull-ups. Time cap 10 minutes.
