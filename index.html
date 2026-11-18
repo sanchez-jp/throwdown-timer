@@ -79,6 +79,24 @@
         </select>
         <label class="field-label" for="editDescription">Descripción</label>
         <textarea class="editor-input" id="editDescription" name="description" rows="3" maxlength="1000"></textarea>
+        <section class="team-settings-editor" aria-labelledby="teamSettingsHeading">
+          <div class="movement-editor-heading"><h2 id="teamSettingsHeading">Dinámica de equipo</h2></div>
+          <p class="timer-plan-help">Define cuántos atletas participan y cómo se distribuye el trabajo.</p>
+          <label class="field-label" for="teamAthletes">Participantes</label>
+          <select class="editor-input" id="teamAthletes" name="teamAthletes">
+            <option value="1">Individual · 1 atleta</option><option value="2">Parejas · 2 atletas</option><option value="3">Tríos · 3 atletas</option><option value="4">Cuartetos · 4 atletas</option>
+          </select>
+          <label class="field-label" for="teamMode">Modo de trabajo</label>
+          <select class="editor-input" id="teamMode" name="teamMode">
+            <option value="individual">Individual</option><option value="i_go_you_go">I Go, You Go</option><option value="synchro">Synchro</option><option value="shared">Repartido libremente</option><option value="team">Team / Combinado</option>
+          </select>
+          <div id="teamRotationSettings" class="team-rotation-settings">
+            <label class="field-label" for="teamRotation">Cambio de atleta</label>
+            <select class="editor-input" id="teamRotation" name="teamRotation">
+              <option value="complete">Al completar el bloque o ronda</option><option value="reps">Cada número de repeticiones establecido</option><option value="free">Libre elección del equipo</option>
+            </select>
+          </div>
+        </section>
         <div class="movement-editor-heading"><h2>Movimientos</h2></div>
         <div id="movementEditorList" class="movement-editor-list"></div>
         <button class="text-button movement-add-button" id="addMovementButton" type="button">+ AÑADIR MOVIMIENTO</button>
