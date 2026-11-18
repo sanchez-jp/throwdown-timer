@@ -301,10 +301,6 @@ function renderTimerDescription(workout, timerPlan = null) {
   const title = document.createElement("h2");
   title.textContent = workout.title || workout.name || "WOD";
   heading.append(title);
-  const format = document.createElement("span");
-  format.className = "tag";
-  format.textContent = workout.tag || String(workout.workout?.format || "WOD").replaceAll("_", " ").toUpperCase();
-  heading.append(format);
   panel.append(heading);
 
   const workoutData = workout.workout || workout;
