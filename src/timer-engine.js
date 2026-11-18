@@ -85,10 +85,20 @@ function compilePlan(plan) {
             block.rounds !== block.durationSeconds / block.intervalSeconds) {
           throw new TimerError("INVALID_EMOM", "EMOM duration, interval, and rounds must agree.");
         }
+        if (block.intervalLabels !== undefined &&
+            (!Array.isArray(block.intervalLabels) || !block.intervalLabels.length ||
+             block.intervalLabels.some(label => typeof label !== "string" || !label.trim()))) {
+          throw new TimerError("INVALID_EMOM_LABELS", "EMOM intervalLabels must contain non-empty labels.");
+        }
         for (let i = 1; i <= block.rounds; i++) {
+          const intervalLabel = Array.isArray(block.intervalLabels) && block.intervalLabels.length
+            ? block.intervalLabels[(i - 1) % block.intervalLabels.length]
+            : block.label || "EMOM";
+          const isRest = /^(rest|descanso)$/i.test(intervalLabel.trim());
           add({
             type: "emom",
-            label: block.label || "EMOM",
+            phase: isRest ? "rest" : "work",
+            label: intervalLabel,
             durationMs: block.intervalSeconds * 1000,
             round: i,
             totalRounds: block.rounds,
