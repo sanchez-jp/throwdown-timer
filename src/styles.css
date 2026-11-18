@@ -135,7 +135,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-description-heading h2{font-size:clamp(18px,3vw,28px);line-height:1.15;margin:0}
 .timer-description-summary{font-size:clamp(12px,2vw,16px);color:var(--muted);margin:8px 0 16px}
 .timer-description h3{font-size:10px;letter-spacing:1.5px;color:var(--cyan);margin:14px 0 8px}
-.timer-description-list{padding-left:1.2em;margin:8px 0}
+.timer-description-list{list-style:none;padding:0;margin:8px 0}
 .timer-description-list li{font-size:clamp(13px,2vw,18px);line-height:1.35;margin:0 0 7px;color:var(--white)}
 .timer-emom-schedule{list-style:none;padding:0;margin:8px 0}
 .timer-emom-schedule li{padding:8px 10px;border:1px solid transparent;border-radius:6px;color:var(--muted);transition:background-color .22s ease,border-color .22s ease,color .22s ease,transform .22s ease}
@@ -195,7 +195,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-description-close{color:var(--cyan);white-space:nowrap}
 .timer-description-summary{font-size:clamp(12px,2vw,16px);color:var(--muted);margin:8px 0 16px}
 .timer-description h3{font-size:10px;letter-spacing:1.5px;color:var(--cyan);margin:14px 0 8px}
-.timer-description-list{padding-left:1.2em;margin:8px 0}
+.timer-description-list{list-style:none;padding:0;margin:8px 0}
 .timer-description-list li{font-size:clamp(13px,2vw,18px);line-height:1.35;margin:0 0 7px;color:var(--white)}
 .timer-description-notes{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
 @media (orientation:landscape) and (min-width:480px){
@@ -378,8 +378,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 /* v44: structured WOD description follows the semantic workout order. */
 .timer-description-structure-group{margin:0 0 12px}
 .timer-description-structure-group h3{margin-top:12px}
-.timer-description-ordered{padding-left:1.55em;list-style:decimal}
-.timer-description-ordered li{padding-left:2px}
 
 
 /* AI WOD import */
