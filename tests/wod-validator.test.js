@@ -137,3 +137,33 @@ test("accepts a variable-repetition ladder inside an intervals workout", () => {
   });
   assert.equal(validateWodV2(value), true);
 });
+
+
+test("accepts a load override on an individual ladder movement occurrence", () => {
+  const value = wod({
+    workout: {
+      format: "ladder",
+      description: "Ladder con cargas progresivas",
+      movements: [{ id: "m1", name: "Clean", prescription: null, load: "40/30 kg", notes: null }],
+      structure: { type: "ladder", direction: "ascending", steps: [
+        { label: "Ronda 1", items: [{ type: "movement", movementId: "m1", prescription: "6", load: "40/30 kg" }] },
+        { label: "Ronda 2", items: [{ type: "movement", movementId: "m1", prescription: "6", load: "50/37,5 kg" }] }
+      ]}
+    }
+  });
+  assert.equal(validateWodV2(value), true);
+});
+
+test("rejects a non-text load override on a structure movement", () => {
+  const value = wod({
+    workout: {
+      format: "ladder",
+      description: "Ladder",
+      movements: [{ id: "m1", name: "Clean", prescription: null, load: null, notes: null }],
+      structure: { type: "ladder", direction: "ascending", steps: [
+        { label: "Ronda 1", items: [{ type: "movement", movementId: "m1", load: 50 }] }
+      ]}
+    }
+  });
+  assert.throws(() => validateWodV2(value), error => error.code === "INVALID_MOVEMENT_LOAD");
+});
