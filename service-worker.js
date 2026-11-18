@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "throwdown-timer-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v81`;
+const CACHE_NAME = `${CACHE_PREFIX}v82`;
 const APP_SHELL = [
   "",
   "index.html",
@@ -9,8 +9,8 @@ const APP_SHELL = [
   "assets/apple-touch-icon.png",
   "assets/icon-192.png",
   "assets/icon-512.png",
-  "src/styles.css?v=61",
-  "src/app.js?v=21",
+  "src/styles.css?v=62",
+  "src/app.js?v=22",
   "src/audio-cues.js",
   "src/timer-engine.js",
   "src/timer-plan-builder.js",
