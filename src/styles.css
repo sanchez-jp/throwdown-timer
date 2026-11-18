@@ -428,7 +428,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .editor-section .semantic-structure-editor.hidden{display:none}
 .editor-section .timer-plan-editor .movement-editor-heading{margin-top:14px}
 .editor-section .timer-block-fields{grid-template-columns:1fr 1fr}
-.editor-section .structure-item-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto}
 @media(max-width:520px){
   .editor-panel{margin-top:18px}
   .editor-section>summary{min-height:56px;padding:12px}
