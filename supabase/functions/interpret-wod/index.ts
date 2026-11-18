@@ -577,13 +577,13 @@ function normalizeCommonStructureDrift(workout: any, timer: any) {
 function normalizeWorkoutDescription(description: string, sourceText: string) {
   const value = description.trim();
   if (!value) return "";
-  const normalize = (text: string) => text.toLowerCase()
-    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
+  const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9áéíóúüñ]/g, "");
   const normalizedDescription = normalize(value);
   const repeatsSourceLine = sourceText.split(/\r?\n/)
-    .map((line: string) => normalize(line.replace(/^\s*(?:[-*•]|\\d+[.)])\s*/, "")))
-    .some((line: string) => line.length >= 24 && line === normalizedDescription);
+    .some((line: string) => {
+      const normalizedLine = normalize(line);
+      return normalizedLine.length >= 24 && normalizedLine === normalizedDescription;
+    });
   return repeatsSourceLine ? "" : value;
 }
 
