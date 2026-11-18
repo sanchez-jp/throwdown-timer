@@ -211,6 +211,15 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   const workout = {
     format: raw.workout.format,
     description: raw.workout.description.slice(0, 2000),
+    team: (() => {
+      const team = raw.workout.team;
+      const athletes = Number.isInteger(team?.athletes) && team.athletes >= 1 && team.athletes <= 4 ? team.athletes : 1;
+      const mode = athletes === 1 ? "individual" :
+        ["i_go_you_go", "synchro", "shared", "team"].includes(team?.mode) ? team.mode : "i_go_you_go";
+      return { athletes, mode, ...(mode === "i_go_you_go" ? {
+        rotation: ["complete", "reps", "free"].includes(team?.rotation) ? team.rotation : "complete"
+      } : {}) };
+    })(),
     movements: raw.workout.movements.map((movement: any, index: number) => ({
       id: String(movement.id || "movement-" + (index + 1)).slice(0, 80),
       name: String(movement.name || "").trim().slice(0, 120),
@@ -240,6 +249,15 @@ const responseSchema = {
       properties: {
         format: { type: "string", enum: ["amrap", "for_time", "emom", "e2mom", "tabata", "intervals", "rounds_for_time", "chipper", "ladder", "death_by", "strength_plus_wod", "custom"] },
         description: { type: "string" },
+        team: {
+          type: "object",
+          properties: {
+            athletes: { type: "integer", minimum: 1, maximum: 4 },
+            mode: { type: "string", enum: ["individual", "i_go_you_go", "synchro", "shared", "team"] },
+            rotation: { type: "string", enum: ["complete", "reps", "free"], nullable: true },
+          },
+          required: ["athletes", "mode", "rotation"],
+        },
         movements: {
           type: "array",
           items: {
@@ -421,6 +439,7 @@ REGLAS DE INTERPRETACIÓN:
 2. No inventes ni completes por intuición repeticiones, movimientos, cargas, unidades, Time Cap, duración, intervalos, descansos, rondas o escalados.
 3. Conserva exactamente el orden de ejecución. El catálogo movements contiene cada movimiento una sola vez; structure contiene cada aparición en su posición real. Un movimiento puede aparecer muchas veces en structure.
 4. Cada movimiento debe tener id único, corto y estable (minúsculas, números y guiones), name y los campos prescription, load y notes. Usa null cuando no exista un dato.
+4 bis. Incluye workout.team: athletes (1 a 4) y mode. Usa individual para un atleta; i_go_you_go cuando cada atleta completa su turno y después cambia; synchro cuando trabajan simultáneamente; shared cuando el equipo reparte libremente el total; team cuando se combina más de una dinámica. En i_go_you_go añade rotation: complete, reps o free según el criterio de cambio. No deduzcas synchro si no se indica.
 5. En cada nodo de structure usa type:"movement", movementId exacto y prescription como texto específico de esa aparición o null. No incluyas movimientos que no aparezcan en el WOD.
 6. Elige la estructura más fiel:
    - sequence: lista ordenada literal. Es la opción correcta para esquemas descendentes o irregulares como 21-15-9 cuando las repeticiones cambian en cada vuelta.
@@ -441,6 +460,7 @@ REGLAS DE INTERPRETACIÓN:
 10. Si hay contradicciones, no elijas arbitrariamente: devuelve timer:null si afectan al temporizador y registra issue blocking.
 10 bis. Cargas alternativas al final: si la descripción termina con una línea independiente marcada con asterisco que contiene una carga (por ejemplo "*25/17.5kg?"), interprétala como carga alternativa opcional del movimiento anterior más cercano que tenga una carga explícita y sea compatible con esa unidad/equipo. No preguntes al usuario cuando esa asociación contextual sea inequívoca. Conserva la carga original y añade la alternativa como opcional al mismo movimiento. No la conviertas en movimiento ni en repeticiones. Solo crea una issue blocking si hay dos o más movimientos cargados plausibles y no existe una asociación clara.
    10 ter. Si el WOD indica alternar explícitamente Squat Clean (SC) y Power Clean (PC) repetición a repetición, no lo reduzcas a un único movimiento genérico "Clean". Crea dos movimientos distintos, "Squat Clean" y "Power Clean", y en cada peldaño coloca primero Squat Clean y después Power Clean. Reparte el total de repeticiones de ese peldaño entre ambos: si es par, mitad y mitad; si es impar, una repetición más de Squat Clean porque empieza la alternancia. Mantén el total original. La normalización del servidor también aplicará esta separación cuando detecte la instrucción en el texto original.\n  10 quater. En WODs en parejas donde se indique que cada atleta hace una ronda y cambia, conserva esa rotación explícitamente en la descripción: un atleta completa todos los movimientos de una ronda y después cambia el turno al compañero; no interpretes que se alternan movimiento a movimiento.
+10 quinquies. Si el texto indica I Go, You Go, identifica el número de atletas, la unidad que completa cada atleta antes del cambio y si las repeticiones indicadas son por atleta o totales del equipo. No dividas un movimiento alternado repetición a repetición en bloques consecutivos; describe esa alternancia como regla de ejecución.
 12. Devuelve exclusivamente el objeto JSON definido por el esquema. No añadas Markdown ni texto externo.`;
 
     const examples = `EJEMPLO 1 — FRAN:
