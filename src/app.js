@@ -322,8 +322,16 @@ function renderTimerDescription(workout) {
         const heading = document.createElement("h4"); heading.textContent = "ELIGE UNA OPCIÓN"; choice.append(heading);
         (entry.alternatives || []).forEach(alternative => {
           const option = document.createElement("div"); option.className = "timer-description-choice-option";
-          const label = document.createElement("strong"); label.textContent = alternative.label || "Alternativa";
-          option.append(label); renderStructureNodes(alternative.items, option); choice.append(option);
+          const optionItems = Array.isArray(alternative.items) ? alternative.items : [];
+          const singleMovement = optionItems.length === 1 && optionItems[0]?.type === "movement"
+            ? movementById.get(optionItems[0].movementId) : null;
+          const labelText = String(alternative.label || "").trim().toLocaleLowerCase();
+          const movementName = String(singleMovement?.name || "").trim().toLocaleLowerCase();
+          if (!singleMovement || !labelText || labelText !== movementName) {
+            const label = document.createElement("strong"); label.textContent = alternative.label || "Alternativa";
+            option.append(label);
+          }
+          renderStructureNodes(optionItems, option); choice.append(option);
         });
         item.append(choice);
       }
