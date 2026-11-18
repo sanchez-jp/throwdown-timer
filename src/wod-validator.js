@@ -114,6 +114,25 @@ export function validateWodV2(wod) {
     fail("INVALID_WORKOUT", "El formato, descripción o catálogo de movimientos no es válido.", "workout");
   }
 
+  if (workout.team !== undefined) {
+    const team = workout.team;
+    if (!team || typeof team !== "object" || !Number.isInteger(team.athletes) || team.athletes < 1 || team.athletes > 4) {
+      fail("INVALID_TEAM_SIZE", "La dinámica de equipo debe indicar entre 1 y 4 atletas.", "workout.team.athletes");
+    }
+    const allowedModes = team.athletes === 1
+      ? new Set(["individual"])
+      : new Set(["i_go_you_go", "synchro", "shared", "team"]);
+    if (!allowedModes.has(team.mode)) {
+      fail("INVALID_TEAM_MODE", "El modo de trabajo no es compatible con el número de atletas.", "workout.team.mode");
+    }
+    if (team.mode === "i_go_you_go" && !["complete", "reps", "free"].includes(team.rotation)) {
+      fail("INVALID_TEAM_ROTATION", "La regla de cambio de atleta no es válida.", "workout.team.rotation");
+    }
+    if (team.mode !== "i_go_you_go" && team.rotation !== undefined) {
+      fail("UNEXPECTED_TEAM_ROTATION", "La regla de rotación solo se aplica a I Go, You Go.", "workout.team.rotation");
+    }
+  }
+
   const movementIds = new Set();
   workout.movements.forEach((movement, index) => {
     const path = "workout.movements[" + index + "]";
