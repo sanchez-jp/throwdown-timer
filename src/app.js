@@ -660,7 +660,9 @@ async function openEditor(id) {
     $("editorStatus").textContent = "";
     $("libraryPanel").classList.add("hidden");
     $("editorPanel").classList.remove("hidden");
-    $("teamModeSettings").classList.toggle("hidden", normalizeTeamSettings(record.workout.team).athletes === 1);
+    const teamAthletes = normalizeTeamSettings(record.workout.team).athletes;
+    $("teamModeSettings").classList.toggle("hidden", teamAthletes === 1);
+    $("teamEditorSection").open = teamAthletes > 1;
     $("editTitle").focus();
   } catch (error) { showLibraryError(error); }
 }
@@ -1269,6 +1271,7 @@ $("teamAthletes").addEventListener("change", () => {
   if (athletes === 1) $("teamMode").value = "individual";
   else if ($("teamMode").value === "individual") $("teamMode").value = "i_go_you_go";
   renderTeamSettings({ athletes, mode: $("teamMode").value, rotation: $("teamRotation").value });
+  $("teamEditorSection").open = athletes > 1;
   if (athletes > 1) $("teamModeSettings").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
 $("teamMode").addEventListener("change", () => {
@@ -1278,6 +1281,7 @@ $("teamMode").addEventListener("change", () => {
 });
 $("editFormat").addEventListener("change", () => {
   if (editingSchemaVersion !== 2) return;
+  $("structureSection").open = true;
   let current = null;
   try { current = collectSemanticStructure(); } catch {}
   const allowed = structureFormats[$("editFormat").value] || [];
