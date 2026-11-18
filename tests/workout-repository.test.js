@@ -147,6 +147,7 @@ test("v1 and v2 records coexist and v2 semantic structure survives repository ro
     workout: {
       format: "ladder",
       description: "2, 5 y 9 burpees",
+      team: { athletes: 2, mode: "i_go_you_go", rotation: "complete" },
       movements: [{ id: "m1", name: "Burpee", prescription: null, load: null, notes: null }],
       structure: {
         type: "ladder",
@@ -166,7 +167,39 @@ test("v1 and v2 records coexist and v2 semantic structure survives repository ro
   assert.equal(legacy.schemaVersion, 1);
   assert.equal(loaded.schemaVersion, 2);
   assert.deepEqual(loaded.workout.structure, semanticWod.workout.structure);
+  assert.deepEqual(loaded.workout.team, semanticWod.workout.team);
   assert.deepEqual((await repository.list()).map(item => item.schemaVersion).sort(), [1, 2]);
+});
+
+test("repository validates participant count, team mode and I Go You Go rotation", async () => {
+  const { repository } = setup();
+  const base = {
+    schemaVersion: 2,
+    title: "Team WOD",
+    workout: {
+      format: "custom",
+      description: "Team workout",
+      team: { athletes: 3, mode: "i_go_you_go", rotation: "complete" },
+      movements: [{ id: "m1", name: "Burpee", prescription: null, load: null, notes: null }],
+      structure: { type: "sequence", items: [{ type: "movement", movementId: "m1", prescription: "10" }] }
+    },
+    timer: { type: "sequence", label: "For Time", blocks: [{ type: "countup", label: "For Time", timeCapSeconds: null, rounds: null }] },
+    interpretation: { status: "ready", issues: [] }
+  };
+  const saved = await repository.create(base);
+  assert.deepEqual(saved.workout.team, { athletes: 3, mode: "i_go_you_go", rotation: "complete" });
+  await assert.rejects(repository.create({
+    ...base, title: "Invalid team size",
+    workout: { ...base.workout, team: { athletes: 5, mode: "team" } }
+  }), error => error.code === "INVALID_TEAM_SIZE");
+  await assert.rejects(repository.create({
+    ...base, title: "Invalid mode",
+    workout: { ...base.workout, team: { athletes: 2, mode: "individual" } }
+  }), error => error.code === "INVALID_TEAM_MODE");
+  await assert.rejects(repository.create({
+    ...base, title: "Missing rotation",
+    workout: { ...base.workout, team: { athletes: 2, mode: "i_go_you_go" } }
+  }), error => error.code === "INVALID_TEAM_ROTATION");
 });
 
 test("repository rejects invalid v2 semantic references", async () => {
