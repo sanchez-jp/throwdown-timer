@@ -616,7 +616,7 @@ function makeLibraryCard(record) {
   open.className = "primary-button";
   open.type = "button";
   const canOpenTimer = record.timer && record.interpretation.status === "ready";
-  open.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10-6.5z" /></svg><span>' + (canOpenTimer ? "Abrir Timer" : "Pendiente Timer") + '</span>';
+  open.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10-6.5z" /></svg><span>' + '<span class="button-label">' + (canOpenTimer ? "Abrir Timer" : "Pendiente Timer") + '</span>';
   open.disabled = !record.timer || record.interpretation.status !== "ready";
   open.addEventListener("click", () => {
     if (!record.timer) return;
