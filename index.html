@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="./src/styles.css?v=77">
+  <link rel="stylesheet" href="./src/styles.css?v=78">
 </head>
 <body>
   <main class="app-shell">
@@ -70,9 +70,6 @@
               <button class="ai-import-option" id="aiImportImageButton" type="button" aria-pressed="false">
                 <span class="ai-import-option-icon" aria-hidden="true">▧</span><strong>Elegir imagen</strong><small>Galería o archivos</small>
               </button>
-              <button class="ai-import-option" id="aiImportCameraButton" type="button" aria-pressed="false">
-                <span class="ai-import-option-icon" aria-hidden="true">◎</span><strong>Hacer foto</strong><small>Cámara o webcam</small>
-              </button>
               <button class="ai-import-option" id="aiImportTextButton" type="button" aria-pressed="false">
                 <span class="ai-import-option-icon" aria-hidden="true">T</span><strong>Introducir texto</strong><small>Escribir o pegar</small>
               </button>
@@ -83,7 +80,6 @@
             </div>
             <div class="ai-image-import hidden" id="aiImageImport">
               <input class="hidden" id="aiImageFileInput" type="file">
-              <input class="hidden" id="aiCameraFallbackInput" type="file" accept="image/*" capture="environment">
               <p class="ai-image-prompt" id="aiImagePrompt">Selecciona una imagen de tu dispositivo.</p>
               <div class="ai-image-preview hidden" id="aiImagePreview">
                 <img id="aiImagePreviewElement" alt="Vista previa del WOD seleccionado">
@@ -191,16 +187,8 @@
       </div>
       <aside class="timer-description hidden" id="timerDescription" aria-label="Descripción del WOD"></aside>
     </section>
-    <dialog class="ai-camera-dialog" id="aiCameraDialog" aria-labelledby="aiCameraHeading">
-      <div class="ai-camera-content">
-        <div class="ai-camera-heading"><h2 id="aiCameraHeading">Fotografiar WOD</h2><button class="text-button" id="aiCameraCloseButton" type="button">CERRAR</button></div>
-        <video id="aiCameraVideo" autoplay playsinline muted></video>
-        <p class="editor-status" id="aiCameraStatus" role="status">Preparando cámara…</p>
-        <div class="ai-camera-actions"><button class="secondary-wide" id="aiCameraCancelButton" type="button">CANCELAR</button><button class="primary-button" id="aiCameraCaptureButton" type="button" disabled>HACER FOTO</button></div>
-      </div>
-    </dialog>
     <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
   </main>
-  <script type="module" src="./src/app.js?v=36"></script>
+  <script type="module" src="./src/app.js?v=37"></script>
 </body>
 </html>
