@@ -272,7 +272,12 @@ function validateStructure(workout: any): string | null {
     if (item?.type === "choice") return Array.isArray(item.alternatives) && item.alternatives.length >= 2 && item.alternatives.every((option: any) => typeof option.label === "string" && option.label.trim() && checkNodes(option.items, depth + 1));
     return false;
   });
-  if (["sequence", "chipper"].includes(structure.type)) {\n    if (!Array.isArray(structure.items) || structure.items.length === 0) return "La secuencia está vacía.";\n    const hasEmptyGroup = structure.items.some((item: any) => item?.type === "rounds" && (!Array.isArray(item.items) || item.items.length === 0));\n    if (hasEmptyGroup) return "Hay uno o varios bloques de rondas sin movimientos.";\n    return checkNodes(structure.items) ? null : "La secuencia contiene nodos o referencias de movimiento no válidos.";\n  }
+  if (["sequence", "chipper"].includes(structure.type)) {
+    if (!Array.isArray(structure.items) || structure.items.length === 0) return "La secuencia está vacía.";
+    const hasEmptyGroup = structure.items.some((item: any) => item?.type === "rounds" && (!Array.isArray(item.items) || item.items.length === 0));
+    if (hasEmptyGroup) return "Hay uno o varios bloques de rondas sin movimientos.";
+    return checkNodes(structure.items) ? null : "La secuencia contiene nodos o referencias de movimiento no válidos.";
+  }
   if (structure.type === "rounds") return Number.isInteger(structure.count) && structure.count > 0 && checkNodes(structure.items) ? null : "La estructura de rondas no es válida.";
   if (structure.type === "ladder") {
     if (!["ascending", "descending", "alternating", "custom"].includes(structure.direction) || !Array.isArray(structure.steps) || !structure.steps.length) return "La ladder no tiene peldaños válidos.";
