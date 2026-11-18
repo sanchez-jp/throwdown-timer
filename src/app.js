@@ -988,6 +988,14 @@ function movementSelect(selectedId = "") {
   }
   return select;
 }
+function structureField(labelText, control) {
+  const wrapper = document.createElement("label");
+  wrapper.className = "structure-field";
+  const label = document.createElement("span");
+  label.textContent = labelText;
+  wrapper.append(label, control);
+  return wrapper;
+}
 function structureRemoveButton(label, onRemove) {
   const button = document.createElement("button");
   button.type = "button";
@@ -1004,7 +1012,7 @@ function createStructureItemRow(item = {}) {
     const heading = document.createElement("div"); heading.className = "structure-nested-heading";
     const title = document.createElement("strong"); title.textContent = "Grupo de rondas";
     const count = document.createElement("input"); count.className = "editor-input structure-count"; count.type = "number"; count.name = "nestedRoundCount"; count.min = "1"; count.max = "1000"; count.value = item.count || 5;
-    heading.append(title, count);
+    heading.append(title, structureField("Número de rondas", count));
     const children = document.createElement("div"); children.className = "structure-items";
     (item.items?.length ? item.items : [{}]).forEach(child => children.append(createStructureItemRow(child)));
     row.append(heading, children, createStructureNodeActions(children), structureRemoveButton("Eliminar grupo de rondas", () => row.remove())); return row;
@@ -1018,10 +1026,15 @@ function createStructureItemRow(item = {}) {
     add.addEventListener("click", () => alternatives.append(createChoiceAlternativeRow({label:"Nueva alternativa",items:[{}]})));
     row.append(heading, alternatives, add, structureRemoveButton("Eliminar elección", () => row.remove())); return row;
   }
-  row.append(movementSelect(item.movementId || currentMovementOptions()[0]?.id));
-  const prescription = document.createElement("input"); prescription.className = "editor-input"; prescription.name = "prescription"; prescription.placeholder = "Prescripción"; prescription.value = item.prescription || "";
-  const load = document.createElement("input"); load.className = "editor-input"; load.name = "itemLoad"; load.placeholder = "Carga específica"; load.value = item.load || "";
-  row.append(prescription, load, structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove())); return row;
+  const movement = movementSelect(item.movementId || currentMovementOptions()[0]?.id);
+  const prescription = document.createElement("input"); prescription.className = "editor-input"; prescription.name = "prescription"; prescription.placeholder = "Ej. 12 repeticiones"; prescription.value = item.prescription || "";
+  const load = document.createElement("input"); load.className = "editor-input"; load.name = "itemLoad"; load.placeholder = "Ej. 60/40 kg"; load.value = item.load || "";
+  row.append(
+    structureField("Movimiento", movement),
+    structureField("Repeticiones / prescripción", prescription),
+    structureField("Carga (opcional)", load),
+    structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove())
+  ); return row;
 }
 function createStructureNodeActions(container) {
   const actions = document.createElement("div"); actions.className = "structure-node-actions";
@@ -1034,10 +1047,10 @@ function createStructureNodeActions(container) {
 }
 function createChoiceAlternativeRow(alternative = {}) {
   const row = document.createElement("div"); row.className = "structure-choice-alternative";
-  const label = document.createElement("input"); label.className = "editor-input"; label.name = "alternativeLabel"; label.placeholder = "Nombre de la alternativa"; label.value = alternative.label || "";
+  const label = document.createElement("input"); label.className = "editor-input"; label.name = "alternativeLabel"; label.placeholder = "Ej. Remo o Ski"; label.value = alternative.label || "";
   const items = document.createElement("div"); items.className = "structure-items";
   (alternative.items?.length ? alternative.items : [{}]).forEach(item => items.append(createStructureItemRow(item)));
-  row.append(label, items, createStructureNodeActions(items), structureRemoveButton("Eliminar alternativa", () => row.remove())); return row;
+  row.append(structureField("Nombre de la alternativa", label), items, createStructureNodeActions(items), structureRemoveButton("Eliminar alternativa", () => row.remove())); return row;
 }
 function createLadderStepRow(step = {}) {
   const row = document.createElement("div");
@@ -1056,7 +1069,7 @@ function createLadderStepRow(step = {}) {
   add.textContent = "+ MOVIMIENTO";
   add.addEventListener("click", () => items.append(createStructureItemRow()));
   const remove = structureRemoveButton("Eliminar peldaño", () => row.remove());
-  row.append(label, items, add, remove);
+  row.append(structureField("Nombre del peldaño", label), items, add, remove);
   return row;
 }
 function createSectionRow(section = {}) {
@@ -1068,7 +1081,7 @@ function createSectionRow(section = {}) {
   name.placeholder = "Nombre de la sección";
   name.value = section.name || "";
   const remove = structureRemoveButton("Eliminar sección", () => row.remove());
-  row.append(name, remove);
+  row.append(structureField("Nombre de la sección", name), remove);
   const children = document.createElement("div");
   children.className = "structure-section-items";
   const childItems = section.structure?.items || [];
@@ -1164,7 +1177,7 @@ function renderStructureSettings(structure = null) {
     add.className = "structure-add-button";
     add.textContent = "+ AÑADIR PELDAÑO";
     add.addEventListener("click", () => list.append(createLadderStepRow()));
-    settings.append(direction, list, add);
+    settings.append(structureField("Dirección de la ladder", direction), list, add);
   } else if (type === "sections") {
     const list = document.createElement("div");
     list.className = "structure-sections";
