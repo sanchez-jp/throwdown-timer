@@ -318,10 +318,13 @@ function renderTimerDescription(workout, timerPlan = null) {
     panel.append(teamSummary);
   }
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
-  const renderStructureNodes = (items, container) => {
-    const list = document.createElement("ol"); list.className = "timer-description-list timer-description-ordered";
-    (items || []).forEach(entry => {
+  const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
+  const renderStructureNodes = (items, container, isEmomSequence = false) => {
+    const list = document.createElement("ol");
+    list.className = "timer-description-list timer-description-ordered" + (isEmomSequence ? " timer-emom-schedule" : "");
+    (items || []).forEach((entry, index) => {
       const item = document.createElement("li");
+      if (isEmomSequence) item.dataset.intervalIndex = String(index);
       if (entry?.type === "movement") {
         const movement = movementById.get(entry.movementId);
         item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load, formatLoadProgression(entry.loadProgression)].filter(Boolean).join(" · ");
@@ -354,7 +357,18 @@ function renderTimerDescription(workout, timerPlan = null) {
   const addStructureGroup = (label, items) => {
     const group = document.createElement("section"); group.className = "timer-description-structure-group";
     const heading = document.createElement("h3"); heading.textContent = label;
-    group.append(heading); renderStructureNodes(items, group); panel.append(group);
+    group.append(heading);
+    const isEmomSequence = label === "SECUENCIA" && emomBlock;
+    renderStructureNodes(items, group, Boolean(isEmomSequence));
+    if (isEmomSequence && emomBlock.intervalLabels.length > (items || []).length) {
+      emomBlock.intervalLabels.slice(items.length).forEach((intervalLabel, offset) => {
+        const item = document.createElement("li");
+        item.dataset.intervalIndex = String(items.length + offset);
+        item.textContent = intervalLabel;
+        group.querySelector(".timer-emom-schedule")?.append(item);
+      });
+    }
+    panel.append(group);
   };
 
   if (structure && ["sequence", "rounds", "chipper"].includes(structure.type)) {
@@ -389,25 +403,6 @@ function renderTimerDescription(workout, timerPlan = null) {
       list.append(item);
     });
     panel.append(list);
-  }
-
-  const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
-  if (emomBlock) {
-    const schedule = document.createElement("section");
-    schedule.className = "timer-description-emom";
-    const scheduleHeading = document.createElement("h3");
-    scheduleHeading.textContent = "SECUENCIA DE MINUTOS";
-    schedule.append(scheduleHeading);
-    const list = document.createElement("ol");
-    list.className = "timer-description-list timer-description-ordered timer-emom-schedule";
-    emomBlock.intervalLabels.forEach((label, index) => {
-      const item = document.createElement("li");
-      item.dataset.intervalIndex = String(index);
-      item.textContent = `MINUTO ${index + 1} · ${label}`;
-      list.append(item);
-    });
-    schedule.append(list);
-    panel.append(schedule);
   }
 
   const notesText = workout.notes || workout.workout?.notes;
