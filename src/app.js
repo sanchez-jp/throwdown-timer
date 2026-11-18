@@ -365,7 +365,7 @@ function renderTimerDescription(workout, timerPlan = null) {
       emomBlock.intervalLabels.forEach((intervalLabel, index) => {
         const item = document.createElement("li");
         item.dataset.intervalIndex = String(index);
-        item.textContent = `MINUTO ${index + 1} · ${intervalLabel}`;
+        item.textContent = /^(rest|descanso)$/i.test(intervalLabel.trim()) ? "Rest" : intervalLabel;
         list.append(item);
       });
       group.append(list);
@@ -431,7 +431,7 @@ function updateTimerDescriptionActive(snapshot) {
   const schedule = document.querySelector(".timer-emom-schedule");
   if (!schedule) return;
   const items = [...schedule.querySelectorAll("[data-interval-index]")];
-  const current = snapshot.blockType === "emom" && snapshot.round
+  const current = snapshot.state === "running" && snapshot.blockType === "emom" && snapshot.round
     ? (snapshot.round.current - 1) % items.length : -1;
   items.forEach((item, index) => item.classList.toggle("is-active", index === current));
 }
