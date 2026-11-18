@@ -96,6 +96,51 @@ test("calculates and labels the progressive load for every ladder round", () => 
   ]);
 });
 
+
+test("applies progressive loads to separate clean movements when loads include units per athlete", () => {
+  const value = {
+    workout: {
+      format: "ladder",
+      movements: [
+        { id: "run", name: "Run", load: null },
+        { id: "ski", name: "Ski or Row Cal", load: null },
+        { id: "squat-clean", name: "Squat Clean", load: "40 kg / 30 kg" },
+        { id: "power-clean", name: "Power Clean", load: "40 kg / 30 kg" },
+      ],
+      structure: {
+        type: "ladder",
+        direction: "descending",
+        steps: Array.from({ length: 10 }, (_, index) => ({
+          label: "Ronda " + (index + 1),
+          items: [
+            { type: "movement", movementId: "run", prescription: "200 m" },
+            { type: "movement", movementId: "ski", prescription: String(20 - Math.floor(index / 2) * 2) + " cal" },
+            { type: "movement", movementId: "squat-clean", prescription: String(Math.max(1, 6 - Math.floor(index / 2) * 2)) },
+            { type: "movement", movementId: "power-clean", prescription: String(Math.max(1, 4 - Math.floor(index / 2) * 2)) },
+          ],
+        })),
+      },
+    },
+  };
+  const source = "WOD en parejas. * start with 40/30kg and increase 10/7,5kg after each round";
+  const expanded = expandProgressiveLoadLadder(value, source);
+  assert.deepEqual(expanded.workout.structure.steps.map(step =>
+    step.items.filter(item => item.movementId === "squat-clean" || item.movementId === "power-clean")
+      .map(item => item.load)
+  ), [
+    ["40/30 kg", "40/30 kg"],
+    ["50/37,5 kg", "50/37,5 kg"],
+    ["60/45 kg", "60/45 kg"],
+    ["70/52,5 kg", "70/52,5 kg"],
+    ["80/60 kg", "80/60 kg"],
+    ["90/67,5 kg", "90/67,5 kg"],
+    ["100/75 kg", "100/75 kg"],
+    ["110/82,5 kg", "110/82,5 kg"],
+    ["120/90 kg", "120/90 kg"],
+    ["130/97,5 kg", "130/97,5 kg"],
+  ]);
+});
+
 test("does not invent a load progression when multiple movements share the same starting load", () => {
   const value = {
     workout: {
