@@ -320,8 +320,8 @@ function renderTimerDescription(workout, timerPlan = null) {
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
   const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
   const renderStructureNodes = (items, container, isEmomSequence = false) => {
-    const list = document.createElement("ol");
-    list.className = "timer-description-list timer-description-ordered" + (isEmomSequence ? " timer-emom-schedule" : "");
+    const list = document.createElement("ul");
+    list.className = "timer-description-list" + (isEmomSequence ? " timer-emom-schedule" : "");
     (items || []).forEach((entry, index) => {
       const item = document.createElement("li");
       if (isEmomSequence) item.dataset.intervalIndex = String(index);
@@ -397,8 +397,8 @@ function renderTimerDescription(workout, timerPlan = null) {
     const label = document.createElement("h3");
     label.textContent = "MOVIMIENTOS";
     panel.append(label);
-    const list = document.createElement("ol");
-    list.className = "timer-description-list timer-description-ordered";
+    const list = document.createElement("ul");
+    list.className = "timer-description-list";
     movements.forEach(movement => {
       const item = document.createElement("li");
       item.textContent = typeof movement === "string"
