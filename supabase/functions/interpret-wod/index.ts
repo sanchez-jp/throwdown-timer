@@ -73,7 +73,8 @@ function validateStructure(workout: any): string | null {
   }
   const checkItems = (items: any[]) => Array.isArray(items) && items.length > 0 && items.every(item =>
     item?.type === "movement" && typeof item.movementId === "string" && ids.has(item.movementId) &&
-    (item.prescription === undefined || item.prescription === null || typeof item.prescription === "string")
+    (item.prescription === undefined || item.prescription === null || typeof item.prescription === "string") &&
+    (item.load === undefined || item.load === null || typeof item.load === "string")
   );
   if (["sequence", "chipper"].includes(structure.type)) return checkItems(structure.items) ? null : "La secuencia contiene referencias de movimiento no válidas.";
   if (structure.type === "rounds") return Number.isInteger(structure.count) && structure.count > 0 && checkItems(structure.items) ? null : "La estructura de rondas no es válida.";
@@ -285,8 +286,9 @@ const responseSchema = {
                   type: { type: "string", enum: ["movement"] },
                   movementId: { type: "string" },
                   prescription: { type: "string", nullable: true },
+                  load: { type: "string", nullable: true },
                 },
-                required: ["type", "movementId", "prescription"],
+                required: ["type", "movementId", "prescription", "load"],
               },
             },
             direction: { type: "string", enum: ["ascending", "descending", "alternating", "custom"] },
@@ -331,8 +333,9 @@ const responseSchema = {
                             type: { type: "string", enum: ["movement"] },
                             movementId: { type: "string" },
                             prescription: { type: "string", nullable: true },
+                            load: { type: "string", nullable: true },
                           },
-                          required: ["type", "movementId", "prescription"],
+                          required: ["type", "movementId", "prescription", "load"],
                         },
                       },
                     },
