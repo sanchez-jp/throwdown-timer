@@ -615,7 +615,8 @@ function makeLibraryCard(record) {
   const open = document.createElement("button");
   open.className = "primary-button";
   open.type = "button";
-  open.textContent = record.timer && record.interpretation.status === "ready" ? "ABRIR TIMER" : "PENDIENTE TIMER";
+  const canOpenTimer = record.timer && record.interpretation.status === "ready";
+  open.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10-6.5z" /></svg><span>' + (canOpenTimer ? "Abrir Timer" : "Pendiente Timer") + '</span>';
   open.disabled = !record.timer || record.interpretation.status !== "ready";
   open.addEventListener("click", () => {
     if (!record.timer) return;
@@ -625,12 +626,12 @@ function makeLibraryCard(record) {
   const edit = document.createElement("button");
   edit.className = "secondary-button";
   edit.type = "button";
-  edit.textContent = "Editar";
+  edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 5 4 4M4 20l4.2-.9L19 8.3 15.7 5 4.9 15.8 4 20z" /></svg><span>Editar</span>';
   edit.addEventListener("click", () => openEditor(record.id));
   const duplicate = document.createElement("button");
   duplicate.className = "secondary-button";
   duplicate.type = "button";
-  duplicate.textContent = "Duplicar";
+  duplicate.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg><span>Duplicar</span>';
   duplicate.addEventListener("click", async () => {
     try { await repository.duplicate(record.id); await renderLibrary(); }
     catch (error) { showLibraryError(error); }
