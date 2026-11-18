@@ -764,7 +764,7 @@ async function openNewEditor(sourceView = "library") {
   $("setupPanel").classList.add("hidden");
   $("editorPanel").classList.remove("hidden");
   $("teamModeSettings").classList.add("hidden");
-  $("aiSourceText").focus();
+  $("aiImportImageButton").focus();
 }
 const timerBlockTypes = [
   ["countdown", "Cuenta atrás"],
@@ -1659,6 +1659,8 @@ async function handleImportImage(file, name = file?.name || "Imagen del WOD") {
 }
 async function openAiCamera() {
   setImportMode("image");
+  $("aiImportImageButton").setAttribute("aria-pressed", "false");
+  $("aiImportCameraButton").setAttribute("aria-pressed", "true");
   const dialog = $("aiCameraDialog");
   const status = $("aiCameraStatus");
   if (!navigator.mediaDevices?.getUserMedia) {
