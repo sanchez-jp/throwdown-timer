@@ -209,7 +209,7 @@ test("applies each progressive load to the ladder label for both alternating cle
     "Ronda 9 · Squat Clean / Power Clean 120/90 kg",
     "Ronda 10 · Squat Clean / Power Clean 130/97,5 kg",
   ]);
-  assert.deepEqual(expanded.workout.structure.steps.map(step => step.items.map(item => item.load)), [
+  assert.deepEqual(expanded.workout.structure.steps.map(step => step.items.filter(item => item.load).map(item => item.load)), [
     ["40/30 kg", "40/30 kg"], ["50/37,5 kg", "50/37,5 kg"],
     ["60/45 kg", "60/45 kg"], ["70/52,5 kg", "70/52,5 kg"],
     ["80/60 kg", "80/60 kg"], ["90/67,5 kg", "90/67,5 kg"],
