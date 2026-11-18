@@ -306,29 +306,35 @@ function renderTimerDescription(workout) {
     panel.append(teamSummary);
   }
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
-  const makeMovementList = (items, groupLabel = "") => {
-    const list = document.createElement("ol");
-    list.className = "timer-description-list timer-description-ordered";
+  const renderStructureNodes = (items, container) => {
+    const list = document.createElement("ol"); list.className = "timer-description-list timer-description-ordered";
     (items || []).forEach(entry => {
-      const movement = entry?.movementId ? movementById.get(entry.movementId) : null;
       const item = document.createElement("li");
-      const name = movement?.name || "Movimiento no disponible";
-      const loadShownInLabel = /\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?\s*kg\b/i.test(groupLabel) &&
-        groupLabel.toLowerCase().includes(name.toLowerCase());
-      item.textContent = [entry?.prescription || movement?.prescription, name,
-        entry?.load || (loadShownInLabel ? null : movement?.load)]
-        .filter(Boolean).join(" · ");
+      if (entry?.type === "movement") {
+        const movement = movementById.get(entry.movementId);
+        item.textContent = [entry.prescription || movement?.prescription, movement?.name || "Movimiento no disponible", entry.load || movement?.load].filter(Boolean).join(" · ");
+      } else if (entry?.type === "rounds") {
+        const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
+        const heading = document.createElement("h4"); heading.textContent = (Number(entry.count) || 1) + " RONDAS";
+        nested.append(heading); renderStructureNodes(entry.items, nested); item.append(nested);
+      } else if (entry?.type === "choice") {
+        const choice = document.createElement("section"); choice.className = "timer-description-choice";
+        const heading = document.createElement("h4"); heading.textContent = "ELIGE UNA OPCIÓN"; choice.append(heading);
+        (entry.alternatives || []).forEach(alternative => {
+          const option = document.createElement("div"); option.className = "timer-description-choice-option";
+          const label = document.createElement("strong"); label.textContent = alternative.label || "Alternativa";
+          option.append(label); renderStructureNodes(alternative.items, option); choice.append(option);
+        });
+        item.append(choice);
+      }
       list.append(item);
     });
-    return list;
+    container.append(list);
   };
   const addStructureGroup = (label, items) => {
-    const group = document.createElement("section");
-    group.className = "timer-description-structure-group";
-    const heading = document.createElement("h3");
-    heading.textContent = label;
-    group.append(heading, makeMovementList(items, label));
-    panel.append(group);
+    const group = document.createElement("section"); group.className = "timer-description-structure-group";
+    const heading = document.createElement("h3"); heading.textContent = label;
+    group.append(heading); renderStructureNodes(items, group); panel.append(group);
   };
 
   if (structure && ["sequence", "rounds", "chipper"].includes(structure.type)) {
@@ -980,22 +986,46 @@ function structureRemoveButton(label, onRemove) {
   return button;
 }
 function createStructureItemRow(item = {}) {
-  const row = document.createElement("div");
-  row.className = "structure-item-row";
+  const row = document.createElement("div"); row.className = "structure-item-row"; row.dataset.structureType = item.type || "movement";
+  if (item.type === "rounds") {
+    row.classList.add("structure-nested-group");
+    const heading = document.createElement("div"); heading.className = "structure-nested-heading";
+    const title = document.createElement("strong"); title.textContent = "Grupo de rondas";
+    const count = document.createElement("input"); count.className = "editor-input structure-count"; count.type = "number"; count.name = "nestedRoundCount"; count.min = "1"; count.max = "1000"; count.value = item.count || 5;
+    heading.append(title, count);
+    const children = document.createElement("div"); children.className = "structure-items";
+    (item.items?.length ? item.items : [{}]).forEach(child => children.append(createStructureItemRow(child)));
+    row.append(heading, children, createStructureNodeActions(children), structureRemoveButton("Eliminar grupo de rondas", () => row.remove())); return row;
+  }
+  if (item.type === "choice") {
+    row.classList.add("structure-choice-group");
+    const heading = document.createElement("strong"); heading.textContent = "Elección: realizar una sola alternativa";
+    const alternatives = document.createElement("div"); alternatives.className = "structure-choice-alternatives";
+    (item.alternatives?.length ? item.alternatives : [{label:"Row o Ski",items:[{}]},{label:"Bike",items:[{}]}]).forEach(option => alternatives.append(createChoiceAlternativeRow(option)));
+    const add = document.createElement("button"); add.type = "button"; add.className = "structure-add-button"; add.textContent = "+ AÑADIR ALTERNATIVA";
+    add.addEventListener("click", () => alternatives.append(createChoiceAlternativeRow({label:"Nueva alternativa",items:[{}]})));
+    row.append(heading, alternatives, add, structureRemoveButton("Eliminar elección", () => row.remove())); return row;
+  }
   row.append(movementSelect(item.movementId || currentMovementOptions()[0]?.id));
-  const prescription = document.createElement("input");
-  prescription.className = "editor-input";
-  prescription.name = "prescription";
-  prescription.placeholder = "Prescripción";
-  prescription.value = item.prescription || "";
-  const load = document.createElement("input");
-  load.className = "editor-input";
-  load.name = "itemLoad";
-  load.placeholder = "Carga específica";
-  load.value = item.load || "";
-  row.append(prescription, load);
-  row.append(structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove()));
-  return row;
+  const prescription = document.createElement("input"); prescription.className = "editor-input"; prescription.name = "prescription"; prescription.placeholder = "Prescripción"; prescription.value = item.prescription || "";
+  const load = document.createElement("input"); load.className = "editor-input"; load.name = "itemLoad"; load.placeholder = "Carga específica"; load.value = item.load || "";
+  row.append(prescription, load, structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove())); return row;
+}
+function createStructureNodeActions(container) {
+  const actions = document.createElement("div"); actions.className = "structure-node-actions";
+  for (const [label,type] of [["+ MOVIMIENTO","movement"],["+ GRUPO DE RONDAS","rounds"],["+ ELECCIÓN","choice"]]) {
+    const button = document.createElement("button"); button.type = "button"; button.className = "structure-add-button"; button.textContent = label;
+    button.addEventListener("click", () => container.append(createStructureItemRow(type === "rounds" ? {type,count:5,items:[{}]} : type === "choice" ? {type,alternatives:[{label:"Row o Ski",items:[{}]},{label:"Bike",items:[{}]}]} : {})));
+    actions.append(button);
+  }
+  return actions;
+}
+function createChoiceAlternativeRow(alternative = {}) {
+  const row = document.createElement("div"); row.className = "structure-choice-alternative";
+  const label = document.createElement("input"); label.className = "editor-input"; label.name = "alternativeLabel"; label.placeholder = "Nombre de la alternativa"; label.value = alternative.label || "";
+  const items = document.createElement("div"); items.className = "structure-items";
+  (alternative.items?.length ? alternative.items : [{}]).forEach(item => items.append(createStructureItemRow(item)));
+  row.append(label, items, createStructureNodeActions(items), structureRemoveButton("Eliminar alternativa", () => row.remove())); return row;
 }
 function createLadderStepRow(step = {}) {
   const row = document.createElement("div");
@@ -1102,12 +1132,7 @@ function renderStructureSettings(structure = null) {
     list.className = "structure-items";
     const items = structure?.items || [{}];
     items.forEach(item => list.append(createStructureItemRow(item)));
-    const add = document.createElement("button");
-    add.type = "button";
-    add.className = "structure-add-button";
-    add.textContent = "+ AÑADIR MOVIMIENTO";
-    add.addEventListener("click", () => list.append(createStructureItemRow()));
-    settings.append(list, add);
+    settings.append(list, createStructureNodeActions(list));
   } else if (type === "ladder") {
     const direction = document.createElement("select");
     direction.className = "editor-input";
@@ -1140,12 +1165,16 @@ function renderStructureSettings(structure = null) {
   }
 }
 function isStructureEditorCompatible(structure) {
-  const onlyMovements = items => Array.isArray(items) && items.every(item => item && item.type === "movement");
+  const validNodes = items => Array.isArray(items) && items.length > 0 && items.every(item => {
+    if (item?.type === "movement") return true;
+    if (item?.type === "rounds") return Number.isInteger(item.count) && item.count > 0 && validNodes(item.items);
+    if (item?.type === "choice") return Array.isArray(item.alternatives) && item.alternatives.length >= 2 && item.alternatives.every(option => option.label?.trim() && validNodes(option.items));
+    return false;
+  });
   if (!structure) return false;
-  if (["sequence", "rounds", "chipper"].includes(structure.type)) return onlyMovements(structure.items);
-  if (structure.type === "ladder") return Array.isArray(structure.steps) && structure.steps.every(step => onlyMovements(step.items));
-  if (structure.type === "sections") return Array.isArray(structure.sections) && structure.sections.every(section =>
-    section.structure?.type === "sequence" && onlyMovements(section.structure.items));
+  if (["sequence","rounds","chipper"].includes(structure.type)) return validNodes(structure.items);
+  if (structure.type === "ladder") return Array.isArray(structure.steps) && structure.steps.every(step => validNodes(step.items));
+  if (structure.type === "sections") return Array.isArray(structure.sections) && structure.sections.every(section => section.structure?.type === "sequence" && validNodes(section.structure.items));
   return false;
 }
 function setStructureEditorVisible(visible) {
@@ -1164,14 +1193,25 @@ function configureStructureEditor(format, structure = null) {
 }
 function collectSemanticStructure() {
   const type = $("structureType").value;
-  const movementItems = container => [...container.querySelectorAll(":scope > .structure-item-row")].map(row => ({
-    type: "movement",
-    movementId: row.querySelector('[name="movementId"]').value,
-    ...(row.querySelector('[name="prescription"]').value.trim() ? { prescription: row.querySelector('[name="prescription"]').value.trim() } : {}),
-    ...(row.querySelector('[name="itemLoad"]').value.trim() ? { load: row.querySelector('[name="itemLoad"]').value.trim() } : {})
-  }));
+  const collectNodes = container => [...container.querySelectorAll(":scope > .structure-item-row")].map(row => {
+    const nodeType = row.dataset.structureType || "movement";
+    if (nodeType === "rounds") {
+      const count = Number(row.querySelector('[name="nestedRoundCount"]').value);
+      const items = collectNodes(row.querySelector(":scope > .structure-items"));
+      if (!Number.isInteger(count) || count < 1 || !items.length) throw new Error("Completa el número de rondas y sus movimientos.");
+      return {type:"rounds",count,items};
+    }
+    if (nodeType === "choice") {
+      const alternatives = [...row.querySelectorAll(":scope > .structure-choice-alternatives > .structure-choice-alternative")].map(option => ({label:option.querySelector('[name="alternativeLabel"]').value.trim(),items:collectNodes(option.querySelector(".structure-items"))}));
+      if (alternatives.length < 2 || alternatives.some(option => !option.label || !option.items.length)) throw new Error("Cada elección necesita al menos dos alternativas completas.");
+      return {type:"choice",alternatives};
+    }
+    return {type:"movement",movementId:row.querySelector('[name="movementId"]').value,
+      ...(row.querySelector('[name="prescription"]').value.trim()?{prescription:row.querySelector('[name="prescription"]').value.trim()}:{}),
+      ...(row.querySelector('[name="itemLoad"]').value.trim()?{load:row.querySelector('[name="itemLoad"]').value.trim()}:{})};
+  });
   if (["sequence", "rounds", "chipper"].includes(type)) {
-    const items = movementItems($("structureSettings").querySelector(".structure-items"));
+    const items = collectNodes($("structureSettings").querySelector(".structure-items"));
     if (!items.length) throw new Error("Añade al menos un movimiento a la estructura.");
     return type === "rounds"
       ? { type, count: Number($("structureSettings").querySelector('[name="roundCount"]').value), items }
@@ -1180,7 +1220,7 @@ function collectSemanticStructure() {
   if (type === "ladder") {
     const steps = [...$("structureSettings").querySelectorAll(".structure-step-row")].map(row => ({
       label: row.querySelector('[name="stepLabel"]').value.trim(),
-      items: movementItems(row.querySelector(".structure-items"))
+      items: collectNodes(row.querySelector(".structure-items"))
     }));
     if (!steps.length || steps.some(step => !step.label)) throw new Error("Cada peldaño de la ladder necesita una etiqueta.");
     return { type, direction: $("structureSettings").querySelector('[name="ladderDirection"]').value, steps };
@@ -1188,7 +1228,7 @@ function collectSemanticStructure() {
   const sections = [...$("structureSettings").querySelectorAll(".structure-section-row")].map((row, index) => ({
     id: "section-" + (index + 1),
     name: row.querySelector('[name="sectionName"]').value.trim(),
-    structure: { type: "sequence", items: movementItems(row.querySelector(".structure-section-items")) }
+    structure: { type: "sequence", items: collectNodes(row.querySelector(".structure-section-items")) }
   }));
   if (!sections.length || sections.some(section => !section.name || !section.structure.items.length)) {
     throw new Error("Cada sección necesita un nombre y al menos un movimiento.");
