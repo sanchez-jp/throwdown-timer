@@ -59,6 +59,19 @@ test("EMOM advances intervals and catches up after delayed tick", () => {
   assert.equal(s.phaseRemainingMs, 55000);
 });
 
+test("EMOM repeats its minute labels and marks programmed rest", () => {
+  const timer = new TimerEngine(plan({
+    type:"emom", label:"EMOM", durationSeconds:240, intervalSeconds:60, rounds:4,
+    intervalLabels:["Ski","Handstand Walk","Burpee Box Jump Over","DESCANSO"]
+  }), {now:()=>0});
+  assert.deepEqual(timer.phases.map(phase => [phase.label, phase.phase, phase.round]), [
+    ["Ski","work",1],
+    ["Handstand Walk","work",2],
+    ["Burpee Box Jump Over","work",3],
+    ["DESCANSO","rest",4]
+  ]);
+});
+
 test("intervals do not add a final rest", () => {
   const c = clock();
   const timer = new TimerEngine(plan({type:"intervals",label:"Tabata",rounds:2,workSeconds:20,restSeconds:10,startWithRest:false}), {now:c.now});
@@ -161,11 +174,15 @@ test("Tabata rest phase uses the same final-three-second cues", () => {
   assert.equal(getCountdownCueSecond(snapshot), 1);
 });
 
-test("non-interval timed phases retain their ten-second countdown", () => {
+test("all timed phases cue only in the final three seconds", () => {
   const snapshot = { state:"running", blockType:"countdown", phase:null, phaseRemainingMs:10000 };
-  assert.equal(getCountdownCueSecond(snapshot), 10);
+  assert.equal(getCountdownCueSecond(snapshot), null);
   snapshot.phaseRemainingMs = 4000;
-  assert.equal(getCountdownCueSecond(snapshot), 4);
+  assert.equal(getCountdownCueSecond(snapshot), null);
   snapshot.phaseRemainingMs = 3000;
   assert.equal(getCountdownCueSecond(snapshot), 3);
+  snapshot.phaseRemainingMs = 2000;
+  assert.equal(getCountdownCueSecond(snapshot), 2);
+  snapshot.phaseRemainingMs = 1000;
+  assert.equal(getCountdownCueSecond(snapshot), 1);
 });
