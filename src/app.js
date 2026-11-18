@@ -643,6 +643,8 @@ async function openEditor(id) {
     editingLegacyFormat = record.workout.legacyFormat || null;
     $("editorHeading").innerHTML = 'Editar WOD<span>.</span>';
     $("editorIntro").textContent = "Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.";
+    $("ai-import-section").classList.add("hidden");
+    $("ai-import-section").open = false;
     $("saveEditorButton").textContent = "GUARDAR CAMBIOS";
     $("editTitle").value = record.title;
     $("editFormat").value = record.workout.format;
@@ -683,14 +685,17 @@ async function openNewEditor(sourceView = "library") {
   configureStructureEditor("custom");
   renderTimerBlocks(null);
   $("editorHeading").innerHTML = 'Crear WOD<span>.</span>';
-  $("editorIntro").textContent = "Añade los movimientos y guarda el WOD. Después podrás configurar su temporizador.";
+  $("editorIntro").textContent = "Pega la descripción del entrenamiento para importarlo, o completa los apartados manualmente.";
+  $("ai-import-section").classList.remove("hidden");
+  $("ai-import-section").open = true;
+  ["basic-editor-section","movement-editor-section","teamEditorSection","structureSection","timerSection"].forEach(id => { $(id).open = false; });
   $("saveEditorButton").textContent = "CREAR WOD";
   $("editorStatus").textContent = "Se guardará como borrador hasta que configures el temporizador.";
   $("libraryPanel").classList.add("hidden");
   $("setupPanel").classList.add("hidden");
   $("editorPanel").classList.remove("hidden");
   $("teamModeSettings").classList.add("hidden");
-  $("editTitle").focus();
+  $("aiSourceText").focus();
 }
 const timerBlockTypes = [
   ["countdown", "Cuenta atrás"],
@@ -1436,6 +1441,8 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     editingLegacyFormat = null;
     editingStructureSupported = true;
     $("editTitle").value = result.title;
+    $("basic-editor-section").open = true;
+    $("movement-editor-section").open = true;
     $("editFormat").value = result.workout.format;
     $("editDescription").value = result.workout.description;
     renderTeamSettings(result.workout.team);
