@@ -660,6 +660,7 @@ async function openEditor(id) {
     $("editorStatus").textContent = "";
     $("libraryPanel").classList.add("hidden");
     $("editorPanel").classList.remove("hidden");
+    $("teamModeSettings").classList.toggle("hidden", normalizeTeamSettings(record.workout.team).athletes === 1);
     $("editTitle").focus();
   } catch (error) { showLibraryError(error); }
 }
@@ -686,6 +687,7 @@ async function openNewEditor(sourceView = "library") {
   $("libraryPanel").classList.add("hidden");
   $("setupPanel").classList.add("hidden");
   $("editorPanel").classList.remove("hidden");
+  $("teamModeSettings").classList.add("hidden");
   $("editTitle").focus();
 }
 const timerBlockTypes = [
@@ -1102,6 +1104,7 @@ function renderTeamSettings(team = null) {
   $("teamAthletes").value = String(value.athletes);
   $("teamMode").value = value.mode;
   $("teamRotation").value = value.rotation || "complete";
+  $("teamModeSettings").classList.toggle("hidden", value.athletes === 1);
   $("teamRotationSettings").classList.toggle("hidden", value.mode !== "i_go_you_go");
 }
 function collectTeamSettings() {
@@ -1266,6 +1269,7 @@ $("teamAthletes").addEventListener("change", () => {
   if (athletes === 1) $("teamMode").value = "individual";
   else if ($("teamMode").value === "individual") $("teamMode").value = "i_go_you_go";
   renderTeamSettings({ athletes, mode: $("teamMode").value, rotation: $("teamRotation").value });
+  if (athletes > 1) $("teamModeSettings").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
 $("teamMode").addEventListener("change", () => {
   if ($("teamMode").value === "individual") $("teamAthletes").value = "1";
@@ -1418,6 +1422,9 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     $("editFormat").value = result.workout.format;
     $("editDescription").value = result.workout.description;
     renderTeamSettings(result.workout.team);
+    $("teamEditorSection").open = normalizeTeamSettings(result.workout.team).athletes > 1;
+    $("structureSection").open = true;
+    $("timerSection").open = true;
     const movementRows = result.workout.movements.map(movement => createMovementEditorRow(movement));
     $("movementEditorList").replaceChildren(...movementRows);
     result.workout.movements.forEach((movement, index) => {
