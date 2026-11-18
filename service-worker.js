@@ -10,7 +10,7 @@ const APP_SHELL = [
   "assets/icon-192.png",
   "assets/icon-512.png",
   "src/styles.css?v=51",
-  "src/app.js?v=7",
+  "src/app.js?v=8",
   "src/audio-cues.js",
   "src/timer-engine.js",
   "src/timer-plan-builder.js",
