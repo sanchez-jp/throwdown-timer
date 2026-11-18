@@ -581,8 +581,8 @@ function normalizeWorkoutDescription(description: string, sourceText: string) {
     .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
     .replace(/[^a-z0-9]/g, "");
   const normalizedDescription = normalize(value);
-  const repeatsSourceLine = sourceText.split(/\\r?\\n/)
-    .map((line: string) => normalize(line.replace(/^\\s*(?:[-*•]|\\d+[.)])\\s*/, "")))
+  const repeatsSourceLine = sourceText.split(/\r?\n/)
+    .map((line: string) => normalize(line.replace(/^\s*(?:[-*•]|\\d+[.)])\s*/, "")))
     .some((line: string) => line.length >= 24 && line === normalizedDescription);
   return repeatsSourceLine ? "" : value;
 }
