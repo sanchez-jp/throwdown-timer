@@ -140,7 +140,9 @@ function renderTimer(snapshot) {
   const time = countup ? snapshot.phaseElapsedMs : snapshot.phaseRemainingMs;
   $("clock").textContent = time == null ? "00:00" : formatTime(time, countup && time < 60000);
   $("clock").classList.toggle("countup",countup);
-  $("clock").classList.toggle("urgent",!countup && time !== null && time <= 10000 && snapshot.state==="running");
+  const stageWarning = !countup && time !== null && time <= 10000 && snapshot.state === "running" && snapshot.blockIndex < snapshot.blockCount - 1;
+  $("clock").classList.toggle("urgent",!countup && time !== null && time <= 10000 && snapshot.state==="running" && !stageWarning);
+  $("clock").classList.toggle("stage-urgent",stageWarning);
   $("timerLabel").textContent = countup ? "TIME ELAPSED" : snapshot.phase === "rest" ? "REST" : "TIME REMAINING";
   $("phaseLabel").textContent = snapshot.state==="completed" ? "COMPLETADO" : snapshot.state==="capped" ? "TIME CAP" :
     snapshot.state==="paused" ? (emomMinute ? "PAUSADO · " + emomMinute : countupStage ? "PAUSADO · " + countupStage.toUpperCase() : "PAUSADO") :
