@@ -137,6 +137,10 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .timer-description h3{font-size:10px;letter-spacing:1.5px;color:var(--cyan);margin:14px 0 8px}
 .timer-description-list{padding-left:1.2em;margin:8px 0}
 .timer-description-list li{font-size:clamp(13px,2vw,18px);line-height:1.35;margin:0 0 7px;color:var(--white)}
+.timer-emom-schedule{list-style:none;padding:0;margin:8px 0}
+.timer-emom-schedule li{padding:8px 10px;border:1px solid transparent;border-radius:6px;color:var(--muted)}
+.timer-emom-schedule li.is-active{border-color:var(--lime);background:rgba(201,242,61,.1);color:var(--white);font-weight:800}
+
 .timer-description-notes{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
 
 /* Immersive timer: maximise the clock and animate the WOD panel without overlap. */
