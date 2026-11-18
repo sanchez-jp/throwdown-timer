@@ -381,7 +381,7 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 /* AI WOD import */
 .ai-import-panel .movement-editor-heading{align-items:center}
 .ai-source-input{min-height:112px;resize:vertical}
-.ai-import-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.ai-import-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}
 .ai-import-option{display:flex;min-width:0;min-height:104px;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:10px 6px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);text-align:center}
 .ai-import-option[aria-pressed="true"]{border-color:var(--lime);background:rgba(190,242,100,.08)}
 .ai-import-option-icon{display:grid;width:30px;height:30px;place-items:center;color:var(--lime);font-size:25px;line-height:1}
@@ -397,21 +397,7 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 .ai-interpretation-status{white-space:pre-line;margin-top:10px}
 .ai-review-confirmation{display:flex;align-items:flex-start;gap:10px;margin-top:14px;color:var(--text);font-size:.9rem;line-height:1.45}
 .ai-review-confirmation input{flex:0 0 auto;margin-top:3px;accent-color:var(--lime)}
-.ai-camera-dialog{width:min(92vw,640px);max-width:640px;max-height:92dvh;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text)}
-.ai-camera-dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
-.ai-camera-content{display:grid;gap:14px;padding:16px}
-.ai-camera-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.ai-camera-heading h2{margin:0;font-size:16px}
-.ai-camera-content video{display:block;width:100%;max-height:60dvh;object-fit:contain;border-radius:9px;background:#05080d}
-.ai-camera-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.ai-camera-actions .primary-button{min-height:44px}
-@media(max-width:520px){
-  .ai-import-options{gap:6px}
-  .ai-import-option{min-height:94px;padding:8px 4px}
-  .ai-import-option strong{font-size:10px}
-  .ai-import-option small{font-size:8px}
-  .ai-camera-content{padding:12px}
-}
+
 
 /* Team dynamics editor */
 .team-settings-editor .movement-editor-heading{align-items:center}
