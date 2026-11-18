@@ -71,7 +71,6 @@ let aiReviewRequired = false;
 let importMode = null;
 let selectedImportImage = null;
 let selectedImportObjectUrl = null;
-let cameraStream = null;
 
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
@@ -1533,18 +1532,6 @@ $("workoutEditor").addEventListener("submit", async event => {
 });
 
 
-function stopAiCamera() {
-  if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
-  cameraStream = null;
-  const video = $("aiCameraVideo");
-  if (video) video.srcObject = null;
-  if ($("aiCameraCaptureButton")) $("aiCameraCaptureButton").disabled = true;
-}
-function closeAiCamera() {
-  stopAiCamera();
-  const dialog = $("aiCameraDialog");
-  if (dialog?.open) dialog.close();
-}
 function clearSelectedImportImage() {
   if (selectedImportObjectUrl) URL.revokeObjectURL(selectedImportObjectUrl);
   selectedImportObjectUrl = null;
@@ -1552,7 +1539,6 @@ function clearSelectedImportImage() {
   $("aiImagePreview")?.classList.add("hidden");
   $("aiImagePrompt")?.classList.remove("hidden");
   if ($("aiImageFileInput")) $("aiImageFileInput").value = "";
-  if ($("aiCameraFallbackInput")) $("aiCameraFallbackInput").value = "";
 }
 function setImportMode(mode, preserveImage = false) {
   importMode = mode;
@@ -1560,7 +1546,6 @@ function setImportMode(mode, preserveImage = false) {
   $("aiTextImport").classList.toggle("hidden", mode !== "text");
   $("aiImageImport").classList.toggle("hidden", mode !== "image");
   $("aiImportImageButton").setAttribute("aria-pressed", String(mode === "image"));
-  $("aiImportCameraButton").setAttribute("aria-pressed", String(mode === "camera"));
   $("aiImportTextButton").setAttribute("aria-pressed", String(mode === "text"));
   $("interpretWithAiButton").classList.toggle("hidden", mode === "none" || (mode === "image" && !selectedImportImage));
   $("aiInterpretationStatus").textContent = "";
@@ -1657,55 +1642,7 @@ async function handleImportImage(file, name = file?.name || "Imagen del WOD") {
     button.disabled = false;
   }
 }
-async function openAiCamera() {
-  setImportMode("image");
-  $("aiImportImageButton").setAttribute("aria-pressed", "false");
-  $("aiImportCameraButton").setAttribute("aria-pressed", "true");
-  const dialog = $("aiCameraDialog");
-  const status = $("aiCameraStatus");
-  if (!navigator.mediaDevices?.getUserMedia) {
-    $("aiInterpretationStatus").textContent = "Este navegador no permite acceder a la cámara. Selecciona una foto desde Elegir imagen.";
-    $("aiCameraFallbackInput").click();
-    return;
-  }
-  status.textContent = "Solicitando acceso a la cámara…";
-  $("aiCameraCaptureButton").disabled = true;
-  dialog.showModal();
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-    });
-    $("aiCameraVideo").srcObject = cameraStream;
-    await $("aiCameraVideo").play();
-    $("aiCameraCaptureButton").disabled = false;
-    status.textContent = "Enfoca el WOD y pulsa HACER FOTO.";
-  } catch (error) {
-    stopAiCamera();
-    status.textContent = error?.name === "NotAllowedError"
-      ? "No se ha concedido permiso para usar la cámara. Puedes elegir una imagen de la galería."
-      : "No se ha podido abrir la cámara en este dispositivo. Puedes elegir una imagen.";
-  }
-}
-async function captureAiCameraImage() {
-  const video = $("aiCameraVideo");
-  if (!cameraStream || !video.videoWidth || !video.videoHeight) return;
-  const scale = Math.min(1, 2400 / Math.max(video.videoWidth, video.videoHeight));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(video.videoWidth * scale);
-  canvas.height = Math.round(video.videoHeight * scale);
-  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .9));
-  if (!blob) {
-    $("aiCameraStatus").textContent = "No se ha podido capturar la foto. Inténtalo de nuevo.";
-    return;
-  }
-  closeAiCamera();
-  const file = new File([blob], "foto-wod.jpg", { type: "image/jpeg" });
-  await handleImportImage(file, "Foto del WOD");
-}
 function resetAiReview() {
-  closeAiCamera();
   aiSourceText = null;
   aiReviewRequired = false;
   importMode = null;
@@ -1717,7 +1654,6 @@ function resetAiReview() {
   if ($("aiTextImport")) $("aiTextImport").classList.add("hidden");
   if ($("aiImageImport")) $("aiImageImport").classList.add("hidden");
   if ($("aiImportImageButton")) $("aiImportImageButton").setAttribute("aria-pressed", "false");
-  if ($("aiImportCameraButton")) $("aiImportCameraButton").setAttribute("aria-pressed", "false");
   if ($("aiImportTextButton")) $("aiImportTextButton").setAttribute("aria-pressed", "false");
   if ($("aiInterpretationStatus")) $("aiInterpretationStatus").textContent = "";
   if ($("interpretWithAiButton")) {
@@ -1735,13 +1671,7 @@ $("aiImportTextButton").addEventListener("click", () => {
   setImportMode("text");
   $("aiSourceText").focus();
 });
-$("aiImportCameraButton").addEventListener("click", openAiCamera);
 $("aiImageFileInput").addEventListener("change", event => handleImportImage(event.target.files?.[0]));
-$("aiCameraFallbackInput").addEventListener("change", event => handleImportImage(event.target.files?.[0], "Foto del WOD"));
-$("aiCameraCancelButton").addEventListener("click", closeAiCamera);
-$("aiCameraCloseButton").addEventListener("click", closeAiCamera);
-$("aiCameraCaptureButton").addEventListener("click", captureAiCameraImage);
-$("aiCameraDialog").addEventListener("cancel", stopAiCamera);
 
 $("interpretWithAiButton").addEventListener("click", async () => {
   const sourceText = importMode === "text" ? $("aiSourceText").value.trim() : "";
@@ -1754,7 +1684,7 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     return;
   }
   if (importMode === "image" && !image) {
-    status.textContent = "Selecciona una imagen o haz una foto del WOD.";
+    status.textContent = "Selecciona una imagen del WOD.";
     return;
   }
   if (!sourceText && !image) return;
