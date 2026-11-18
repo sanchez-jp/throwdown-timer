@@ -1226,7 +1226,7 @@ El texto original es la fuente de verdad. No des por correcta una interpretació
 Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corrected" únicamente si encuentras un error claro y puedes corregirlo sin suposiciones; en ese caso, correctedResult debe contener el objeto completo schemaVersion 2 corregido. Conserva todos los datos correctos y no inventes información. Devuelve "uncertain" si el texto admite más de una interpretación o no puedes resolver una discrepancia con seguridad; en ese caso correctedResult debe ser null. Incluye findings breves y concretos. No cambies el significado del WOD para hacerlo encajar con el JSON.`;
     const reviewPrompt = hasImage
       ? `Compara la interpretación candidata con el WOD de la imagen original adjunta. Comprueba que todos los datos visibles se han trasladado fielmente y que no se ha inventado información. Si es correcta, no la modifiques.\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`
-      : `Compara el WOD original con la interpretación candidata. Si es correcta, no la modifiques.\\n\\nWOD ORIGINAL:\\n${sourceText}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`
+      : `Compara el WOD original con la interpretación candidata. Si es correcta, no la modifiques.\\n\\nWOD ORIGINAL:\\n${sourceText}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
     try {
       const reviewResponse = selectedProvider === "groq"
         ? await requestGroq(7000, selectedModel, reviewPrompt, reviewSystemPrompt)
