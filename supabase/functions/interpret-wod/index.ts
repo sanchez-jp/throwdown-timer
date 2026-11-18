@@ -50,6 +50,106 @@ const issue = (code: string, message: string, fieldPath: string | null, question
 const json = (body: unknown, status: number, origin: string) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Access-Control-Allow-Origin": origin } });
 
+function normalizeExplicitRunningClockStages(result: any, sourceText: string) {
+  const lines = sourceText.split(/\r?\n/)
+    .map((line: string) => line.replace(/^\s*(?:viñeta|bullet|[•*-])\s*/i, "").trim())
+    .filter(Boolean);
+  const rangePattern = /^(\d+)\s*['′’]\s*[–—-]\s*(\d+)\s*['′’](?:\s*\([^)]*\))?\s*:?$/i;
+  const stages: any[] = [];
+  let current: any = null;
+  for (const line of lines) {
+    const match = line.match(rangePattern);
+    if (match) {
+      current = { start: Number(match[1]) * 60, end: Number(match[2]) * 60, sourceLines: [] as string[] };
+      stages.push(current);
+    } else if (current) {
+      current.sourceLines.push(line.replace(/^\+\s*/, "").trim());
+    }
+  }
+  const runningClock = sourceText.match(/running\s+clock\s+(\d+)\s*(?:min|minutes?)\b/i);
+  if (!runningClock || stages.length < 2) return result;
+  const totalSeconds = Number(runningClock[1]) * 60;
+  if (!Number.isInteger(totalSeconds) || totalSeconds <= 0 ||
+      stages.some((stage, index) => stage.end <= stage.start ||
+        (index > 0 && stage.start !== stages[index - 1].end)) ||
+      stages[0].start !== 0 || stages[stages.length - 1].end !== totalSeconds) return result;
+
+  const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/\b(and|y)\b/g, "").replace(/[^a-z0-9]+/g, "");
+  const movements = Array.isArray(result?.workout?.movements) ? result.workout.movements : [];
+  const sections = [];
+  for (const stage of stages) {
+    const items: any[] = [];
+    const labels: string[] = [];
+    for (const sourceLine of stage.sourceLines) {
+      const line = normalize(sourceLine);
+      const matches = movements.filter((movement: any) =>
+        typeof movement?.name === "string" && normalize(movement.name).length > 2 &&
+        line.includes(normalize(movement.name))
+      );
+      if (matches.length !== 1) return result;
+      const movement = matches[0];
+      if (items.some(item => item.movementId === movement.id)) continue;
+      const athlete = sourceLine.match(/\b(?:atleta|athlete)\s+([A-D])\b/i);
+      if (athlete) {
+        const assignment = "Atleta " + athlete[1].toUpperCase();
+        movement.notes = [movement.notes, assignment].filter(Boolean)
+          .filter((value: string, index: number, values: string[]) => values.indexOf(value) === index).join(" · ");
+      }
+      const prefix = sourceLine.slice(0, sourceLine.toLocaleLowerCase().indexOf(movement.name.toLocaleLowerCase())).replace(/^\+\s*/, "").trim();
+      const prescription = movement.prescription || (prefix ? prefix.replace(/[:·-]+$/, "").trim() : null);
+      items.push({
+        type: "movement",
+        movementId: movement.id,
+        prescription: prescription || null,
+        load: movement.load || null,
+      });
+      labels.push(movement.name);
+    }
+    if (!items.length) return result;
+    sections.push({
+      id: "stage-" + (sections.length + 1),
+      name: String(stage.start / 60) + "'–" + String(stage.end / 60) + "'",
+      structure: { type: "sequence", items },
+    });
+    stage.label = labels.join(" + ");
+    stage.durationSeconds = stage.end - stage.start;
+  }
+
+  const timer = result.timer;
+  const existingCountup = timer?.blocks?.find((block: any) => block?.type === "countup");
+  if (timer && (timer.type !== "sequence" || !Array.isArray(timer.blocks) || timer.blocks.length !== 1 ||
+      (existingCountup?.timeCapSeconds != null && existingCountup.timeCapSeconds !== totalSeconds))) {
+    console.warn("Explicit running-clock stages override an incompatible AI timer", {
+      timerType: timer.type,
+      blockCount: Array.isArray(timer.blocks) ? timer.blocks.length : null,
+      existingTimeCapSeconds: existingCountup?.timeCapSeconds ?? null,
+      sourceTimeCapSeconds: totalSeconds,
+    });
+  }
+  result.workout.structure = { type: "sections", sections };
+  result.workout.format = "custom";
+  result.workout.team = { athletes: 2, mode: "team", rotation: null };
+  if (typeof result.workout.description === "string" && /running\s+clock/i.test(result.workout.description)) {
+    result.workout.description = "";
+  }
+  result.timer = {
+    type: "sequence",
+    label: "Running clock",
+    blocks: [{
+      type: "countup",
+      label: "Running clock",
+      timeCapSeconds: totalSeconds,
+      rounds: null,
+      stages: stages.map(stage => ({ label: stage.label, durationSeconds: stage.durationSeconds })),
+    }],
+  };
+  console.info("Explicit running-clock stages normalized", {
+    stages: sections.length, durationSeconds: totalSeconds,
+  });
+  return result;
+}
+
 function normalizeMovementReferences(workout: any) {
   const movements = Array.isArray(workout?.movements) ? workout.movements : [];
   const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD")
@@ -323,8 +423,20 @@ function validateBlock(block: any, depth = 0): string | null {
   if (depth > 8 || !block || typeof block !== "object" || typeof block.label !== "string") return "El plan del temporizador tiene una estructura no válida.";
   const positive = (n: any) => Number.isInteger(n) && n > 0;
   if (block.type === "countdown" || block.type === "rest") return positive(block.durationSeconds) ? null : "Hay un bloque sin duración válida.";
-  if (block.type === "countup") return (block.timeCapSeconds === null || positive(block.timeCapSeconds)) &&
-    (block.rounds === null || positive(block.rounds)) ? null : "El bloque For Time tiene valores no válidos.";
+  if (block.type === "countup") {
+    if ((block.timeCapSeconds !== null && !positive(block.timeCapSeconds)) ||
+        (block.rounds !== null && !positive(block.rounds))) return "El bloque For Time tiene valores no válidos.";
+    if (block.stages !== undefined) {
+      if (!Array.isArray(block.stages) || !block.stages.length ||
+          block.stages.some((stage: any) => !stage || typeof stage.label !== "string" ||
+            !stage.label.trim() || !positive(stage.durationSeconds)) ||
+          block.timeCapSeconds === null ||
+          block.stages.reduce((sum: number, stage: any) => sum + stage.durationSeconds, 0) !== block.timeCapSeconds) {
+        return "Las etapas del reloj corrido deben tener nombres y duraciones que sumen exactamente el Time Cap.";
+      }
+    }
+    return null;
+  }
   if (block.type === "emom") return positive(block.durationSeconds) && positive(block.intervalSeconds) &&
     block.durationSeconds % block.intervalSeconds === 0 &&
     block.rounds === block.durationSeconds / block.intervalSeconds &&
@@ -480,6 +592,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
+  raw = normalizeExplicitRunningClockStages(raw, sourceTextForNormalization);
   raw = normalizeEmomIntervalLabels(raw, sourceTextForNormalization);
   const structureError = validateStructure(raw.workout);
   if (structureError) {
@@ -725,6 +838,17 @@ const responseSchema = {
               durationSeconds: { type: "integer", nullable: true },
               timeCapSeconds: { type: "integer", nullable: true },
               rounds: { type: "integer", nullable: true },
+              stages: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    durationSeconds: { type: "integer" },
+                  },
+                  required: ["label", "durationSeconds"],
+                },
+              },
               intervalSeconds: { type: "integer", nullable: true },
               intervalLabels: { type: "array", items: { type: "string" }, nullable: true },
               workSeconds: { type: "integer", nullable: true },
@@ -832,6 +956,8 @@ REGLAS DE INTERPRETACIÓN:
    - Si el EMOM describe tareas numeradas por minuto (por ejemplo 1) Ski, 2) HSW, 3) Burpees, 4) Rest), añade timer.intervalLabels con una etiqueta por cada posición, en el mismo orden. La lista representa un ciclo que se repite hasta completar durationSeconds; incluye explícitamente "DESCANSO" para cada minuto de descanso. No omitas los descansos ni los conviertas en un movimiento del WOD.
    - Tabata/intervalos: intervals solo si están indicados rounds, trabajo y descanso; startWithRest normalmente false salvo que el texto diga lo contrario.
    - Descanso temporizado explícito: rest. Segmentos temporizados consecutivos: varios bloques en el orden real.
+   - Reloj corrido con etapas delimitadas por rangos horarios (por ejemplo, "0'-5' Bike Erg" y "5'-11' Clean & Jerk + Snatch"): representa el trabajo como structure.type:"sections", con una sección por rango y sus movimientos dentro; no aplanes los movimientos en una secuencia global ni dejes los rangos únicamente en description. Configura un único bloque countup con timeCapSeconds igual a la duración total y stages ordenadas, cada una con label descriptivo y durationSeconds igual a la longitud de su rango. Las duraciones de stages deben sumar exactamente el Time Cap. El reloj cuenta hacia arriba desde 00:00 y cambia de etapa en cada límite.
+   - Si varios movimientos aparecen unidos por "+" dentro del mismo rango temporal, pertenecen a la misma etapa y se ejecutan en paralelo cuando el texto los asigna a atletas distintos. Conserva la asignación ("Atleta A", "Atleta B", etc.) en movements[].notes. No conviertas esos movimientos en etapas consecutivas. Para dos atletas con tareas individuales simultáneas, usa team.mode:"team", no "synchro" salvo que ambos deban hacer el mismo movimiento a la vez.
    - Si falta duración esencial, devuelve timer:null y añade issue blocking TIMER_DETAILS_MISSING con pregunta concreta.
    - For Time sin Time Cap es válido: countup con timeCapSeconds:null.
 10. Si hay contradicciones, no elijas arbitrariamente: devuelve timer:null si afectan al temporizador y registra issue blocking.
@@ -1022,13 +1148,21 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
         correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, 8000);
         if (selectedProvider === "groq" && correctedResponse.status === 429) {
           const rateLimitDetail = await correctedResponse.text();
-          const retryMatch = rateLimitDetail.match(/try again in ([\d.]+)\s*ms/i);
-          const retryDelayMs = retryMatch
-            ? Math.min(1500, Math.max(250, Math.ceil(Number(retryMatch[1]) + 150)))
-            : 700;
-          console.warn("Groq correction rate limited; retrying once after bounded backoff", retryDelayMs);
-          await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-          correctedResponse = await requestGroq(10000);
+          const retryAfterSeconds = Number(correctedResponse.headers.get("retry-after"));
+          const retryMatch = rateLimitDetail.match(/try again in\s*([\d.]+)\s*(ms|msec|milliseconds?|s|sec|seconds?)/i);
+          const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? Math.ceil(retryAfterSeconds * 1000 + 250)
+            : retryMatch
+              ? Math.ceil(Number(retryMatch[1]) * (/^m/i.test(retryMatch[2]) ? 1 : 1000) + 250)
+              : null;
+          if (retryDelayMs !== null && retryDelayMs <= 12000) {
+            console.warn("Groq correction rate limited; respecting provider retry window", retryDelayMs);
+            await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+            correctedResponse = await requestGroq(10000);
+          } else {
+            console.warn("Groq correction rate limited; retry window exceeds bounded wait", retryDelayMs);
+            correctedResponse = new Response(rateLimitDetail, { status: 429 });
+          }
         }
       } catch (correctionError) {
         console.error("AI correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
@@ -1066,6 +1200,7 @@ Comprueba especialmente:
 - Diferencia entre movimientos repetidos, alternativas (choice) y bloques anidados.
 - Dinámica de equipo: reparto libre, I Go You Go, sincronización y excepciones por movimiento.
 - Formato y temporizador: Time Cap, duración, intervalos y descansos.
+- Etapas temporales explícitas: cuando hay rangos como 0'-5' y 5'-11', comprueba que structure.sections conserva un grupo por rango y que el countup contiene stages cuyas duraciones suman el Time Cap. Los movimientos unidos por "+" en un mismo rango deben permanecer juntos en esa etapa; conserva las asignaciones de atleta en notes.
 - Si el formato es AMRAP y la secuencia contiene movimientos con loadProgression.every:"round", interpreta esa regla como incremento dinámico en cada vuelta completada. No marques como ambigua la ausencia de un número fijo de rondas: la secuencia es abierta por definición.
 
 El texto original es la fuente de verdad. No des por correcta una interpretación solo porque el JSON sea estructuralmente válido. Si el candidato coloca una progresión de N valores fuera de un circuito de N rondas sin que el original indique un finisher separado, es una discrepancia semántica y debe corregirse agrupando cada valor al final de su ronda. Si no hay certeza por el contexto, devuelve uncertain y explica la ambigüedad.
