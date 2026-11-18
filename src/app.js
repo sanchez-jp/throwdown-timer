@@ -837,9 +837,26 @@ function renderTimerBlockFields(row, block = {}) {
   } else if (type === "countup") {
     addTime("cap", "Time Cap", block.timeCapSeconds ?? null, false);
     timerField(fields, "rounds", "Rondas objetivo (opcional)", block.rounds ?? "", { placeholder: "Sin objetivo" });
+    const stagesWrap = document.createElement("div");
+    stagesWrap.className = "wide-field";
+    const stagesLabel = document.createElement("label");
+    stagesLabel.className = "field-label";
+    stagesLabel.textContent = "Etapas temporizadas · duración mm:ss | nombre (una por línea)";
+    const stagesInput = document.createElement("textarea");
+    stagesInput.className = "editor-input";
+    stagesInput.name = "stages";
+    stagesInput.rows = Math.min(6, Math.max(3, block.stages?.length || 3));
+    stagesInput.value = (block.stages || []).map(stage => {
+      const [minutes, seconds] = timeParts(stage.durationSeconds);
+      return String(minutes) + ":" + String(seconds).padStart(2, "0") + " | " + stage.label;
+    }).join("\n");
+    stagesLabel.htmlFor = "timer-stages-" + Math.random().toString(36).slice(2, 8);
+    stagesInput.id = stagesLabel.htmlFor;
+    stagesWrap.append(stagesLabel, stagesInput);
+    fields.append(stagesWrap);
     const hint = document.createElement("div");
     hint.className = "timer-plan-help wide-field";
-    hint.textContent = "RFT y Ladder usan este cronómetro ascendente. El temporizador no detecta rondas, repeticiones ni peldaños automáticamente.";
+    hint.textContent = "RFT y Ladder usan este cronómetro ascendente. Si defines etapas, sus duraciones deben sumar el Time Cap.";
     fields.append(hint);
   } else if (type === "emom") {
     addTime("duration", "Duración total", block.durationSeconds);
@@ -986,6 +1003,19 @@ function collectTimerBlocks(list = $("timerBlockList")) {
         const rounds = value("rounds");
         if (rounds && (!Number.isInteger(Number(rounds)) || Number(rounds) <= 0)) throw new Error("Las rondas objetivo deben ser un entero mayor que cero.");
         block.rounds = rounds ? Number(rounds) : null;
+        const stagesText = row.querySelector('[name="stages"]')?.value ?? "";
+        const stages = stagesText.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+          const match = line.match(/^(\d+):([0-5]\d)\s*[|·]\s*(.+)$/);
+          if (!match || !match[3].trim()) throw new Error("Cada etapa debe seguir el formato mm:ss | nombre.");
+          return { durationSeconds: Number(match[1]) * 60 + Number(match[2]), label: match[3].trim() };
+        });
+        if (stages.length) {
+          if (stages.some(stage => stage.durationSeconds <= 0)) throw new Error("La duración de cada etapa debe ser mayor que cero.");
+          if (block.timeCapSeconds === null || stages.reduce((sum, stage) => sum + stage.durationSeconds, 0) !== block.timeCapSeconds) {
+            throw new Error("La suma de las etapas debe coincidir con el Time Cap.");
+          }
+          block.stages = stages;
+        }
       } else if (type === "emom") {
         block.durationSeconds = readTimerSeconds(row, "duration", { label: "La duración total" });
         block.intervalSeconds = readTimerSeconds(row, "interval", { label: "La duración del intervalo" });
