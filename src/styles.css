@@ -8,7 +8,7 @@
 
 .library-create-button{margin:8px 0 16px}.home-actions .secondary-wide:first-child{border-color:#c9f23d70;color:var(--lime)}@media(min-width:421px){.home-actions{grid-template-columns:1fr 1fr 1fr}}
 
-.timer-plan-editor{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+.timer-plan-editor{margin:0;padding:0;border:0;background:transparent}
 .timer-plan-help{margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5}
 .timer-block-list{display:grid;gap:10px;margin-top:12px}
 .timer-block-card{padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
@@ -416,7 +416,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .editor-section-content{padding:0 14px 15px;border-top:1px solid rgba(43,58,77,.65)}
 .editor-section-content>.field-label:first-child{margin-top:14px}
 .editor-section .movement-editor-heading{margin-top:14px}
-.editor-section .ai-import-panel,.editor-section .team-settings-editor,.editor-section .timer-plan-editor,.editor-section .semantic-structure-editor{margin:0;padding:0;border:0;background:transparent}
+.editor-section .ai-import-panel,.editor-section .team-settings-editor,.editor-section .semantic-structure-editor{margin:0;padding:0;border:0;background:transparent}
 .editor-section .movement-editor-list{margin-top:14px}
 .editor-section .movement-editor-row{grid-template-columns:1fr 1fr;gap:9px;padding:12px}
 .editor-section .movement-editor-row .movement-field[name="name"],
@@ -441,7 +441,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
 /* v53 — estructura del WOD: campos identificados y editables en columna */
 .structure-item-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
-.structure-item-row>.structure-field{grid-column:1/-1}
+.structure-item-row>.structure-field,.structure-item-row>.structure-choice-group{grid-column:1/-1}
 .structure-field{display:flex;flex-direction:column;gap:6px;min-width:0;color:var(--muted);font-size:11px;font-weight:750;line-height:1.3}
 .structure-field .editor-input{width:100%;min-width:0;min-height:44px;font-size:14px}
 .structure-item-row>.remove-movement-button{grid-column:2;grid-row:1;align-self:start}
