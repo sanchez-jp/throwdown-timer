@@ -102,14 +102,14 @@ function repairEmptyAmrapLoadProgression(workout: any, sourceText: string) {
       !Array.isArray(structure.items) || !Array.isArray(movements) || !movements.length) return workout;
 
   const progression = sourceText.match(
-    /(?:añad(?:e|ir)|increment(?:a|ar)|aument(?:a|ar)|sub(?:e|ir)|add|increase)\\s+(?:en\\s+)?(\\d+(?:[.,]\\d+)?\\s*\\/\\s*\\d+(?:[.,]\\d+)?)\\s*kg\\s+(?:en\\s+cada\\s+ronda|each\\s+round)/i
+    /(?:añad(?:e|ir)|increment(?:a|ar)|aument(?:a|ar)|sub(?:e|ir)|add|increase)\s+(?:en\s+)?(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\s+(?:en\s+cada\s+ronda|each\s+round)/i
   );
   if (!progression) return workout;
 
-  const increment = progression[1].replace(/\\s/g, "").replace(/,/g, ".");
+  const increment = progression[1].replace(/\s/g, "").replace(/,/g, ".");
   const movementById = new Map(movements.filter((movement: any) => movement?.id).map((movement: any) => [movement.id, movement]));
   const isEmptyRoundGroup = (group: any) => group?.type === "rounds" && group.count === 1 &&
-    typeof group.label === "string" && /^ronda\\s+\\d+(?:\\s*\\([^)]*\\))?$/i.test(group.label.trim()) &&
+    typeof group.label === "string" && /^ronda\s+\d+(?:\s*\([^)]*\))?$/i.test(group.label.trim()) &&
     (!Array.isArray(group.items) || group.items.length === 0);
   const groups = structure.items;
   let items: any[];
