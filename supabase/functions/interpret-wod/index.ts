@@ -906,7 +906,7 @@ Deno.serve(async (req: Request) => {
   if (!allowedOrigin) return new Response("Origen no permitido", { status: 403 });
   if (req.method !== "POST") return json({ error: "Método no permitido." }, 405, allowedOrigin);
   const contentLength = Number(req.headers.get("content-length") || 0);
-  if (contentLength > 12000) return json({ error: "La descripción es demasiado larga." }, 413, allowedOrigin);
+  if (contentLength > 6000000) return json({ error: "La petición supera el tamaño máximo permitido." }, 413, allowedOrigin);
 
   try {
     const authHeader = req.headers.get("Authorization") || "";
@@ -922,7 +922,18 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     const sourceText = typeof body?.sourceText === "string" ? body.sourceText.trim() : "";
-    if (sourceText.length < 8 || sourceText.length > 8000) return json({ error: "Escribe una descripción de WOD de entre 8 y 8.000 caracteres." }, 400, allowedOrigin);
+    const image = body?.image && typeof body.image === "object" ? body.image : null;
+    const hasImage = Boolean(image);
+    if (hasImage) {
+      const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+      if (!allowedImageTypes.has(image.mimeType) || typeof image.data !== "string" ||
+          !/^[A-Za-z0-9+/]+={0,2}$/.test(image.data) || image.data.length < 100 || image.data.length > 5600000) {
+        return json({ error: "La imagen no tiene un formato válido o supera el tamaño permitido. Prueba con una imagen JPG, PNG o WebP de menos de 4 MB." }, 400, allowedOrigin);
+      }
+      if (sourceText.length > 8000) return json({ error: "El texto adicional no puede superar los 8.000 caracteres." }, 400, allowedOrigin);
+    } else if (sourceText.length < 8 || sourceText.length > 8000) {
+      return json({ error: "Escribe una descripción de WOD de entre 8 y 8.000 caracteres." }, 400, allowedOrigin);
+    }
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) throw new Error("No está configurada la clave del proveedor de IA.");
@@ -1023,14 +1034,17 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
 
 `;
 
-    let prompt = `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\n\n${examples}\nDESCRIPCIÓN DEL WOD:\n${sourceText}`;
+    const imageParts = hasImage ? [{ inlineData: { mimeType: image.mimeType, data: image.data } }] : [];
+    const prompt = hasImage
+      ? `Interpreta el WOD que aparece en la imagen adjunta. Lee cuidadosamente todo el texto, incluidos encabezados, notas, cargas, unidades, alternativas y anotaciones manuscritas legibles. Conserva el orden y la estructura visual. Si un dato no se distingue con seguridad, no lo inventes: añade una observación para que el usuario lo revise. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nWOD EN LA IMAGEN ADJUNTA.`
+      : `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nDESCRIPCIÓN DEL WOD:\\n${sourceText}`
     const requestGemini = async (model: string, timeoutMs = 12000, requestPrompt = prompt, requestSystem = systemPrompt, schema: any = responseSchema) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: requestSystem }] },
-        contents: [{ role: "user", parts: [{ text: requestPrompt }] }],
+        contents: [{ role: "user", parts: [...imageParts, { text: requestPrompt }] }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: "application/json", responseSchema: schema },
       }),
     });
@@ -1085,7 +1099,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
         console.warn("Gemini bounded retry did not complete", retryError instanceof Error ? retryError.name : "unknown");
       }
     }
-    if (!response || [429, 503].includes(response.status)) {
+    if (!hasImage && (!response || [429, 503].includes(response.status))) {
       if (groqApiKey) {
         selectedProvider = "groq";
         selectedModel = groqModel;
@@ -1099,9 +1113,11 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       }
     }
     if (!response) {
-      const message = groqApiKey
-        ? "Gemini y el proveedor alternativo no han respondido. Espera un momento y vuelve a intentarlo."
-        : "Gemini está temporalmente saturado. El proveedor alternativo aún no está configurado; inténtalo de nuevo más tarde.";
+      const message = hasImage
+        ? "Gemini no ha podido procesar la imagen en este momento. Espera un momento y vuelve a intentarlo."
+        : groqApiKey
+          ? "Gemini y el proveedor alternativo no han respondido. Espera un momento y vuelve a intentarlo."
+          : "Gemini está temporalmente saturado. El proveedor alternativo aún no está configurado; inténtalo de nuevo más tarde.";
       return json({ error: message }, 503, allowedOrigin);
     }
     if (!response.ok) {
@@ -1109,10 +1125,12 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       console.error(`${selectedProvider} API error`, response.status, detail.slice(0, 1200));
       if (response.status === 429) return json({ error: selectedProvider === "groq"
         ? "El proveedor alternativo ha alcanzado temporalmente su límite de uso. Inténtalo más tarde."
-        : "Gemini y el proveedor alternativo han alcanzado temporalmente sus límites de uso. Inténtalo más tarde." }, 429, allowedOrigin);
+        : hasImage ? "El servicio de interpretación de imágenes ha alcanzado temporalmente su límite de uso. Inténtalo más tarde."
+          : "Gemini y el proveedor alternativo han alcanzado temporalmente sus límites de uso. Inténtalo más tarde." }, 429, allowedOrigin);
       if (response.status === 503) return json({ error: selectedProvider === "groq"
         ? "El proveedor alternativo también está temporalmente saturado. Inténtalo más tarde."
-        : "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
+        : hasImage ? "El servicio de interpretación de imágenes está temporalmente saturado. Espera un momento y vuelve a intentarlo."
+          : "Los modelos de IA están temporalmente saturados. Espera un momento y vuelve a intentarlo." }, 503, allowedOrigin);
       if (selectedProvider === "groq" && [401, 403].includes(response.status)) {
         return json({ error: "La clave del proveedor alternativo no es válida o no tiene permisos. Revisa el secreto GROQ_API_KEY en Supabase." }, 502, allowedOrigin);
       }
@@ -1206,15 +1224,9 @@ Comprueba especialmente:
 El texto original es la fuente de verdad. No des por correcta una interpretación solo porque el JSON sea estructuralmente válido. Si el candidato coloca una progresión de N valores fuera de un circuito de N rondas sin que el original indique un finisher separado, es una discrepancia semántica y debe corregirse agrupando cada valor al final de su ronda. Si no hay certeza por el contexto, devuelve uncertain y explica la ambigüedad.
 
 Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corrected" únicamente si encuentras un error claro y puedes corregirlo sin suposiciones; en ese caso, correctedResult debe contener el objeto completo schemaVersion 2 corregido. Conserva todos los datos correctos y no inventes información. Devuelve "uncertain" si el texto admite más de una interpretación o no puedes resolver una discrepancia con seguridad; en ese caso correctedResult debe ser null. Incluye findings breves y concretos. No cambies el significado del WOD para hacerlo encajar con el JSON.`;
-    const reviewPrompt = `Compara el WOD original con la interpretación candidata. Si es correcta, no la modifiques.
-
-WOD ORIGINAL:
-${sourceText}
-
-INTERPRETACIÓN CANDIDATA:
-${JSON.stringify(result)}
-
-Devuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
+    const reviewPrompt = hasImage
+      ? `Compara la interpretación candidata con el WOD de la imagen original adjunta. Comprueba que todos los datos visibles se han trasladado fielmente y que no se ha inventado información. Si es correcta, no la modifiques.\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`
+      : `Compara el WOD original con la interpretación candidata. Si es correcta, no la modifiques.\\n\\nWOD ORIGINAL:\\n${sourceText}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`
     try {
       const reviewResponse = selectedProvider === "groq"
         ? await requestGroq(7000, selectedModel, reviewPrompt, reviewSystemPrompt)
