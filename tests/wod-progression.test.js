@@ -169,3 +169,44 @@ test("preserves an explicit ladder direction", () => {
   const value = { workout: { structure: { type: "ladder", direction: "descending", steps: [{ label: "Ronda 1", items: [{}] }] } } };
   assert.equal(normalizeLadderDirection(value), value);
 });
+
+
+test("applies each progressive load to the ladder label for both alternating clean variants", () => {
+  const value = {
+    workout: {
+      movements: [
+        { id: "run", name: "Run", load: null },
+        { id: "ski", name: "Ski or Row", load: null },
+        { id: "squat-clean", name: "Squat Clean", load: "40/30 kg" },
+        { id: "power-clean", name: "Power Clean", load: "40/30 kg" },
+      ],
+      structure: {
+        type: "ladder",
+        direction: "descending",
+        steps: Array.from({ length: 10 }, (_, index) => ({
+          label: "Ronda " + (index + 1),
+          items: [
+            { type: "movement", movementId: "run", prescription: "200 m" },
+            { type: "movement", movementId: "ski", prescription: String(20 - Math.floor(index / 2) * 2) + " cal" },
+            { type: "movement", movementId: "squat-clean", prescription: "5" },
+            { type: "movement", movementId: "power-clean", prescription: "5" },
+          ],
+        })),
+      },
+    },
+  };
+  const source = "WOD en parejas 10 rondas. start with 40/30kg and increase 10/7,5kg after each round";
+  const expanded = expandProgressiveLoadLadder(value, source);
+  assert.deepEqual(expanded.workout.structure.steps.map(step => step.label), [
+    "Ronda 1 · Squat Clean / Power Clean 40/30 kg",
+    "Ronda 2 · Squat Clean / Power Clean 50/37,5 kg",
+    "Ronda 3 · Squat Clean / Power Clean 60/45 kg",
+    "Ronda 4 · Squat Clean / Power Clean 70/52,5 kg",
+    "Ronda 5 · Squat Clean / Power Clean 80/60 kg",
+    "Ronda 6 · Squat Clean / Power Clean 90/67,5 kg",
+    "Ronda 7 · Squat Clean / Power Clean 100/75 kg",
+    "Ronda 8 · Squat Clean / Power Clean 110/82,5 kg",
+    "Ronda 9 · Squat Clean / Power Clean 120/90 kg",
+    "Ronda 10 · Squat Clean / Power Clean 130/97,5 kg",
+  ]);
+});
