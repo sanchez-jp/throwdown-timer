@@ -360,8 +360,8 @@ function renderTimerDescription(workout, timerPlan = null) {
     group.append(heading);
     const isEmomSequence = label === "SECUENCIA" && emomBlock;
     if (isEmomSequence) {
-      const list = document.createElement("ol");
-      list.className = "timer-description-list timer-description-ordered timer-emom-schedule";
+      const list = document.createElement("ul");
+      list.className = "timer-description-list timer-emom-schedule";
       emomBlock.intervalLabels.forEach((intervalLabel, index) => {
         const item = document.createElement("li");
         item.dataset.intervalIndex = String(index);
