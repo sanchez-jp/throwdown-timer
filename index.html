@@ -63,12 +63,34 @@
       <p class="intro" id="editorIntro">Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.</p>
       <form id="workoutEditor" novalidate>
         <details class="editor-section ai-import-section" id="ai-import-section">
-          <summary><span>Importar</span><small>Opcional · Pegar descripción</small></summary>
+          <summary><span>Importar</span><small>Texto o imagen</small></summary>
           <div class="editor-section-content ai-import-panel">
-            <p class="timer-plan-help">Pega el texto del entrenamiento. THROWDOWN TIMER deducirá los movimientos, el orden y el temporizador; podrás revisarlo y editarlo antes de guardarlo.</p>
-            <label class="field-label" for="aiSourceText">Descripción original del WOD</label>
-            <textarea class="editor-input ai-source-input" id="aiSourceText" rows="4" maxlength="8000" placeholder="Ej. 5 rounds for time: 12 toes-to-bar, 10 power cleans 60/40 kg…"></textarea>
-            <button class="secondary-wide ai-interpret-button" id="interpretWithAiButton" type="button">INTERPRETAR</button>
+            <p class="timer-plan-help">Importa un WOD desde una imagen o introduce su descripción. La IA reconocerá el contenido y preparará el entrenamiento para que puedas revisarlo.</p>
+            <div class="ai-import-options" role="group" aria-label="Método de importación">
+              <button class="ai-import-option" id="aiImportImageButton" type="button" aria-pressed="false">
+                <span class="ai-import-option-icon" aria-hidden="true">▧</span><strong>Elegir imagen</strong><small>Galería o archivos</small>
+              </button>
+              <button class="ai-import-option" id="aiImportCameraButton" type="button" aria-pressed="false">
+                <span class="ai-import-option-icon" aria-hidden="true">◎</span><strong>Hacer foto</strong><small>Cámara o webcam</small>
+              </button>
+              <button class="ai-import-option" id="aiImportTextButton" type="button" aria-pressed="false">
+                <span class="ai-import-option-icon" aria-hidden="true">T</span><strong>Introducir texto</strong><small>Escribir o pegar</small>
+              </button>
+            </div>
+            <div class="ai-text-import hidden" id="aiTextImport">
+              <label class="field-label" for="aiSourceText">Descripción original del WOD</label>
+              <textarea class="editor-input ai-source-input" id="aiSourceText" rows="4" maxlength="8000" placeholder="Ej. 5 rounds for time: 12 toes-to-bar, 10 power cleans 60/40 kg…"></textarea>
+            </div>
+            <div class="ai-image-import hidden" id="aiImageImport">
+              <input class="hidden" id="aiImageFileInput" type="file" accept="image/*">
+              <input class="hidden" id="aiCameraFallbackInput" type="file" accept="image/*" capture="environment">
+              <p class="ai-image-prompt" id="aiImagePrompt">Selecciona una imagen de tu dispositivo.</p>
+              <div class="ai-image-preview hidden" id="aiImagePreview">
+                <img id="aiImagePreviewElement" alt="Vista previa del WOD seleccionado">
+                <div class="ai-image-preview-meta"><span id="aiImageFileName"></span><button class="text-button" id="aiImageChangeButton" type="button">CAMBIAR IMAGEN</button></div>
+              </div>
+            </div>
+            <button class="secondary-wide ai-interpret-button hidden" id="interpretWithAiButton" type="button">INTERPRETAR</button>
             <div class="editor-status ai-interpretation-status" id="aiInterpretationStatus" role="status" aria-live="polite"></div>
           </div>
         </details>
@@ -169,6 +191,14 @@
       </div>
       <aside class="timer-description hidden" id="timerDescription" aria-label="Descripción del WOD"></aside>
     </section>
+    <dialog class="ai-camera-dialog" id="aiCameraDialog" aria-labelledby="aiCameraHeading">
+      <div class="ai-camera-content">
+        <div class="ai-camera-heading"><h2 id="aiCameraHeading">Fotografiar WOD</h2><button class="text-button" id="aiCameraCloseButton" type="button">CERRAR</button></div>
+        <video id="aiCameraVideo" autoplay playsinline muted></video>
+        <p class="editor-status" id="aiCameraStatus" role="status">Preparando cámara…</p>
+        <div class="ai-camera-actions"><button class="secondary-wide" id="aiCameraCancelButton" type="button">CANCELAR</button><button class="primary-button" id="aiCameraCaptureButton" type="button" disabled>HACER FOTO</button></div>
+      </div>
+    </dialog>
     <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
   </main>
   <script type="module" src="./src/app.js?v=34"></script>
