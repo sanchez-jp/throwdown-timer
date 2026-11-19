@@ -399,19 +399,28 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
   const structure = workout?.structure;
   const movements = Array.isArray(workout?.movements) ? workout.movements : [];
   if (structure?.type !== "sequence" || !Array.isArray(structure.items) ||
-      structure.items.length !== 2 || movements.length !== 3 || !sourceText) return workout;
+      movements.length !== 3 || !sourceText) return workout;
 
-  const groups = structure.items;
   const directionOf = (label: any) => {
     const value = String(label || "").toLocaleLowerCase();
     if (/descending|descendente/.test(value)) return "descending";
     if (/ascending|ascendente/.test(value)) return "ascending";
     return null;
   };
-  if (directionOf(groups[0]?.label) !== "descending" ||
-      directionOf(groups[1]?.label) !== "ascending" ||
-      groups.some((group: any) => group?.type !== "rounds" ||
-        (Array.isArray(group.items) && group.items.length > 0))) return workout;
+  const markers = structure.items
+    .map((item: any, index: number) => ({ item, index, direction: directionOf(item?.label) }))
+    .filter((entry: any) => entry.direction);
+  const markerItems = new Set(markers.map((entry: any) => entry.item));
+  const onlyExpectedNodes = structure.items.every((item: any) =>
+    markerItems.has(item) ||
+    item?.type === "movement" ||
+    (item?.type === "rounds" && /immediately\s+into|inmediatamente/i.test(String(item.label || "")))
+  );
+  if (markers.length !== 2 || markers[0].direction !== "descending" ||
+      markers[1].direction !== "ascending" ||
+      markers.some((entry: any) => entry.item?.type !== "rounds" ||
+        (Array.isArray(entry.item.items) && entry.item.items.length > 0)) ||
+      !onlyExpectedNodes) return workout;
 
   const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
@@ -430,7 +439,13 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
     });
     if (matches.length === 1) rows.push({ movementId: matches[0].id, values, index });
   }
-  if (rows.length !== 6) return workout;
+  if (rows.length !== 6) {
+    console.info("Dual ladder repair skipped: progression rows not fully matched", {
+      directionMarkers: markers.length, matchedRows: rows.length,
+      sourceLines: lines.length,
+    });
+    return workout;
+  }
 
   const descending = rows.slice(0, 3);
   const ascending = rows.slice(3, 6);
