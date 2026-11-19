@@ -72,6 +72,10 @@ let importMode = null;
 let selectedImportImage = null;
 let selectedImportObjectUrl = null;
 
+function formatRepProgression(progression) {
+  if (!progression || progression.every !== "round" || !progression.increment) return null;
+  return "+" + progression.increment + " reps / ronda";
+}
 function formatTime(ms, tenths=false) {
   const total = Math.max(0, ms);
   const seconds = Math.floor(total / 1000);
@@ -335,7 +339,7 @@ function renderTimerDescription(workout, timerPlan = null) {
         const visiblePrescription = prescription && !movementName.toLocaleLowerCase().includes(String(prescription).toLocaleLowerCase()) ? prescription : null;
         const visibleNotes = String(movement?.notes || "").split(" · ")
           .map(note => note.trim()).filter(note => note && !movementName.toLocaleLowerCase().includes(note.toLocaleLowerCase()));
-        item.textContent = [visiblePrescription, movementName, entry.load || movement?.load, formatLoadProgression(entry.loadProgression), ...visibleNotes].filter(Boolean).join(" · ");
+        item.textContent = [visiblePrescription, movementName, entry.load || movement?.load, formatLoadProgression(entry.loadProgression), formatRepProgression(entry.repProgression), ...visibleNotes].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
         const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
         const heading = document.createElement("h4"); heading.textContent = entry.label || ((Number(entry.count) || 1) + ((Number(entry.count) || 1) === 1 ? " RONDA" : " RONDAS"));
@@ -1150,10 +1154,12 @@ function createStructureItemRow(item = {}) {
   const prescription = document.createElement("input"); prescription.className = "editor-input"; prescription.name = "prescription"; prescription.placeholder = "Ej. 12 repeticiones"; prescription.value = item.prescription || "";
   const load = document.createElement("input"); load.className = "editor-input"; load.name = "itemLoad"; load.placeholder = "Ej. 60/40 kg"; load.value = item.load || "";
   const progression = document.createElement("input"); progression.className = "editor-input"; progression.name = "loadProgression"; progression.placeholder = "Ej. 10/5"; progression.value = item.loadProgression?.increment || "";
+  const repProgression = document.createElement("input"); repProgression.className = "editor-input"; repProgression.name = "repProgression"; repProgression.placeholder = "Ej. 2"; repProgression.value = item.repProgression?.increment || "";
   row.append(
     structureField("Movimiento", movement),
     structureField("Repeticiones / prescripción", prescription),
     structureField("Carga inicial (opcional)", load),
+    structureField("Incremento de repeticiones por ronda (opcional)", repProgression),
     structureField("Incremento por ronda en kg (opcional)", progression),
     structureRemoveButton("Eliminar movimiento de la estructura", () => row.remove())
   ); return row;
@@ -1356,14 +1362,17 @@ function collectSemanticStructure() {
     }
     const load = row.querySelector('[name="itemLoad"]').value.trim();
     const increment = row.querySelector('[name="loadProgression"]').value.trim().replace(/,/g, ".");
+    const repIncrement = row.querySelector('[name="repProgression"]').value.trim();
     if (increment && !/^[0-9]+(?:[.][0-9]+)?(?:\/[0-9]+(?:[.][0-9]+)?)?$/.test(increment.replace(/\s/g, ""))) {
       throw new Error("El incremento por ronda debe ser un número o dos valores separados por /, por ejemplo 10/5.");
     }
     if (increment && !load) throw new Error("Indica también la carga inicial para aplicar un incremento por ronda.");
+    if (repIncrement && !/^[1-9]\\d*$/.test(repIncrement)) throw new Error("El incremento de repeticiones por ronda debe ser un entero positivo.");
     return {type:"movement",movementId:row.querySelector('[name="movementId"]').value,
       ...(row.querySelector('[name="prescription"]').value.trim()?{prescription:row.querySelector('[name="prescription"]').value.trim()}:{}),
       ...(load?{load}:{}),
-      ...(increment?{loadProgression:{increment,unit:"kg",every:"round"}}:{})};
+      ...(increment?{loadProgression:{increment,unit:"kg",every:"round"}}:{}),
+      ...(repIncrement?{repProgression:{increment:repIncrement,every:"round"}}:{})};
   });
   if (["sequence", "rounds", "chipper"].includes(type)) {
     const items = collectNodes($("structureSettings").querySelector(".structure-items"));
