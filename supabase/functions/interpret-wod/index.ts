@@ -249,7 +249,7 @@ function repairEmptyAmrapLoadProgression(workout: any, sourceText: string) {
   }
 
   const hasProgression = (nodes: any[]): boolean => nodes.some((node: any) =>
-    node?.loadProgression?.every === "round" ||
+    node?.loadProgression?.every === "round" || node?.repProgression?.every === "round" ||
     (Array.isArray(node?.items) && hasProgression(node.items)) ||
     (Array.isArray(node?.alternatives) && node.alternatives.some((option: any) => hasProgression(option.items || [])))
   );
@@ -258,6 +258,36 @@ function repairEmptyAmrapLoadProgression(workout: any, sourceText: string) {
   console.info("AI AMRAP progressive load normalized as open-ended sequence", {
     movements: items.length, increment: increment + " kg",
   });
+  return { ...workout, structure: { ...structure, items } };
+}
+
+function repairAmrapRepProgressions(workout: any, sourceText: string) {
+  const structure = workout?.structure;
+  const movements = Array.isArray(workout?.movements) ? workout.movements : [];
+  if (workout?.format !== "amrap" || structure?.type !== "sequence" ||
+      !Array.isArray(structure.items) || !sourceText || !movements.length) return workout;
+
+  const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+  const additions = [...sourceText.matchAll(/\\+\\s*(\\d+)\\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\\s'’/-]{2,90})/g)];
+  if (!additions.length) return workout;
+
+  const byId = new Map(movements.filter((movement: any) => movement?.id).map((movement: any) => [movement.id, movement]));
+  let applied = 0;
+  const items = structure.items.map((node: any) => {
+    if (node?.type !== "movement") return node;
+    const movement: any = byId.get(node.movementId);
+    const name = normalize(movement?.name || "");
+    if (!name) return node;
+    const matches = additions.filter((match: any) => normalize(match[2]).includes(name));
+    if (matches.length !== 1) return node;
+    const increment = Number(matches[0][1]);
+    if (!Number.isSafeInteger(increment) || increment <= 0) return node;
+    applied++;
+    return { ...node, repProgression: { increment: String(increment), every: "round" } };
+  });
+  if (!applied) return workout;
+  console.info("AI AMRAP progressive repetitions normalized", { movements: applied });
   return { ...workout, structure: { ...structure, items } };
 }
 
@@ -605,6 +635,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "") {
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
+  raw.workout = repairAmrapRepProgressions(raw.workout, sourceTextForNormalization);
   raw = normalizeExplicitRunningClockStages(raw, sourceTextForNormalization);
   raw = normalizeEmomIntervalLabels(raw, sourceTextForNormalization);
   const structureError = validateStructure(raw.workout);
@@ -732,6 +763,7 @@ const responseSchema = {
                   loadProgression: { type: "object", properties: {
                     increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
                   }, required: ["increment", "unit", "every"] },
+                  repProgression: { type: "object", properties: { increment: { type: "string" }, every: { type: "string", enum: ["round"] } }, required: ["increment", "every"] },
               notes: { type: "string", nullable: true },
             },
             required: ["id", "name", "prescription", "load", "notes"],
@@ -752,13 +784,15 @@ const responseSchema = {
                   load: { type: "string", nullable: true },
                   loadProgression: { type: "object", properties: {
                     increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
-                  }, required: ["increment", "unit", "every"] }, count: { type: "integer", nullable: true }, label: { type: "string", nullable: true },
+                  }, required: ["increment", "unit", "every"] },
+                  repProgression: { type: "object", properties: { increment: { type: "string" }, every: { type: "string", enum: ["round"] } }, required: ["increment", "every"] }, count: { type: "integer", nullable: true }, label: { type: "string", nullable: true },
                   items: { type: "array", items: { type: "object", properties: {
                     type: { type: "string", enum: ["movement"] }, movementId: { type: "string" },
                     prescription: { type: "string", nullable: true }, load: { type: "string", nullable: true },
                   loadProgression: { type: "object", properties: {
                     increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
                   }, required: ["increment", "unit", "every"] },
+                  repProgression: { type: "object", properties: { increment: { type: "string" }, every: { type: "string", enum: ["round"] } }, required: ["increment", "every"] },
                   }, required: ["type", "movementId", "prescription", "load"] } },
                   alternatives: { type: "array", items: { type: "object", properties: {
                     label: { type: "string" },
@@ -768,6 +802,7 @@ const responseSchema = {
                   loadProgression: { type: "object", properties: {
                     increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
                   }, required: ["increment", "unit", "every"] },
+                  repProgression: { type: "object", properties: { increment: { type: "string" }, every: { type: "string", enum: ["round"] } }, required: ["increment", "every"] },
                     }, required: ["type", "movementId", "prescription", "load"] } },
                   }, required: ["label", "items"] } },
                 },
@@ -820,6 +855,7 @@ const responseSchema = {
                   loadProgression: { type: "object", properties: {
                     increment: { type: "string" }, unit: { type: "string", enum: ["kg"] }, every: { type: "string", enum: ["round"] },
                   }, required: ["increment", "unit", "every"] },
+                  repProgression: { type: "object", properties: { increment: { type: "string" }, every: { type: "string", enum: ["round"] } }, required: ["increment", "every"] },
                           },
                           required: ["type", "movementId", "prescription", "load"],
                         },
@@ -973,7 +1009,8 @@ REGLAS DE INTERPRETACIÓN:
    - sequence: lista ordenada literal. Es la opción correcta para esquemas descendentes o irregulares como 21-15-9 cuando las repeticiones cambian en cada vuelta.
    - rounds: solo cuando se repite exactamente el mismo bloque N veces y las prescripciones son idénticas; count es el número de rondas y items es una ronda. También puede aparecer dentro de otra estructura para representar subrondas anidadas.
    - choice: cuando el atleta debe elegir una sola modalidad. Cada modalidad física elegible debe ser una alternativa independiente con un único movement. Si el texto dice "Row o Ski", crea dos alternativas separadas (Row y Ski), cada una con la misma prescripción; si además dice "o Bike", crea una tercera alternativa (Bike) con su prescripción propia. No crees una alternativa agrupadora llamada "Row or Ski" que contenga Row y Ski como dos items, porque los items de una alternativa se ejecutarían juntos. Ejemplo: "30/24 cal Row o Ski o 24/18 cal Bike" = choice con tres alternativas: Row (30/24 cal), Ski (30/24 cal) y Bike (24/18 cal).
-- En un AMRAP con incremento explícito de carga en cada vuelta (por ejemplo, "+10/5 kg en cada ronda"), representa el circuito como una sequence abierta. En cada movimiento afectado, conserva la carga inicial en load y añade loadProgression:{increment:"10/5",unit:"kg",every:"round"}. La progresión se aplica dinámicamente en cada vuelta completada, sin crear rondas fijas, peldaños ni un número máximo de vueltas. No consideres ambiguo que el AMRAP tenga rondas ilimitadas: este modelo representa esa progresión.
+- En un AMRAP con incremento explícito de repeticiones en cada vuelta (por ejemplo, 2 Dumbbell Snatches, 1 Burpee Muscle-Up; each round add +2 Snatches and +1 Burpee Muscle-Up), conserva las repeticiones iniciales en prescription y añade repProgression:{increment:"2",every:"round"} al nodo de cada movimiento afectado. La secuencia es abierta: el incremento se aplica en cada vuelta completada, sin crear rondas fijas ni limitarla por un objetivo orientativo.
+   - En un AMRAP con incremento explícito de carga en cada vuelta (por ejemplo, "+10/5 kg en cada ronda"), representa el circuito como una sequence abierta. En cada movimiento afectado, conserva la carga inicial en load y añade loadProgression:{increment:"10/5",unit:"kg",every:"round"}. La progresión se aplica dinámicamente en cada vuelta completada, sin crear rondas fijas, peldaños ni un número máximo de vueltas. No consideres ambiguo que el AMRAP tenga rondas ilimitadas: este modelo representa esa progresión.
 - Usa ladder cuando el entrenamiento esté organizado realmente como peldaños/progresión. Si hay N rondas compuestas por varios movimientos y alguna prescripción cambia en cada ronda, conserva las rondas como grupos separados dentro de sequence; no conviertas automáticamente todo el circuito en ladder.
    - chipper: lista lineal de movimientos/repeticiones que se completa una vez, en orden.
    - ladder: steps explícitos, cada uno con label e items. Úsalo solo cuando el WOD esté planteado como una escalera de peldaños. Si hay un circuito de N rondas con prescripciones distintas en cada vuelta, represéntalo como sequence con N nodos rounds de count:1 y labels "RONDA 1"... "RONDA N"; no lo conviertas en ladder por el mero hecho de que las repeticiones cambien. No inventes progresiones. Si una carga comienza en un peso y aumenta una cantidad fija después de cada ronda, incluye en la etiqueta de cada peldaño el peso exacto de esa ronda, calculándolo desde el peso inicial y el incremento.
@@ -1241,7 +1278,7 @@ Comprueba especialmente:
 - Dinámica de equipo: reparto libre, I Go You Go, sincronización y excepciones por movimiento. Si el texto declara que todo el WOD es sincronizado salvo una excepción, comprueba que todos los movimientos restantes estén marcados como Synchro, que la excepción conserve su reparto libre y que team.mode sea "team" para reflejar la combinación.
 - Formato y temporizador: Time Cap, duración, intervalos y descansos.
 - Etapas temporales explícitas: cuando hay rangos como 0'-5' y 5'-11', comprueba que structure.sections conserva un grupo por rango y que el countup contiene stages cuyas duraciones suman el Time Cap. Los movimientos unidos por "+" en un mismo rango deben permanecer juntos en esa etapa; conserva las asignaciones de atleta en notes.
-- Si el formato es AMRAP y la secuencia contiene movimientos con loadProgression.every:"round", interpreta esa regla como incremento dinámico en cada vuelta completada. No marques como ambigua la ausencia de un número fijo de rondas: la secuencia es abierta por definición.
+- Si el formato es AMRAP y la secuencia contiene nodos con loadProgression.every:"round" o repProgression.every:"round", interpreta cada regla como incremento dinámico en cada vuelta completada. No marques como ambigua la ausencia de un número fijo de rondas: la secuencia es abierta por definición.
 
 El texto original es la fuente de verdad. No des por correcta una interpretación solo porque el JSON sea estructuralmente válido. Si el candidato coloca una progresión de N valores fuera de un circuito de N rondas sin que el original indique un finisher separado, es una discrepancia semántica y debe corregirse agrupando cada valor al final de su ronda. Si no hay certeza por el contexto, devuelve uncertain y explica la ambigüedad.
 
