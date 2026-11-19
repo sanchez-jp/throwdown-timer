@@ -4,6 +4,19 @@ export function isTransientProviderStatus(status) {
   return TRANSIENT_STATUS_CODES.has(status);
 }
 
+export function canUseGroqVision(image) {
+  return Boolean(image && ["image/jpeg", "image/png", "image/webp"].includes(image.mimeType) &&
+    typeof image.data === "string" && image.data.length > 0);
+}
+
+export function buildGroqUserContent(prompt, image = null) {
+  if (!image) return prompt;
+  return [
+    { type: "text", text: prompt },
+    { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } },
+  ];
+}
+
 export function parseProviderRetryDelayMs(retryAfter, body = "", nowMs = Date.now()) {
   if (typeof retryAfter === "string" && retryAfter.trim()) {
     const seconds = Number(retryAfter);

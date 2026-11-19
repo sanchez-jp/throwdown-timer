@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants, normalizeLadderDirection } from "./wod-progression.js";
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals } from "./wod-semantic-review.js";
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
-import { isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
+import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1247,13 +1247,17 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
     });
     const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
     const groqModel = Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b";
+    const groqVisionModel = Deno.env.get("GROQ_VISION_MODEL") || "qwen/qwen3.8-27b";
     const requestGroq = async (timeoutMs = 12000, model = groqModel, requestPrompt = prompt, requestSystem = systemPrompt) => fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
       signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         model,
-        messages: [{ role: "system", content: requestSystem + "\\n\\nResponde exclusivamente con un objeto JSON válido. Incluye todos los campos del contrato y utiliza null cuando un dato no esté especificado." }, { role: "user", content: requestPrompt }],
+        messages: [
+          { role: "system", content: requestSystem + "\\n\\nResponde exclusivamente con un objeto JSON válido. Incluye todos los campos del contrato y utiliza null cuando un dato no esté especificado." },
+          { role: "user", content: buildGroqUserContent(requestPrompt, hasImage ? image : null) },
+        ],
         temperature: 0.1,
         max_tokens: 4096,
         response_format: { type: "json_object" },
@@ -1302,22 +1306,26 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       if (response && nextModel) await response.body?.cancel().catch(() => undefined);
       if (nextModel) console.warn("Gemini model still unavailable after retry; trying next model", model, nextModel);
     }
-    if (!hasImage && (!response || isTransientProviderStatus(response.status))) {
-      if (groqApiKey) {
+    const groqCanInterpretImage = !hasImage || canUseGroqVision(image);
+    if ((!response || isTransientProviderStatus(response.status)) && groqApiKey && groqCanInterpretImage) {
         selectedProvider = "groq";
-        selectedModel = groqModel;
+        selectedModel = hasImage ? groqVisionModel : groqModel;
         try {
-          console.warn("Gemini unavailable; switching to independent Groq provider", response?.status || "timeout");
-          response = await requestWithTransientRetries(() => requestGroq(), `Groq ${groqModel}`);
+          console.warn("Gemini unavailable; switching to independent Groq provider", response?.status || "timeout", selectedModel);
+          if (response) await response.body?.cancel().catch(() => undefined);
+          response = await requestWithTransientRetries(
+            () => requestGroq(hasImage ? 20000 : 12000, selectedModel), `Groq ${selectedModel}`,
+          );
         } catch (fallbackError) {
           console.error("Groq fallback request failed", fallbackError instanceof Error ? fallbackError.name : "unknown");
           response = null;
         }
-      }
     }
     if (!response) {
       const message = hasImage
-        ? "Gemini no ha podido procesar la imagen en este momento. Espera un momento y vuelve a intentarlo."
+        ? groqApiKey && groqCanInterpretImage
+          ? "Los proveedores de interpretación de imágenes no han respondido tras varios intentos. Espera un momento y vuelve a intentarlo."
+          : "Gemini no ha podido procesar la imagen en este momento. Espera un momento y vuelve a intentarlo."
         : groqApiKey
           ? "Gemini y el proveedor alternativo no han respondido. Espera un momento y vuelve a intentarlo."
           : "Gemini está temporalmente saturado. El proveedor alternativo aún no está configurado; inténtalo de nuevo más tarde.";
@@ -1367,7 +1375,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       let correctedResponse: Response;
       try {
         correctedResponse = await requestWithTransientRetries(() => selectedProvider === "groq"
-          ? requestGroq(10000)
+          ? requestGroq(10000, selectedModel)
           : requestGemini(selectedModel, hasImage ? 14000 : 8000), `${selectedProvider} correction`)
           ?? new Response("Provider timed out after bounded retries", { status: 503 });
       } catch (correctionError) {
