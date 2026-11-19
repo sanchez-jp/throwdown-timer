@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants, normalizeLadderDirection } from "./wod-progression.js";
-import { findUnverifiedMovementCoverage } from "./wod-semantic-review.js";
+import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals } from "./wod-semantic-review.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -728,6 +728,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
     raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
     raw.workout = normalizeExplicitLadderFormat(raw.workout, sourceTextForNormalization);
   }
+  raw.timer = normalizeExplicitWorkRestIntervals(raw.timer, sourceTextForNormalization);
   raw.timer = normalizeTimerPlan(raw.timer);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
@@ -1156,7 +1157,7 @@ REGLAS DE INTERPRETACIÓN:
    - For Time: countup. timeCapSeconds será el Time Cap explícito o null. rounds será el número explícito de rondas o null.
    - EMOM/E2MOM: emom con durationSeconds, intervalSeconds y rounds coherentes. EMOM usa 60 s por intervalo; E2MOM 120 s solo si el texto identifica E2MOM. No inventes duración total.
    - Si el EMOM describe tareas numeradas por minuto (por ejemplo 1) Ski, 2) HSW, 3) Burpees, 4) Rest), añade timer.intervalLabels con una etiqueta por cada posición, en el mismo orden. La lista representa un ciclo que se repite hasta completar durationSeconds; incluye explícitamente "DESCANSO" para cada minuto de descanso. No omitas los descansos ni los conviertas en un movimiento del WOD.
-   - Tabata/intervalos: intervals solo si están indicados rounds, trabajo y descanso; startWithRest normalmente false salvo que el texto diga lo contrario.
+   - Tabata/intervalos: intervals solo si están indicados rounds, trabajo y descanso; startWithRest normalmente false salvo que el texto diga lo contrario. Si la fuente dice «N × M min AMRAP / R min REST» (o equivalente), representa N repeticiones del bloque como timer intervals con rounds:N, workSeconds:M*60, restSeconds:R*60 y startWithRest:false. La estructura del WOD conserva los movimientos del bloque de trabajo y no conviertas AMRAP en un contador fijo de rondas.
    - Descanso temporizado explícito: rest. Segmentos temporizados consecutivos: varios bloques en el orden real.
    - Reloj corrido con etapas delimitadas por rangos horarios (por ejemplo, "0'-5' Bike Erg" y "5'-11' Clean & Jerk + Snatch"): representa el trabajo como structure.type:"sections", con una sección por rango y sus movimientos dentro; no aplanes los movimientos en una secuencia global ni dejes los rangos únicamente en description. Configura un único bloque countup con timeCapSeconds igual a la duración total y stages ordenadas, cada una con label descriptivo y durationSeconds igual a la longitud de su rango. Las duraciones de stages deben sumar exactamente el Time Cap. El reloj cuenta hacia arriba desde 00:00 y cambia de etapa en cada límite.
    - Si varios movimientos aparecen unidos por "+" dentro del mismo rango temporal, pertenecen a la misma etapa y se ejecutan en paralelo cuando el texto los asigna a atletas distintos. Conserva la asignación ("Atleta A", "Atleta B", etc.) en movements[].notes. No conviertas esos movimientos en etapas consecutivas. Para dos atletas con tareas individuales simultáneas, usa team.mode:"team", no "synchro" salvo que ambos deban hacer el mismo movimiento a la vez.
