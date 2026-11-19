@@ -1509,8 +1509,7 @@ Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corr
         result.workout, semanticProgressionEvidence,
       );
       if (removedProgressions.length) {
-        addSemanticReviewIssue("IMAGE_REP_PROGRESSION_UNVERIFIED",
-          "Se han omitido incrementos por ronda que no se pudieron verificar en la imagen: " + removedProgressions.join(", ") + ".");
+        console.info("Unverified image rep progressions removed", { movements: removedProgressions });
       }
     }
 
