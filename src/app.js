@@ -1129,6 +1129,48 @@ function structureRemoveButton(label, onRemove) {
   button.addEventListener("click", onRemove);
   return button;
 }
+function createRepProgressionStepper(value) {
+  const stepper = document.createElement("div");
+  stepper.className = "rep-progression-stepper";
+  const input = document.createElement("input");
+  input.className = "editor-input";
+  input.type = "number";
+  input.name = "repProgression";
+  input.min = "1";
+  input.step = "1";
+  input.inputMode = "numeric";
+  input.placeholder = "Vacío = sin incremento";
+  const initial = Number(value);
+  input.value = Number.isSafeInteger(initial) && initial > 0 ? String(initial) : "";
+  input.setAttribute("aria-label", "Incremento de repeticiones por ronda");
+  input.addEventListener("change", () => {
+    if (input.value !== "" && Number(input.value) === 0) input.value = "";
+  });
+
+  const button = (label, action, accessibleLabel) => {
+    const control = document.createElement("button");
+    control.type = "button";
+    control.className = "rep-progression-stepper-button";
+    control.textContent = label;
+    control.setAttribute("aria-label", accessibleLabel);
+    control.addEventListener("click", action);
+    return control;
+  };
+  const decrement = button("−", () => {
+    const current = Number(input.value);
+    if (!Number.isSafeInteger(current) || current <= 1) input.value = "";
+    else input.value = String(current - 1);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, "Reducir el incremento de repeticiones");
+  const increment = button("+", () => {
+    const current = Number(input.value);
+    const next = input.value === "" ? 1 : current + 1;
+    if (Number.isSafeInteger(next)) input.value = String(next);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, "Aumentar el incremento de repeticiones");
+  stepper.append(decrement, input, increment);
+  return stepper;
+}
 function createStructureItemRow(item = {}) {
   const row = document.createElement("div"); row.className = "structure-item-row"; row.dataset.structureType = item.type || "movement";
   if (item.type === "rounds") {
@@ -1154,7 +1196,7 @@ function createStructureItemRow(item = {}) {
   const prescription = document.createElement("input"); prescription.className = "editor-input"; prescription.name = "prescription"; prescription.placeholder = "Ej. 12 repeticiones"; prescription.value = item.prescription || "";
   const load = document.createElement("input"); load.className = "editor-input"; load.name = "itemLoad"; load.placeholder = "Ej. 60/40 kg"; load.value = item.load || "";
   const progression = document.createElement("input"); progression.className = "editor-input"; progression.name = "loadProgression"; progression.placeholder = "Ej. 10/5"; progression.value = item.loadProgression?.increment || "";
-  const repProgression = document.createElement("input"); repProgression.className = "editor-input"; repProgression.name = "repProgression"; repProgression.placeholder = "Ej. 2"; repProgression.value = item.repProgression?.increment || "";
+  const repProgression = createRepProgressionStepper(item.repProgression?.increment);
   row.append(
     structureField("Movimiento", movement),
     structureField("Repeticiones / prescripción", prescription),
@@ -1362,7 +1404,8 @@ function collectSemanticStructure() {
     }
     const load = row.querySelector('[name="itemLoad"]').value.trim();
     const increment = row.querySelector('[name="loadProgression"]').value.trim().replace(/,/g, ".");
-    const repIncrement = row.querySelector('[name="repProgression"]').value.trim();
+    let repIncrement = row.querySelector('[name="repProgression"]').value.trim();
+    if (repIncrement !== "" && Number(repIncrement) === 0) repIncrement = "";
     if (increment && !/^[0-9]+(?:[.][0-9]+)?(?:\/[0-9]+(?:[.][0-9]+)?)?$/.test(increment.replace(/\s/g, ""))) {
       throw new Error("El incremento por ronda debe ser un número o dos valores separados por /, por ejemplo 10/5.");
     }

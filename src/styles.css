@@ -456,6 +456,11 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 .structure-choice-group>strong,.structure-choice-group>.structure-choice-alternatives,.structure-choice-group>.structure-add-button{grid-column:1/-1}
 .structure-field{display:flex;flex-direction:column;gap:6px;min-width:0;color:var(--muted);font-size:11px;font-weight:750;line-height:1.3}
 .structure-field .editor-input{width:100%;min-width:0;min-height:44px;font-size:14px}
+.rep-progression-stepper{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;min-width:0}
+.rep-progression-stepper .editor-input{min-width:0;text-align:center;font-variant-numeric:tabular-nums}
+.rep-progression-stepper-button{min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:7px;background:#101925;color:var(--lime);font-size:20px;font-weight:800;line-height:1}
+.rep-progression-stepper-button:active{border-color:var(--lime);background:#1a2630}
+.rep-progression-stepper-button:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
 .structure-item-row>.remove-movement-button{grid-column:2;grid-row:1;align-self:start}
 .structure-nested-group{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
 .structure-nested-heading{display:flex;flex-direction:column;align-items:stretch;gap:10px;grid-column:1/-1}

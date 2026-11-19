@@ -51,6 +51,7 @@
         },
         "movements": {
           "type": "array",
+          "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -186,7 +187,39 @@
             "null"
           ],
           "description": "Optional occurrence-specific override; otherwise use the catalogue prescription."
+        },
+        "load": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional occurrence-specific load override; otherwise use the catalogue load."
+        },
+        "loadProgression": {
+          "$ref": "#/$defs/loadProgression"
+        },
+        "repProgression": {
+          "$ref": "#/$defs/repProgression"
         }
+      }
+    },
+    "loadProgression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["increment", "unit", "every"],
+      "properties": {
+        "increment": {"type": "string", "minLength": 1},
+        "unit": {"const": "kg"},
+        "every": {"const": "round"}
+      }
+    },
+    "repProgression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["increment", "every"],
+      "properties": {
+        "increment": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+        "every": {"const": "round"}
       }
     },
     "sequenceNode": {
