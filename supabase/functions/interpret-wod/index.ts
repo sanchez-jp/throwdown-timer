@@ -1238,6 +1238,9 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
     let prompt = hasImage
       ? `Interpreta el WOD que aparece en la imagen adjunta. Lee cuidadosamente todo el texto, incluidos encabezados, notas, cargas, unidades, alternativas y anotaciones manuscritas legibles. Conserva el orden y la estructura visual. Un AMRAP repite las repeticiones indicadas: no añadas incrementos por ronda salvo que la imagen muestre claramente esa instrucción. Devuelve además en el campo superior sourceText una transcripción fiel del contenido visible, conservando el orden de las líneas. Marca como [ilegible] cualquier fragmento que no puedas leer con seguridad y añade una observación para que el usuario lo revise. No inventes datos. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nWOD EN LA IMAGEN ADJUNTA.`
       : `Interpreta el siguiente WOD. Aplica las reglas del sistema y usa estos ejemplos como referencia de semántica y estructura, no copies sus datos si no corresponden.\\n\\n${examples}\\nDESCRIPCIÓN DEL WOD:\\n${sourceText}`
+    const groqImagePrompt = hasImage
+      ? "Interpreta fielmente el WOD de la imagen adjunta. Lee todos los encabezados, movimientos, repeticiones, cargas, unidades, rondas y tiempos. Conserva el orden visual. Un AMRAP repite la misma secuencia; no inventes progresiones. No omitas movimientos legibles. Transcribe el contenido visible en sourceText; marca [ilegible] solo cuando no puedas leerlo. Devuelve exclusivamente el JSON completo schemaVersion 2, sin Markdown."
+      : prompt;
     const requestGemini = async (model: string, timeoutMs = hasImage ? 20000 : 12000, requestPrompt = prompt, requestSystem = systemPrompt, schema: any = hasImage ? imageResponseSchema : responseSchema) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -1317,7 +1320,7 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
           console.warn("Gemini unavailable; switching to independent Groq provider", response?.status || "timeout", selectedModel);
           if (response) await response.body?.cancel().catch(() => undefined);
           response = await requestWithTransientRetries(
-            () => requestGroq(hasImage ? 20000 : 12000, selectedModel), `Groq ${selectedModel}`,
+            () => requestGroq(hasImage ? 20000 : 12000, selectedModel, groqImagePrompt), `Groq ${selectedModel}`,
           );
         } catch (fallbackError) {
           console.error("Groq fallback request failed", fallbackError instanceof Error ? fallbackError.name : "unknown");
