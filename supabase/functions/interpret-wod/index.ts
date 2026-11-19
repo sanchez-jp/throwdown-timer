@@ -395,6 +395,80 @@ function removeImageRepProgressionsWithoutEvidence(workout: any, evidence: any[]
   for (const section of workout?.structure?.sections || []) visit(section?.structure?.items);
   return [...removed];
 }
+function repairDualLadderBlocks(workout: any, sourceText: string) {
+  const structure = workout?.structure;
+  const movements = Array.isArray(workout?.movements) ? workout.movements : [];
+  if (structure?.type !== "sequence" || !Array.isArray(structure.items) ||
+      structure.items.length !== 2 || movements.length !== 3 || !sourceText) return workout;
+
+  const groups = structure.items;
+  const directionOf = (label: any) => {
+    const value = String(label || "").toLocaleLowerCase();
+    if (/descending|descendente/.test(value)) return "descending";
+    if (/ascending|ascendente/.test(value)) return "ascending";
+    return null;
+  };
+  if (directionOf(groups[0]?.label) !== "descending" ||
+      directionOf(groups[1]?.label) !== "ascending" ||
+      groups.some((group: any) => group?.type !== "rounds" ||
+        (Array.isArray(group.items) && group.items.length > 0))) return workout;
+
+  const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+  const lines = sourceText.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
+  const rows: { movementId: string; values: number[]; index: number }[] = [];
+  for (let index = 0; index < lines.length; index++) {
+    const match = lines[index].match(/\b(\d+(?:\s*[-–—]\s*\d+){2,})\b/);
+    if (!match) continue;
+    const values = match[1].split(/\s*[-–—]\s*/).map((value: string) => Number(value));
+    if (values.length !== 5 || values.some((value: number) => !Number.isInteger(value) || value <= 0)) continue;
+    const nearby = [lines[index - 1] || "", lines[index], lines[index + 1] || ""].join(" ");
+    const nearbyName = normalize(nearby);
+    const matches = movements.filter((movement: any) => {
+      const name = normalize(movement?.name || "");
+      return name.length > 2 && nearbyName.includes(name);
+    });
+    if (matches.length === 1) rows.push({ movementId: matches[0].id, values, index });
+  }
+  if (rows.length !== 6) return workout;
+
+  const descending = rows.slice(0, 3);
+  const ascending = rows.slice(3, 6);
+  const sameMovements = (items: typeof rows) =>
+    items.length === 3 && new Set(items.map(item => item.movementId)).size === 3 &&
+    movements.every((movement: any) => items.some(item => item.movementId === movement.id));
+  if (!sameMovements(descending) || !sameMovements(ascending)) return workout;
+
+  const barbellLoad = sourceText.match(/\bbarbell\s*[-–—:]\s*(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\b/i);
+  const snatch = movements.find((movement: any) => /power\s*snatch/i.test(movement.name || ""));
+  if (barbellLoad && snatch) {
+    snatch.load = barbellLoad[1].replace(/\s*\/\s*/g, "/").replace(/,/g, ".") + " kg";
+  }
+
+  const makeRounds = (items: typeof rows, label: string) => {
+    const ordered = items.slice().sort((a, b) => a.index - b.index);
+    return ordered[0].values.map((_, roundIndex) => ({
+      type: "rounds",
+      count: 1,
+      label: label + " " + (roundIndex + 1),
+      items: ordered.map(row => {
+        const movement: any = movements.find((item: any) => item.id === row.movementId);
+        return {
+          type: "movement",
+          movementId: row.movementId,
+          prescription: String(row.values[roundIndex]),
+          load: movement?.load ?? null,
+        };
+      }),
+    }));
+  };
+  const items = [...makeRounds(descending, "Descending"), ...makeRounds(ascending, "Ascending")];
+  console.info("Explicit descending/ascending image ladders normalized", {
+    movements: movements.length, rounds: items.length,
+  });
+  return { ...workout, structure: { ...structure, items } };
+}
+
 function repairEmptyRoundGroups(workout: any) {
   const structure = workout?.structure;
   const movements = workout?.movements;
@@ -738,7 +812,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
-  raw.workout = repairEmptyRoundGroups(raw.workout);
+  raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);\n  raw.workout = repairEmptyRoundGroups(raw.workout);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
