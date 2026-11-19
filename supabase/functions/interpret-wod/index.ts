@@ -1,6 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants, normalizeLadderDirection } from "./wod-progression.js";
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals } from "./wod-semantic-review.js";
+import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
+import { isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -730,6 +732,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   }
   raw.timer = normalizeExplicitWorkRestIntervals(raw.timer, sourceTextForNormalization);
   raw.timer = normalizeTimerPlan(raw.timer);
+  raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, sourceTextForNormalization);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
@@ -1154,7 +1157,7 @@ REGLAS DE INTERPRETACIÓN:
 8. Diferencia formato del WOD y temporizador. El temporizador no registra la finalización de movimientos.
 9. Temporizador:
    - AMRAP con duración explícita: countdown con duración en segundos.
-   - For Time: countup. timeCapSeconds será el Time Cap explícito o null. rounds será el número explícito de rondas o null.
+   - For Time: countup. timeCapSeconds será el Time Cap explícito o null. rounds será el número explícito de rondas o null. Añade stages únicamente cuando la fuente describa etapas por rangos horarios explícitos; no conviertas rondas, bloques de movimientos ni el Time Cap en etapas.
    - EMOM/E2MOM: emom con durationSeconds, intervalSeconds y rounds coherentes. EMOM usa 60 s por intervalo; E2MOM 120 s solo si el texto identifica E2MOM. No inventes duración total.
    - Si el EMOM describe tareas numeradas por minuto (por ejemplo 1) Ski, 2) HSW, 3) Burpees, 4) Rest), añade timer.intervalLabels con una etiqueta por cada posición, en el mismo orden. La lista representa un ciclo que se repite hasta completar durationSeconds; incluye explícitamente "DESCANSO" para cada minuto de descanso. No omitas los descansos ni los conviertas en un movimiento del WOD.
    - Tabata/intervalos: intervals solo si están indicados rounds, trabajo y descanso; startWithRest normalmente false salvo que el texto diga lo contrario. Si la fuente dice «N × M min AMRAP / R min REST» (o equivalente), representa N repeticiones del bloque como timer intervals con rounds:N, workSeconds:M*60, restSeconds:R*60 y startWithRest:false. La estructura del WOD conserva los movimientos del bloque de trabajo y no conviertas AMRAP en un contador fijo de rondas.
@@ -1256,50 +1259,56 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
         response_format: { type: "json_object" },
       }),
     });
+    const requestWithTransientRetries = async (
+      request: () => Promise<Response>, label: string, attempts = 2,
+    ): Promise<Response | null> => {
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        let retryResponse: Response;
+        try {
+          retryResponse = await request();
+        } catch (error) {
+          const transientNetworkFailure = error instanceof Error &&
+            (error.name === "TimeoutError" || error instanceof TypeError);
+          if (!transientNetworkFailure) throw error;
+          console.warn(`${label} request failed transiently`, error.name, `attempt ${attempt + 1}/${attempts}`);
+          if (attempt + 1 >= attempts) return null;
+          await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1) + Math.floor(Math.random() * 250)));
+          continue;
+        }
+        if (!isTransientProviderStatus(retryResponse.status) || attempt + 1 >= attempts) return retryResponse;
+
+        const body = await retryResponse.clone().text().catch(() => "");
+        const providerDelay = parseProviderRetryDelayMs(retryResponse.headers.get("Retry-After"), body);
+        if (providerDelay !== null && providerDelay > 5000) {
+          console.warn(`${label} requested a retry outside the bounded wait`, retryResponse.status, providerDelay);
+          return retryResponse;
+        }
+        await retryResponse.body?.cancel().catch(() => undefined);
+        const delay = providerDelay ?? (350 * (attempt + 1) + Math.floor(Math.random() * 250));
+        console.warn(`${label} returned a transient response; retrying`, retryResponse.status, delay);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      return null;
+    };
     let response: Response | null = null;
     let selectedModel = primaryModel;
     let selectedProvider: "gemini" | "groq" = "gemini";
     for (let index = 0; index < modelCandidates.length; index++) {
       const model = modelCandidates[index];
       selectedModel = model;
-      try {
-        response = await requestGemini(model);
-      } catch (error) {
-        if (!(error instanceof Error) || error.name !== "TimeoutError") throw error;
-        console.warn("Gemini model request timed out", model);
-        if (index === modelCandidates.length - 1) {
-          response = null;
-          break;
-        }
-        continue;
-      }
-      if (response.status !== 503) break;
+      response = await requestWithTransientRetries(() => requestGemini(model), `Gemini ${model}`);
+      if (response && !isTransientProviderStatus(response.status)) break;
       const nextModel = modelCandidates[index + 1];
-      if (nextModel) {
-        await response.body?.cancel();
-        console.warn("Gemini model temporarily unavailable; trying next model", model, nextModel);
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
+      if (response && nextModel) await response.body?.cancel().catch(() => undefined);
+      if (nextModel) console.warn("Gemini model still unavailable after retry; trying next model", model, nextModel);
     }
-    if (response?.status === 503) {
-      const retryDelayMs = 700 + Math.floor(Math.random() * 400);
-      console.warn("Gemini fallback is overloaded; retrying once after backoff", retryDelayMs);
-      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-      try {
-        const retryResponse = await requestGemini(fallbackModel, hasImage ? 16000 : 8000);
-        if (retryResponse.status !== 503) response = retryResponse;
-        else await retryResponse.body?.cancel();
-      } catch (retryError) {
-        console.warn("Gemini bounded retry did not complete", retryError instanceof Error ? retryError.name : "unknown");
-      }
-    }
-    if (!hasImage && (!response || [429, 503].includes(response.status))) {
+    if (!hasImage && (!response || isTransientProviderStatus(response.status))) {
       if (groqApiKey) {
         selectedProvider = "groq";
         selectedModel = groqModel;
         try {
           console.warn("Gemini unavailable; switching to independent Groq provider", response?.status || "timeout");
-          response = await requestGroq();
+          response = await requestWithTransientRetries(() => requestGroq(), `Groq ${groqModel}`);
         } catch (fallbackError) {
           console.error("Groq fallback request failed", fallbackError instanceof Error ? fallbackError.name : "unknown");
           response = null;
@@ -1357,25 +1366,10 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       prompt = correctionPrompt;
       let correctedResponse: Response;
       try {
-        correctedResponse = selectedProvider === "groq" ? await requestGroq(10000) : await requestGemini(selectedModel, hasImage ? 14000 : 8000);
-        if (selectedProvider === "groq" && correctedResponse.status === 429) {
-          const rateLimitDetail = await correctedResponse.text();
-          const retryAfterSeconds = Number(correctedResponse.headers.get("retry-after"));
-          const retryMatch = rateLimitDetail.match(/try again in\s*([\d.]+)\s*(ms|msec|milliseconds?|s|sec|seconds?)/i);
-          const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-            ? Math.ceil(retryAfterSeconds * 1000 + 250)
-            : retryMatch
-              ? Math.ceil(Number(retryMatch[1]) * (/^m/i.test(retryMatch[2]) ? 1 : 1000) + 250)
-              : null;
-          if (retryDelayMs !== null && retryDelayMs <= 12000) {
-            console.warn("Groq correction rate limited; respecting provider retry window", retryDelayMs);
-            await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-            correctedResponse = await requestGroq(10000);
-          } else {
-            console.warn("Groq correction rate limited; retry window exceeds bounded wait", retryDelayMs);
-            correctedResponse = new Response(rateLimitDetail, { status: 429 });
-          }
-        }
+        correctedResponse = await requestWithTransientRetries(() => selectedProvider === "groq"
+          ? requestGroq(10000)
+          : requestGemini(selectedModel, hasImage ? 14000 : 8000), `${selectedProvider} correction`)
+          ?? new Response("Provider timed out after bounded retries", { status: 503 });
       } catch (correctionError) {
         console.error("AI correction attempt timed out", correctionError instanceof Error ? correctionError.message : "unknown");
         return json({ error: "La interpretación necesita una corrección, pero el modelo no ha respondido a tiempo. Inténtalo de nuevo." }, 503, allowedOrigin);
@@ -1434,10 +1428,11 @@ Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corr
       ? `Compara la interpretación candidata directamente con el WOD de la imagen original adjunta. La transcripción sourceText de abajo fue generada por otro modelo y puede contener errores: úsala solo como índice de lectura, nunca como prueba de que una anotación existe. Comprueba directamente en la imagen cada movimiento, repetición, carga y progresión. Un AMRAP repite la secuencia con las repeticiones indicadas; acepta repProgression solo si el incremento por movimiento es claramente visible o si la estructura es inequívocamente una ladder. Si una progresión no se ve claramente, corrígela si el valor base sí es legible; si tampoco puedes determinarlo, devuelve uncertain.\\n\\nTRANSCRIPCIÓN OCR NO VERIFICADA:\\n${result.sourceText || "(no disponible)"}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`
       : `Compara el WOD original con la interpretación candidata. Si es correcta, no la modifiques.\\n\\nWOD ORIGINAL:\\n${sourceText}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
     try {
-      const reviewResponse = selectedProvider === "groq"
-        ? await requestGroq(7000, selectedModel, reviewPrompt, reviewSystemPrompt)
-        : await requestGemini(selectedModel, hasImage ? 12000 : 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema);
-      if (reviewResponse.ok) {
+      const reviewResponse = await requestWithTransientRetries(() => selectedProvider === "groq"
+        ? requestGroq(7000, selectedModel, reviewPrompt, reviewSystemPrompt)
+        : requestGemini(selectedModel, hasImage ? 12000 : 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema),
+      `${selectedProvider} semantic review`);
+      if (reviewResponse?.ok) {
         const reviewText = await extractText(reviewResponse);
         const review = JSON.parse(reviewText);
         semanticMovementEvidence = ["valid", "corrected"].includes(review.status) &&
@@ -1475,9 +1470,9 @@ Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corr
           addSemanticReviewIssue("SEMANTIC_REVIEW_INVALID", "La revisión semántica devolvió un resultado no válido. Revisa el WOD original antes de iniciar.");
         }
       } else {
-        const detail = await reviewResponse.text();
+        const detail = reviewResponse ? await reviewResponse.text() : "provider timeout after bounded retries";
         console.warn("AI semantic review unavailable; keeping validated interpretation",
-          reviewResponse.status, detail.slice(0, 300));
+          reviewResponse?.status || "timeout", detail.slice(0, 300));
         addSemanticReviewIssue("SEMANTIC_REVIEW_UNAVAILABLE", "No se pudo verificar la fidelidad semántica del WOD. Revisa movimientos, repeticiones y cargas frente al original.");
       }
     } catch (reviewError) {
