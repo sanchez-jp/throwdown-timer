@@ -1367,7 +1367,7 @@ function collectSemanticStructure() {
       throw new Error("El incremento por ronda debe ser un número o dos valores separados por /, por ejemplo 10/5.");
     }
     if (increment && !load) throw new Error("Indica también la carga inicial para aplicar un incremento por ronda.");
-    if (repIncrement && !/^[1-9]\\d*$/.test(repIncrement)) throw new Error("El incremento de repeticiones por ronda debe ser un entero positivo.");
+    if (repIncrement && !/^[1-9]\d*$/.test(repIncrement)) throw new Error("El incremento de repeticiones por ronda debe ser un entero positivo.");
     return {type:"movement",movementId:row.querySelector('[name="movementId"]').value,
       ...(row.querySelector('[name="prescription"]').value.trim()?{prescription:row.querySelector('[name="prescription"]').value.trim()}:{}),
       ...(load?{load}:{}),
