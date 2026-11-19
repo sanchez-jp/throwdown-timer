@@ -1,21 +1,34 @@
 export function findUnverifiedMovementCoverage(workout, evidence) {
-  const movementIds = new Set((workout?.movements || []).map((movement) => movement?.id));
+  const movements = Array.isArray(workout?.movements) ? workout.movements : [];
+  const normalize = (value) => String(value || "").toLocaleLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+  const comparable = (value) => normalize(value).replace(/s$/, "");
   const coveredMovementIds = new Set();
   let hasUnmappedSourceMovement = false;
 
   for (const item of Array.isArray(evidence) ? evidence : []) {
     if (typeof item?.sourceName !== "string" || !item.sourceName.trim() ||
-        typeof item?.sourceEvidence !== "string" || !item.sourceEvidence.trim() ||
-        typeof item?.movementId !== "string" || !movementIds.has(item.movementId)) {
+        typeof item?.sourceEvidence !== "string" || !item.sourceEvidence.trim()) {
       hasUnmappedSourceMovement = true;
       continue;
     }
-    coveredMovementIds.add(item.movementId);
+    const sourceName = comparable(item.sourceName);
+    const byId = movements.find((movement) => movement?.id === item.movementId);
+    const matches = byId ? [byId] : movements.filter((movement) => {
+      const name = comparable(movement?.name);
+      return name && (sourceName === name || sourceName.endsWith(name) || name.endsWith(sourceName));
+    });
+    if (matches.length !== 1 || typeof matches[0]?.id !== "string") {
+      hasUnmappedSourceMovement = true;
+      continue;
+    }
+    coveredMovementIds.add(matches[0].id);
   }
 
   return {
     hasUnmappedSourceMovement,
-    uncoveredMovementIds: [...movementIds].filter((id) => !coveredMovementIds.has(id)),
+    uncoveredMovementIds: movements.map((movement) => movement?.id)
+      .filter((id) => id && !coveredMovementIds.has(id)),
     hasEvidence: Array.isArray(evidence) && evidence.length > 0,
   };
 }
@@ -25,7 +38,6 @@ export function shouldFlagUnverifiedMovementCoverage(reviewStatus, evidence, cov
   if (!hasEvidence && !["valid", "corrected"].includes(reviewStatus)) return false;
   return !coverage.hasEvidence || coverage.hasUnmappedSourceMovement || coverage.uncoveredMovementIds.length > 0;
 }
-
 export function parseExplicitWorkRestIntervals(sourceText) {
   if (typeof sourceText !== "string") return null;
   const normalized = sourceText.replace(/[’‘′]/g, "'");
