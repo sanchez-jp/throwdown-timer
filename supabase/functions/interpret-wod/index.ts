@@ -812,7 +812,8 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
-  raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);\n  raw.workout = repairEmptyRoundGroups(raw.workout);
+  raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
+  raw.workout = repairEmptyRoundGroups(raw.workout);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
