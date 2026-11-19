@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111827">
+    <title>Throwdown Timer</title>
+    <link rel="stylesheet" href="./src/styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <p class="eyebrow">THROWDOWN TIMER</p>
+        <h1>Workout timer</h1>
+      </header>
+
+      <section class="workout-card" aria-labelledby="workout-title">
+        <div class="workout-heading">
+          <div>
+            <p class="eyebrow">WORKOUT</p>
+            <h2 id="workout-title">Samurai Jack</h2>
+          </div>
+          <span class="badge">SEQUENCE</span>
+        </div>
+        <ol id="sequence" class="sequence"></ol>
+      </section>
+
+      <section class="timer-card" aria-label="Timer">
+        <p id="round-label" class="eyebrow">ROUND 1</p>
+        <time id="display" class="display" datetime="PT0S">00:00</time>
+        <div class="controls">
+          <button id="start" class="primary" type="button">Start</button>
+          <button id="reset" type="button">Reset</button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
