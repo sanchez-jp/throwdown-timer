@@ -4,6 +4,7 @@ import {
   findUnverifiedMovementCoverage,
   normalizeExplicitWorkRestIntervals,
   parseExplicitWorkRestIntervals,
+  shouldFlagUnverifiedMovementCoverage,
 } from "../supabase/functions/interpret-wod/wod-semantic-review.js";
 
 const workout = { movements: [{ id: "double-unders" }, { id: "hang-clean" }, { id: "lunges" }] };
@@ -42,6 +43,22 @@ test("flags missing, unsupported or unmapped coverage evidence", () => {
   assert.equal(findUnverifiedMovementCoverage(workout, [
     { sourceName: "", movementId: "double-unders", sourceEvidence: "40 Double Unders" },
   ]).hasUnmappedSourceMovement, true);
+});
+
+test("does not add a movement coverage warning when an uncertain review supplied no roster", () => {
+  const coverage = findUnverifiedMovementCoverage(workout, []);
+  assert.equal(shouldFlagUnverifiedMovementCoverage("uncertain", [], coverage), false);
+  assert.equal(shouldFlagUnverifiedMovementCoverage("valid", [], coverage), true);
+});
+
+test("uses independent movement evidence even when another semantic check is uncertain", () => {
+  const evidence = workout.movements.map((movement, index) => ({
+    sourceName: movement.id,
+    movementId: movement.id,
+    sourceEvidence: `movement ${index + 1}`,
+  }));
+  const coverage = findUnverifiedMovementCoverage(workout, evidence);
+  assert.equal(shouldFlagUnverifiedMovementCoverage("uncertain", evidence, coverage), false);
 });
 
 test("parses an explicit repeated AMRAP work and rest prescription", () => {

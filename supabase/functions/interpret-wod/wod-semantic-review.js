@@ -20,6 +20,12 @@ export function findUnverifiedMovementCoverage(workout, evidence) {
   };
 }
 
+export function shouldFlagUnverifiedMovementCoverage(reviewStatus, evidence, coverage) {
+  const hasEvidence = Array.isArray(evidence) && evidence.length > 0;
+  if (!hasEvidence && !["valid", "corrected"].includes(reviewStatus)) return false;
+  return !coverage.hasEvidence || coverage.hasUnmappedSourceMovement || coverage.uncoveredMovementIds.length > 0;
+}
+
 export function parseExplicitWorkRestIntervals(sourceText) {
   if (typeof sourceText !== "string") return null;
   const normalized = sourceText.replace(/[’‘′]/g, "'");
