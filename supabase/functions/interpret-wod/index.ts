@@ -269,7 +269,7 @@ function repairAmrapRepProgressions(workout: any, sourceText: string) {
 
   const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
-  const additions = [...sourceText.matchAll(/\+\s*(\d+)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s'’/-]{2,90})/g)];
+  const additions = [...sourceText.matchAll(/\+\s*(\d+)\s+([^+\r\n]+)/g)];
   if (!additions.length) return workout;
 
   const byId = new Map(movements.filter((movement: any) => movement?.id).map((movement: any) => [movement.id, movement]));
