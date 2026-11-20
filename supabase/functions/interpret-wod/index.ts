@@ -540,7 +540,15 @@ function getDoubleLadderRoundCount(workout: any): number | null {
   const descending = progressions.some((sequence: number[]) =>
     sequence.every((value, index) => index === 0 || value < sequence[index - 1])
   );
-  return ascending && descending ? found.groups.length : null;
+  const hasDescendingThenAscendingHalves = found.headers?.length === found.groups.length &&
+    progressions.every((sequence: number[]) => {
+      const midpoint = sequence.length / 2;
+      return Number.isInteger(midpoint) && midpoint >= 2 &&
+        sequence[midpoint - 1] === sequence[midpoint] &&
+        sequence.slice(0, midpoint).every((value, index, values) => index === 0 || value < values[index - 1]) &&
+        sequence.slice(midpoint).every((value, index, values) => index === 0 || value > values[index - 1]);
+    });
+  return ascending && descending || hasDescendingThenAscendingHalves ? found.groups.length : null;
 }
 
 function repairFlatDoubleLadderSequence(workout: any) {
