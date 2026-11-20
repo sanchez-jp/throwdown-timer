@@ -555,6 +555,14 @@ function getDoubleLadderRoundCount(workout: any): number | null {
   const descending = progressions.some((sequence: number[]) =>
     sequence.every((value, index) => index === 0 || value < sequence[index - 1])
   );
+  const directionalHeader = found.headers?.length === 1
+    ? String(found.headers[0]?.label || "").match(/descending|descendente|ascending|ascendente/i)?.[0].toLowerCase()
+    : null;
+  const hasExplicitDirectionalProgression = directionalHeader
+    ? progressions.every((sequence: number[]) => sequence.every((value, index) => index === 0 ||
+        (directionalHeader.startsWith("desc") ? value <= sequence[index - 1] : value >= sequence[index - 1]))) &&
+      progressions.some((sequence: number[]) => sequence.some((value, index) => index > 0 && value !== sequence[index - 1]))
+    : false;
   const hasDescendingThenAscendingHalves = (found.headers?.length === found.groups.length || found.headers?.length === 0) &&
     progressions.every((sequence: number[]) => {
       const midpoint = sequence.length / 2;
@@ -563,7 +571,8 @@ function getDoubleLadderRoundCount(workout: any): number | null {
         sequence.slice(0, midpoint).every((value, index, values) => index === 0 || value < values[index - 1]) &&
         sequence.slice(midpoint).every((value, index, values) => index === 0 || value > values[index - 1]);
     });
-  return ascending && descending || hasDescendingThenAscendingHalves ? found.groups.length : null;
+  return ascending && descending || hasExplicitDirectionalProgression || hasDescendingThenAscendingHalves
+    ? found.groups.length : null;
 }
 
 function repairFlatDoubleLadderSequence(workout: any) {
@@ -572,10 +581,14 @@ function repairFlatDoubleLadderSequence(workout: any) {
   if (!found?.flat || !roundCount) return workout;
 
   const preserveHeaders = Array.isArray(found.headers) && found.headers.length === roundCount;
+  const directionalLabel = found.headers?.length === 1
+    ? String(found.headers[0]?.label || "").match(/descending|descendente|ascending|ascendente/i)?.[0]
+    : null;
   const items = found.groups.map((group: any[], index: number) => ({
     type: "rounds",
     count: 1,
-    label: preserveHeaders ? String(found.headers[index].label) : "Round " + (index + 1),
+    label: preserveHeaders ? String(found.headers[index].label)
+      : directionalLabel ? directionalLabel + " " + (index + 1) : "Round " + (index + 1),
     items: group,
   }));
   console.info("Flat double ladder grouped into explicit rounds", {
