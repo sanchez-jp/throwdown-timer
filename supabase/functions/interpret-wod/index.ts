@@ -830,7 +830,7 @@ function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceTex
   const groups = structure?.items;
   const movements = workout?.movements;
   if (!/\bgemini\b/i.test(title + " " + sourceText) ||
-      structure?.type !== "sequence" || !Array.isArray(groups) || groups.length !== 30 ||
+      structure?.type !== "sequence" || !Array.isArray(groups) ||
       !Array.isArray(movements) || movements.length !== 3) return workout;
 
   const doubleUnders = movements.find((movement: any) => /double\s*unders?/i.test(movement?.name || ""));
@@ -839,16 +839,26 @@ function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceTex
   if (!doubleUnders || !powerSnatches || !barMuscleUps) return workout;
 
   const orderedIds = [doubleUnders.id, powerSnatches.id, barMuscleUps.id];
-  const validExpandedRounds = groups.every((group: any, index: number) =>
-    group?.type === "rounds" && group.count === 1 &&
-    new RegExp("^(?:RONDA|ROUND)\\s+" + (index + 1) + "$", "i").test(String(group.label || "")) &&
-    Array.isArray(group.items) && group.items.length === 3 &&
-    group.items.every((item: any, movementIndex: number) =>
-      item?.type === "movement" && item.movementId === orderedIds[movementIndex] &&
-      !String(item.prescription || "").trim()
-    )
-  );
-  if (!validExpandedRounds) return workout;
+  const roundLabel = (index: number) => index < 5
+    ? new RegExp("^RONDA\\s+" + (index + 1) + "\\s*\\(\\s*DESCENDING\\s*\\)$", "i")
+    : new RegExp("^RONDA\\s+" + (index - 4) + "\\s*\\(\\s*ASCENDING\\s*\\)$", "i");
+
+  const emptyHeader = (node: any) => node?.type === "rounds" && node.count === 1 &&
+    (!Array.isArray(node.items) || node.items.length === 0);
+  let validShape = false;
+  if (groups.length === 10) {
+    validShape = groups.every((group: any, index: number) =>
+      emptyHeader(group) && roundLabel(index).test(String(group.label || ""))
+    );
+  } else if (groups.length === 30) {
+    validShape = Array.from({ length: 10 }, (_, roundIndex) => {
+      const triple = groups.slice(roundIndex * 3, roundIndex * 3 + 3);
+      return triple.length === 3 && triple.every(emptyHeader) &&
+        triple.every(node => String(node.label || "") === String(triple[0].label || "")) &&
+        roundLabel(roundIndex).test(String(triple[0].label || ""));
+    }).every(Boolean);
+  }
+  if (!validShape) return workout;
 
   const duDescending = [50, 40, 30, 20, 10];
   const snatchDescending = [10, 8, 6, 4, 2];
@@ -856,13 +866,11 @@ function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceTex
   const duValues = [...duDescending, ...duDescending.slice().reverse()];
   const snatchValues = [...snatchDescending, ...snatchDescending.slice().reverse()];
   const bmuValues = [...bmuDescending, ...bmuDescending.slice().reverse()];
-  const originalLoad = groups.flatMap((group: any) => group.items)
-    .find((item: any) => item.movementId === powerSnatches.id && typeof item.load === "string" && item.load.trim())?.load;
-  const catalogLoad = typeof powerSnatches.load === "string" && powerSnatches.load.trim() ? powerSnatches.load : null;
   const sourceLoad = sourceText.match(/\b43\s*\/\s*30\s*kg\b/i)?.[0];
-  const snatchLoad = originalLoad || catalogLoad || (sourceLoad ? sourceLoad.replace(/\s+/g, " ") : "43/30 kg");
-  const prescriptions = [duValues, snatchValues, bmuValues];
-
+  const catalogLoad = typeof powerSnatches.load === "string" && powerSnatches.load.trim()
+    ? powerSnatches.load : null;
+  const snatchLoad = catalogLoad || (sourceLoad ? sourceLoad.replace(/\s+/g, " ") : "43/30 kg");
+  const progressions = [duValues, snatchValues, bmuValues];
   const repaired = Array.from({ length: 10 }, (_, roundIndex) => ({
     type: "rounds",
     count: 1,
@@ -870,11 +878,11 @@ function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceTex
     items: orderedIds.map((movementId: string, movementIndex: number) => ({
       type: "movement",
       movementId,
-      prescription: String(prescriptions[movementIndex][roundIndex]),
+      prescription: String(progressions[movementIndex][roundIndex]),
       ...(movementIndex === 1 ? { load: snatchLoad } : {}),
     })),
   }));
-  console.warn("Expanded Gemini double ladder normalized to ten prescribed rounds", {
+  console.warn("Gemini double ladder empty headers normalized", {
     sourceGroups: groups.length, rounds: repaired.length, movementsPerRound: 3,
   });
   return { ...workout, structure: { ...structure, items: repaired } };
