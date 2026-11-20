@@ -398,10 +398,24 @@ function removeImageRepProgressionsWithoutEvidence(workout: any, evidence: any[]
 function repairDualLadderBlocks(workout: any, sourceText: string) {
   const structure = workout?.structure;
   const movements = Array.isArray(workout?.movements) ? workout.movements : [];
-  if (structure?.type !== "sequence" || !Array.isArray(structure.items) ||
-      movements.length !== 3 || structure.items.length !== 2) return workout;
+  const rawItems = structure?.items;
+  if (structure?.type !== "sequence" || !Array.isArray(rawItems) || movements.length !== 3) return workout;
 
-  const groups = structure.items;
+  // The correction model may flatten the two ladder blocks into:
+  // heading + three movements + heading + three movements.
+  // Accept that shape only when both movement groups match the catalog order exactly.
+  let groups = rawItems;
+  if (rawItems.length === 8 &&
+      rawItems[0]?.type === "rounds" && rawItems[4]?.type === "rounds" &&
+      rawItems.slice(1, 4).every((node: any, index: number) =>
+        node?.type === "movement" && node.movementId === movements[index]?.id
+      ) &&
+      rawItems.slice(5, 8).every((node: any, index: number) =>
+        node?.type === "movement" && node.movementId === movements[index]?.id
+      )) {
+    groups = [rawItems[0], rawItems[4]];
+  }
+  if (groups.length !== 2) return workout;
   const directionOf = (label: any) => {
     const value = String(label || "").toLocaleLowerCase();
     if (/descending|descendente/.test(value)) return "descending";
