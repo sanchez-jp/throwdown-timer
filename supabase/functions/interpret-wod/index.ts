@@ -518,6 +518,27 @@ function getDoubleLadderGroups(workout: any) {
     }
   }
 
+  // Double ladders from image models may emit one empty directional header
+  // before every trio: five DESCENDING headers followed by five ASCENDING.
+  if (items.length >= 8 && items.length % 4 === 0) {
+    const headers = items.filter((_: any, index: number) => index % 4 === 0);
+    const groups = headers.map((_: any, index: number) => items.slice(index * 4 + 1, index * 4 + 4));
+    const directions = headers.map((header: any) => {
+      const label = String(header?.label || "").toLowerCase();
+      return /descending|descendente/.test(label) ? "descending"
+        : /ascending|ascendente/.test(label) ? "ascending" : null;
+    });
+    const midpoint = directions.length / 2;
+    const validHeaders = Number.isInteger(midpoint) && midpoint >= 2 &&
+      headers.every((header: any) => header?.type === "rounds" && header.count === 1 &&
+        (!Array.isArray(header.items) || header.items.length === 0)) &&
+      directions.slice(0, midpoint).every(direction => direction === "descending") &&
+      directions.slice(midpoint).every(direction => direction === "ascending");
+    if (validHeaders && groups.every(matchesCatalogOrder)) {
+      return { groups, flat: true, headers, directionalHalves: true };
+    }
+  }
+
   const heading = items[0];
   if (heading?.type !== "rounds" ||
       (Array.isArray(heading.items) && heading.items.length > 0) ||
@@ -584,10 +605,13 @@ function repairFlatDoubleLadderSequence(workout: any) {
   const directionalLabel = found.headers?.length === 1
     ? String(found.headers[0]?.label || "").match(/descending|descendente|ascending|ascendente/i)?.[0]
     : null;
+  const half = found.directionalHalves ? found.groups.length / 2 : 0;
   const items = found.groups.map((group: any[], index: number) => ({
     type: "rounds",
     count: 1,
-    label: preserveHeaders ? String(found.headers[index].label)
+    label: found.directionalHalves
+      ? (index < half ? "Descending " + (index + 1) : "Ascending " + (index - half + 1))
+      : preserveHeaders ? String(found.headers[index].label)
       : directionalLabel ? directionalLabel + " " + (index + 1) : "Round " + (index + 1),
     items: group,
   }));
