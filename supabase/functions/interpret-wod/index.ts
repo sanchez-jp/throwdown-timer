@@ -677,9 +677,21 @@ function repairEmptyRoundGroups(workout: any) {
     ).every(Boolean);
     if (validTriples) {
       const compact = Array.from({ length: 10 }, (_, roundIndex) => ({
-        ...nodes[roundIndex * 3],
+        type: "rounds",
+        count: 1,
         label: roundIndex < 5 ? "Descending " + (roundIndex + 1) : "Ascending " + (roundIndex - 4),
+        items: nodes.slice(roundIndex * 3, roundIndex * 3 + 3).map((node: any, movementIndex: number) => ({
+          type: "movement",
+          movementId: movements[movementIndex].id,
+          prescription: typeof node.prescription === "string" ? node.prescription
+            : typeof movements[movementIndex].prescription === "string" ? movements[movementIndex].prescription : null,
+          load: typeof node.load === "string" ? node.load
+            : typeof movements[movementIndex].load === "string" ? movements[movementIndex].load : null,
+        })),
       }));
+      structure = { ...structure, items: compact };
+      console.info("Repeated empty round headers rebuilt as double ladder", { rounds: 10, movementsPerRound: 3 });
+      return { ...workout, structure };
       structure = { ...structure, items: compact };
       console.info("Repeated empty round headers collapsed into double ladder", { rounds: 10, movementsPerRound: 3 });
     }
