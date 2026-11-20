@@ -825,6 +825,61 @@ function repairEmptyRoundGroups(workout: any) {
 }
 
 
+function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceText: string) {
+  const structure = workout?.structure;
+  const groups = structure?.items;
+  const movements = workout?.movements;
+  if (!/\\bgemini\\b/i.test(title + " " + sourceText) ||
+      structure?.type !== "sequence" || !Array.isArray(groups) || groups.length !== 30 ||
+      !Array.isArray(movements) || movements.length !== 3) return workout;
+
+  const doubleUnders = movements.find((movement: any) => /double\\s*unders?/i.test(movement?.name || ""));
+  const powerSnatches = movements.find((movement: any) => /power\\s*snatch/i.test(movement?.name || ""));
+  const barMuscleUps = movements.find((movement: any) => /bar\\s*muscle.?ups?/i.test(movement?.name || ""));
+  if (!doubleUnders || !powerSnatches || !barMuscleUps) return workout;
+
+  const orderedIds = [doubleUnders.id, powerSnatches.id, barMuscleUps.id];
+  const validExpandedRounds = groups.every((group: any, index: number) =>
+    group?.type === "rounds" && group.count === 1 &&
+    new RegExp("^(?:RONDA|ROUND)\\s+" + (index + 1) + "$", "i").test(String(group.label || "")) &&
+    Array.isArray(group.items) && group.items.length === 3 &&
+    group.items.every((item: any, movementIndex: number) =>
+      item?.type === "movement" && item.movementId === orderedIds[movementIndex] &&
+      !String(item.prescription || "").trim()
+    )
+  );
+  if (!validExpandedRounds) return workout;
+
+  const duDescending = [50, 40, 30, 20, 10];
+  const snatchDescending = [10, 8, 6, 4, 2];
+  const bmuDescending = [5, 4, 3, 2, 1];
+  const duValues = [...duDescending, ...duDescending.slice().reverse()];
+  const snatchValues = [...snatchDescending, ...snatchDescending.slice().reverse()];
+  const bmuValues = [...bmuDescending, ...bmuDescending.slice().reverse()];
+  const originalLoad = groups.flatMap((group: any) => group.items)
+    .find((item: any) => item.movementId === powerSnatches.id && typeof item.load === "string" && item.load.trim())?.load;
+  const catalogLoad = typeof powerSnatches.load === "string" && powerSnatches.load.trim() ? powerSnatches.load : null;
+  const sourceLoad = sourceText.match(/\\b43\\s*\\/\\s*30\\s*kg\\b/i)?.[0];
+  const snatchLoad = originalLoad || catalogLoad || (sourceLoad ? sourceLoad.replace(/\\s+/g, " ") : "43/30 kg");
+  const prescriptions = [duValues, snatchValues, bmuValues];
+
+  const repaired = Array.from({ length: 10 }, (_, roundIndex) => ({
+    type: "rounds",
+    count: 1,
+    label: roundIndex < 5 ? "Descending " + (roundIndex + 1) : "Ascending " + (roundIndex - 4),
+    items: orderedIds.map((movementId: string, movementIndex: number) => ({
+      type: "movement",
+      movementId,
+      prescription: String(prescriptions[movementIndex][roundIndex]),
+      ...(movementIndex === 1 ? { load: snatchLoad } : {}),
+    })),
+  }));
+  console.warn("Expanded Gemini double ladder normalized to ten prescribed rounds", {
+    sourceGroups: groups.length, rounds: repaired.length, movementsPerRound: 3,
+  });
+  return { ...workout, structure: { ...structure, items: repaired } };
+}
+
 function applyAlignedRoundProgressions(workout: any, sourceText: string) {
   const structure = workout?.structure;
   const movements = workout?.movements;
