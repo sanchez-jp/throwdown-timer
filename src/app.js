@@ -2,6 +2,7 @@ import { TimerEngine } from "./timer-engine.js";
 import { getCountdownCueSecond } from "./audio-cues.js";
 import { createWorkoutRepository } from "./workout-repository.js";
 import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
+import { getIntervalPhaseGroups } from "./timer-description.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -349,8 +350,10 @@ function renderTimerDescription(workout, timerPlan = null) {
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
   const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
   const timedStageBlock = timerPlan?.blocks?.find(block => block?.type === "countup" && Array.isArray(block.stages) && block.stages.length);
-  const intervalPhases = timerPlan ? new TimerEngine(timerPlan, { now: () => 0 }).phases
-    .map((phase, index) => ({ ...phase, index })).filter(phase => phase.type === "intervals" || phase.type === "rest") : [];
+  const intervalPhaseGroups = timerPlan ? getIntervalPhaseGroups(
+    new TimerEngine(timerPlan, { now: () => 0 }).phases.map((phase, index) => ({ ...phase, index })),
+    structure?.type === "ladder" ? structure.steps.length : 0
+  ) : null;
   const renderStructureNodes = (items, container, isEmomSequence = false) => {
     const list = document.createElement("ul");
     list.className = "timer-description-list" + (isEmomSequence ? " timer-emom-schedule" : "");
@@ -451,16 +454,8 @@ function renderTimerDescription(workout, timerPlan = null) {
     if (!counter.classList.contains("hidden")) headingRow.append(counter);
     ladderGroup.append(headingRow);
     panel.append(ladderGroup);
-    let intervalPhaseIndex = 0;
-    const hasIntervalSchedule = intervalPhases.filter(phase => phase.type === "intervals").length === structure.steps.length;
     structure.steps.forEach((step, index) => {
-      const phases = [];
-      if (hasIntervalSchedule) {
-        const work = intervalPhases[intervalPhaseIndex++];
-        if (work) phases.push(work);
-        const rest = intervalPhases[intervalPhaseIndex];
-        if (rest?.type === "rest") { phases.push(rest); intervalPhaseIndex++; }
-      }
+      const phases = intervalPhaseGroups?.[index] || [];
       addStructureGroup(step.label || "PELDAÑO " + (index + 1), step.items, null, phases);
       ladderGroup.append(panel.lastElementChild);
     });
