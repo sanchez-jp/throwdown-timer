@@ -209,18 +209,18 @@ export function repairEmptyYetiIntervalGroups(workout, title = "") {
   const structure = workout?.structure;
   const groups = structure?.items;
   const movements = workout?.movements;
-  if (!/\\byeti\\b/i.test(String(title)) ||
+  if (!/\byeti\b/i.test(String(title)) ||
       workout?.format !== "intervals" ||
       structure?.type !== "sequence" ||
       !Array.isArray(groups) || groups.length !== 5 ||
       !Array.isArray(movements) || movements.length !== 2) return workout;
 
-  const skiErg = movements.find(movement => /^ski\\s*erg$/i.test(String(movement?.name || "").trim()));
+  const skiErg = movements.find(movement => /^ski\s*erg$/i.test(String(movement?.name || "").trim()));
   const sandbagCleans = movements.find(movement => /sandbag.*cleans?|cleans?.*sandbag/i.test(String(movement?.name || "")));
   if (!skiErg?.id || !sandbagCleans?.id) return workout;
 
   const emptyIntervalHeaders = groups.every((group, index) => {
-    const match = String(group?.label || "").trim().match(/^(\\d+)(?:º|°|o)?\\s*INTERVAL(?:O)?$/i);
+    const match = String(group?.label || "").trim().match(/^(\d+)(?:º|°|o)?\s*INTERVAL(?:O)?$/i);
     return group?.type === "rounds" && group.count === 1 &&
       Number(match?.[1]) === index + 1 &&
       (!Array.isArray(group.items) || group.items.length === 0);
