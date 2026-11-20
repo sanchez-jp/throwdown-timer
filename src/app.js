@@ -341,6 +341,8 @@ function renderTimerDescription(workout, timerPlan = null) {
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
   const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
   const timedStageBlock = timerPlan?.blocks?.find(block => block?.type === "countup" && Array.isArray(block.stages) && block.stages.length);
+  const intervalPhases = timerPlan ? new TimerEngine(timerPlan, { now: () => 0 }).phases
+    .map((phase, index) => ({ ...phase, index })).filter(phase => phase.type === "intervals" || phase.type === "rest") : [];
   const renderStructureNodes = (items, container, isEmomSequence = false) => {
     const list = document.createElement("ul");
     list.className = "timer-description-list" + (isEmomSequence ? " timer-emom-schedule" : "");
@@ -381,12 +383,24 @@ function renderTimerDescription(workout, timerPlan = null) {
     });
     container.append(list);
   };
-  const addStructureGroup = (label, items, stageIndex = null) => {
+  const addStructureGroup = (label, items, stageIndex = null, phases = []) => {
     const group = document.createElement("section");
     group.className = "timer-description-structure-group" + (stageIndex === null ? "" : " timer-description-stage");
     if (stageIndex !== null) group.dataset.timerStageIndex = String(stageIndex);
     const heading = document.createElement("h3"); heading.textContent = label;
     group.append(heading);
+    if (phases.length) {
+      const schedule = document.createElement("div");
+      schedule.className = "timer-description-phase-schedule";
+      phases.forEach(phase => {
+        const phaseLabel = document.createElement("div");
+        phaseLabel.className = "timer-description-phase";
+        phaseLabel.dataset.timerPhaseIndex = String(phase.index);
+        phaseLabel.textContent = `${phase.type === "rest" ? "DESCANSO" : "TRABAJO"} · ${formatTime(phase.durationMs)}`;
+        schedule.append(phaseLabel);
+      });
+      group.append(schedule);
+    }
     const isEmomSequence = label === "SECUENCIA" && emomBlock;
     if (isEmomSequence) {
       const list = document.createElement("ul");
@@ -414,7 +428,18 @@ function renderTimerDescription(workout, timerPlan = null) {
     const heading = document.createElement("h3");
     heading.textContent = ["LADDER", direction].filter(Boolean).join(" · ");
     panel.append(heading);
-    structure.steps.forEach((step, index) => addStructureGroup(step.label || "PELDAÑO " + (index + 1), step.items));
+    let intervalPhaseIndex = 0;
+    const hasIntervalSchedule = intervalPhases.filter(phase => phase.type === "intervals").length === structure.steps.length;
+    structure.steps.forEach((step, index) => {
+      const phases = [];
+      if (hasIntervalSchedule) {
+        const work = intervalPhases[intervalPhaseIndex++];
+        if (work) phases.push(work);
+        const rest = intervalPhases[intervalPhaseIndex];
+        if (rest?.type === "rest") { phases.push(rest); intervalPhaseIndex++; }
+      }
+      addStructureGroup(step.label || "PELDAÑO " + (index + 1), step.items, null, phases);
+    });
   } else if (structure?.type === "sections" && Array.isArray(structure.sections)) {
     const heading = document.createElement("h3");
     heading.textContent = "ESTRUCTURA POR SECCIONES";
@@ -474,6 +499,11 @@ function updateTimerDescriptionActive(snapshot) {
   document.querySelectorAll("[data-timer-stage-index]").forEach(item => {
     const active = activeState && snapshot.blockType === "countup" &&
       Number(item.dataset.timerStageIndex) === snapshot.stageIndex;
+    item.classList.toggle("is-active", active);
+    item.classList.toggle("is-paused", active && snapshot.state === "paused");
+  });
+  document.querySelectorAll("[data-timer-phase-index]").forEach(item => {
+    const active = activeState && Number(item.dataset.timerPhaseIndex) === snapshot.blockIndex;
     item.classList.toggle("is-active", active);
     item.classList.toggle("is-paused", active && snapshot.state === "paused");
   });
