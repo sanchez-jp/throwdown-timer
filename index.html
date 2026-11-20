@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1018">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Throwdown Timer">
+  <meta name="description" content="Throwdown Timer — CrossFit workout timer">
+  <title>Throwdown Timer</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="./src/styles.css?v=85">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Throwdown Timer inicio">
+        <span class="brand-mark">T</span>
+        <span>THROWDOWN <b>TIMER</b></span>
+      </a>
+      <span class="connection"><i></i> TIMER READY</span>
+    </header>
+
+    <section class="setup-panel" id="setupPanel">
+      <div class="eyebrow">WORKOUT TIMER</div>
+      <h1>Prepara tu WOD<span>.</span></h1>
+      <p class="intro">Selecciona un formato para probar el cronómetro.</p>
+      <div class="preset-grid">
+        <button class="preset selected" data-preset="amrap"><span class="preset-code">01</span><strong>AMRAP</strong><small>Cuenta atrás · 12:00</small></button>
+        <button class="preset" data-preset="fortime"><span class="preset-code">02</span><strong>FOR TIME</strong><small>Cuenta ascendente · TC 15:00</small></button>
+        <button class="preset" data-preset="emom"><span class="preset-code">03</span><strong>EMOM</strong><small>10 rondas · 01:00</small></button>
+        <button class="preset" data-preset="tabata"><span class="preset-code">04</span><strong>TABATA</strong><small>8 rondas · 20/10</small></button>
+        <button class="preset" data-preset="fran"><span class="preset-code">05</span><strong>FRAN</strong><small>21-15-9 · Thrusters / Pull-ups</small></button>
+      </div>
+      <div class="workout-preview">
+        <div class="preview-heading"><span>WOD DE PRUEBA</span><span class="tag" id="formatTag">AMRAP</span></div>
+        <h2 id="workoutName">12' AMRAP</h2>
+        <p id="workoutDescription">Máximas rondas en 12 minutos</p>
+        <div class="movement-list" id="movementList"><span>10 Burpees</span><span>15 Wall Balls</span><span>20 Double Unders</span></div>
+      </div>
+      <button class="primary-button" id="startButton">INICIAR TIMER <span>→</span></button>
+      <div class="home-actions"><button class="secondary-wide" id="createWorkoutButton" type="button" disabled>CREAR WOD</button><button class="secondary-wide" id="saveWorkoutButton" type="button">GUARDAR ESTE WOD</button><button class="secondary-wide" id="libraryButton" type="button">MIS WODS</button></div>
+      <p class="disclaimer">Guarda tus entrenamientos en este dispositivo para reutilizarlos incluso sin conexión.</p>
+    </section>
+
+    <section class="library-panel hidden" id="libraryPanel" aria-live="polite">
+      <div class="library-topline"><button class="text-button" id="libraryBackButton" type="button">← INICIO</button><span class="tag">BIBLIOTECA LOCAL</span></div>
+      <h1>Mis WODs<span>.</span></h1>
+      <p class="intro">Tus entrenamientos guardados en este dispositivo.</p>
+      <button class="primary-button library-create-button" id="newWorkoutButton" type="button">+ CREAR WOD</button>
+      <div id="libraryStatus" class="library-status" role="status">Cargando biblioteca…</div>
+      <div id="workoutLibrary" class="workout-library"></div>
+      <div id="undoArea" class="undo-area hidden"><span id="undoMessage">WOD eliminado.</span><button id="undoDeleteButton" class="text-button" type="button">DESHACER</button></div>
+    </section>
+
+    <section class="editor-panel hidden" id="editorPanel">
+      <div class="library-topline"><button class="text-button" id="editorBackButton" type="button">← BIBLIOTECA</button><span class="tag">EDITOR DE WOD</span></div>
+      <h1 id="editorHeading">Editar WOD<span>.</span></h1>
+      <p class="intro" id="editorIntro">Modifica el nombre, la descripción y las prescripciones. La configuración del temporizador se conserva.</p>
+      <form id="workoutEditor" novalidate>
+        <details class="editor-section ai-import-section" id="ai-import-section">
+          <summary><span>Importar</span><small>Texto o imagen</small></summary>
+          <div class="editor-section-content ai-import-panel">
+            <p class="timer-plan-help">Importa un WOD desde una imagen o introduce su descripción. La IA reconocerá el contenido y preparará el entrenamiento para que puedas revisarlo.</p>
+            <div class="ai-import-options" role="group" aria-label="Método de importación">
+              <button class="ai-import-option" id="aiImportImageButton" type="button" aria-pressed="false">
+                <span class="ai-import-option-icon" aria-hidden="true">▧</span><strong>Elegir imagen</strong><small>Galería o archivos</small>
+              </button>
+              <button class="ai-import-option" id="aiImportTextButton" type="button" aria-pressed="false">
+                <span class="ai-import-option-icon" aria-hidden="true">T</span><strong>Introducir texto</strong><small>Escribir o pegar</small>
+              </button>
+            </div>
+            <div class="ai-text-import hidden" id="aiTextImport">
+              <label class="field-label" for="aiSourceText">Descripción original del WOD</label>
+              <textarea class="editor-input ai-source-input" id="aiSourceText" rows="4" maxlength="8000" placeholder="Ej. 5 rounds for time: 12 toes-to-bar, 10 power cleans 60/40 kg…"></textarea>
+            </div>
+            <div class="ai-image-import hidden" id="aiImageImport">
+              <input class="hidden" id="aiImageFileInput" type="file" accept="image/*">
+              <p class="ai-image-prompt" id="aiImagePrompt">Selecciona una imagen de tu dispositivo.</p>
+              <div class="ai-image-preview hidden" id="aiImagePreview">
+                <img id="aiImagePreviewElement" alt="Vista previa del WOD seleccionado">
+                <div class="ai-image-preview-meta"><span id="aiImageFileName"></span><button class="text-button" id="aiImageChangeButton" type="button">CAMBIAR IMAGEN</button></div>
+              </div>
+            </div>
+            <button class="secondary-wide ai-interpret-button hidden" id="interpretWithAiButton" type="button">INTERPRETAR</button>
+            <div class="editor-status ai-interpretation-status" id="aiInterpretationStatus" role="status" aria-live="polite"></div>
+          </div>
+        </details>
+        <details class="editor-section basic-editor-section" id="basic-editor-section" open>
+          <summary><span>Datos básicos</span><small>Nombre, formato y descripción</small></summary>
+          <div class="editor-section-content">
+            <label class="field-label" for="editTitle">Nombre del WOD</label>
+            <input class="editor-input" id="editTitle" name="title" maxlength="100" required>
+            <label class="field-label" for="editFormat">Formato</label>
+            <select class="editor-input" id="editFormat" name="format">
+              <option value="amrap">AMRAP</option><option value="for_time">For Time</option><option value="emom">EMOM</option><option value="e2mom">E2MOM</option><option value="tabata">Tabata</option><option value="intervals">Intervalos</option><option value="rounds_for_time">RFT</option><option value="chipper">Chipper</option><option value="ladder">Ladder</option><option value="death_by">Death By</option><option value="strength_plus_wod">Fuerza + WOD</option><option value="custom">Personalizado</option>
+            </select>
+            <label class="field-label" for="editDescription">Descripción (opcional)</label>
+            <textarea class="editor-input" id="editDescription" name="description" rows="3" maxlength="1000"></textarea>
+          </div>
+        </details>
+        <details class="editor-section movement-editor-section" id="movement-editor-section" open>
+          <summary><span>Movimientos</span><small>Ejercicios, repeticiones y cargas</small></summary>
+          <div class="editor-section-content">
+            <div id="movementEditorList" class="movement-editor-list"></div>
+            <button class="text-button movement-add-button" id="addMovementButton" type="button">+ AÑADIR MOVIMIENTO</button>
+          </div>
+        </details>
+        <details class="editor-section team-editor-section" id="teamEditorSection">
+          <summary><span>Dinámica de equipo</span><small>Individual o por equipos</small></summary>
+          <div class="editor-section-content team-settings-editor">
+            <p class="timer-plan-help">Elige cuántos atletas participan. Las opciones de reparto aparecerán cuando sean más de uno.</p>
+            <label class="field-label" for="teamAthletes">Participantes</label>
+            <select class="editor-input" id="teamAthletes" name="teamAthletes">
+              <option value="1">Individual · 1 atleta</option><option value="2">Parejas · 2 atletas</option><option value="3">Tríos · 3 atletas</option><option value="4">Cuartetos · 4 atletas</option>
+            </select>
+            <div id="teamModeSettings" class="team-mode-settings">
+              <label class="field-label" for="teamMode">Modo de trabajo</label>
+              <select class="editor-input" id="teamMode" name="teamMode">
+                <option value="individual">Individual</option><option value="i_go_you_go">I Go, You Go</option><option value="synchro">Synchro</option><option value="shared">Repartido libremente</option><option value="team">Team / Combinado</option>
+              </select>
+              <div id="teamRotationSettings" class="team-rotation-settings">
+                <label class="field-label" for="teamRotation">Cambio de atleta</label>
+                <select class="editor-input" id="teamRotation" name="teamRotation">
+                  <option value="complete">Al completar el bloque o ronda</option><option value="reps">Cada número de repeticiones establecido</option><option value="free">Libre elección del equipo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details class="editor-section structure-editor-section" id="structureSection">
+          <summary><span>Estructura del WOD</span><small>Orden, rondas, ladder y alternativas</small></summary>
+          <div class="editor-section-content">
+            <section class="semantic-structure-editor" id="semanticStructureEditor" aria-labelledby="semanticStructureHeading">
+              <p class="timer-plan-help" id="semanticStructureHeading">Organiza los movimientos y define cómo se realiza el entrenamiento. Esta estructura no modifica el temporizador ni registra automáticamente el progreso.</p>
+              <label class="field-label" for="structureType">Tipo de estructura</label>
+              <select class="editor-input" id="structureType">
+                <option value="sequence">Secuencia</option><option value="rounds">Rondas</option><option value="chipper">Chipper</option><option value="ladder">Ladder</option><option value="sections">Secciones</option>
+              </select>
+              <div id="structureSettings" class="structure-settings"></div>
+            </section>
+          </div>
+        </details>
+        <details class="editor-section timer-editor-section" id="timerSection">
+          <summary><span>Temporizador</span><small>Duración, intervalos y descansos</small></summary>
+          <div class="editor-section-content timer-plan-editor">
+            <p class="timer-plan-help">Configura los bloques del cronómetro. RFT y Ladder usan cuenta ascendente; el cronómetro no cuenta repeticiones automáticamente.</p>
+            <div class="movement-editor-heading"><h2 id="timerPlanHeading">Bloques del temporizador</h2><button class="text-button" id="addTimerBlockButton" type="button">+ AÑADIR BLOQUE</button></div>
+            <div id="timerBlockList" class="timer-block-list"></div>
+            <div id="timerPlanStatus" class="editor-status" role="status"></div>
+          </div>
+        </details>
+        <div id="editorStatus" class="editor-status" role="status"></div>
+        <label class="ai-review-confirmation hidden" id="aiReviewConfirmation"><input id="aiReviewConfirmed" type="checkbox"> He revisado y confirmado los movimientos, el orden y la configuración del temporizador.</label>
+        <button class="primary-button" id="saveEditorButton" type="submit">GUARDAR CAMBIOS</button>
+      </form>
+    </section>
+
+    <section class="timer-panel hidden" id="timerPanel" aria-live="polite">
+      <div class="timer-main">
+        <div class="timer-topline"><button class="text-button" id="backButton">← VOLVER</button><span class="tag" id="timerFormat">AMRAP</span></div>
+        <div class="timer-label" id="timerLabel">TIME REMAINING</div>
+        <div class="clock" id="clock">12:00</div>
+        <div class="phase-label" id="phaseLabel">PREPARADO</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="stats-row">
+          <div><small>RONDA / INTERVALO</small><strong id="roundValue">—</strong></div>
+          <div><small id="totalLabel">TIEMPO RESTANTE</small><strong id="totalValue">12:00</strong></div>
+        </div>
+        <div class="timer-controls" aria-label="Controles del cronómetro">
+          <button class="secondary-button timer-icon-button" id="pauseButton" type="button" aria-label="Iniciar" title="Iniciar">▶︎</button>
+          <button class="finish-button timer-icon-button hidden" id="finishButton" type="button" aria-label="Finalizar entrenamiento" title="Finalizar entrenamiento">■</button>
+          <button class="secondary-button timer-icon-button" id="resetButton" type="button" aria-label="Reiniciar cronómetro" title="Reiniciar cronómetro">↻</button>
+          <button class="secondary-button timer-icon-button hidden" id="skipButton" type="button" aria-label="Saltar intervalo" title="Saltar intervalo">⏭</button>
+        </div>
+      <div class="timer-tools" aria-label="Opciones del temporizador"><button class="text-button workout-details-button" id="workoutDetailsButton" type="button" aria-expanded="false">VER DESCRIPCIÓN</button><button class="tool-button timer-icon-button" id="soundButton" type="button" aria-label="Desactivar sonido" title="Desactivar sonido" aria-pressed="true">◖))</button><button class="tool-button timer-icon-button" id="fullscreenButton" type="button" aria-label="Activar pantalla completa" title="Activar pantalla completa" aria-pressed="false">⛶</button></div>
+        <div class="workout-preview compact">
+          <div class="preview-heading"><span>WORKOUT</span></div>
+          <h2 id="timerWorkoutName">12' AMRAP</h2>
+          <div class="movement-list" id="timerMovements"></div>
+        </div>
+        <p class="disclaimer" id="statusMessage">El cronómetro está listo.</p>
+      </div>
+      <div class="rft-round-counter hidden" id="rftRoundCounter" aria-label="Registrar progreso del WOD">
+          <div class="rft-round-metric">
+            <button class="rft-round-button" id="rftRoundMinus" type="button" aria-label="Restar una ronda">−</button>
+            <div class="rft-round-progress"><div><strong id="rftRoundValue">0</strong><span id="rftRoundTarget"></span></div><small>RONDAS</small></div>
+            <button class="rft-round-button" id="rftRoundPlus" type="button" aria-label="Sumar una ronda">+</button>
+          </div>
+          <div class="rft-round-metric rft-round-reps hidden" id="amrapRepCounter">
+            <button class="rft-round-button" id="amrapRepMinus" type="button" aria-label="Restar una repetición">−</button>
+            <div class="rft-round-progress"><div><strong id="amrapRepValue">0</strong></div><small>REPS EXTRA</small></div>
+            <button class="rft-round-button" id="amrapRepPlus" type="button" aria-label="Sumar una repetición">+</button>
+          </div>
+      </div>
+      <aside class="timer-description hidden" id="timerDescription" aria-label="Descripción del WOD"></aside>
+    </section>
+    <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
+  </main>
+  <script type="module" src="./src/app.js?v=48"></script>
+</body>
+</html>
