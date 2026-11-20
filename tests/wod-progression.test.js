@@ -262,3 +262,53 @@ test("applies each progressive load to the ladder label for both alternating cle
     ["120/90 kg", "120/90 kg"], ["130/97,5 kg", "130/97,5 kg"],
   ]);
 });
+
+
+test("repairs the malformed YETI interval headers into five explicit two-movement rounds", async () => {
+  const { repairEmptyYetiIntervalGroups } = await import("../supabase/functions/interpret-wod/wod-progression.js");
+  const workout = {
+    format: "intervals",
+    movements: [
+      { id: "ski-erg", name: "Ski Erg", load: null },
+      { id: "sandbag-cleans", name: "Sandbag Cleans", load: "70/50 kg" },
+    ],
+    structure: {
+      type: "sequence",
+      items: Array.from({ length: 5 }, (_, index) => ({
+        type: "rounds",
+        count: 1,
+        label: (index + 1) + "° INTERVAL",
+        prescription: index === 0 ? "21/18 cal" : null,
+        repProgression: { increment: "3/3", every: "round" },
+      })),
+    },
+  };
+
+  const repaired = repairEmptyYetiIntervalGroups(workout, "YETI");
+  assert.deepEqual(repaired.structure.items.map(group =>
+    group.items.map(item => [item.movementId, item.prescription, item.load])
+  ), [
+    [["ski-erg", "21/18 cal", null], ["sandbag-cleans", "MAX", "70/50 kg"]],
+    [["ski-erg", "18/15 cal", null], ["sandbag-cleans", "MAX", "70/50 kg"]],
+    [["ski-erg", "15/12 cal", null], ["sandbag-cleans", "MAX", "70/50 kg"]],
+    [["ski-erg", "12/9 cal", null], ["sandbag-cleans", "MAX", "70/50 kg"]],
+    [["ski-erg", "9/6 cal", null], ["sandbag-cleans", "MAX", "70/50 kg"]],
+  ]);
+  assert.equal(repaired.structure.items.length, 5);
+  assert.equal(repaired.structure.items.every(group => group.count === 1), true);
+});
+
+test("does not repair empty interval groups unless the full YETI signature matches", async () => {
+  const { repairEmptyYetiIntervalGroups } = await import("../supabase/functions/interpret-wod/wod-progression.js");
+  const workout = {
+    format: "intervals",
+    movements: [{ id: "ski", name: "Ski Erg" }, { id: "bag", name: "Sandbag Cleans" }],
+    structure: {
+      type: "sequence",
+      items: Array.from({ length: 5 }, (_, index) => ({
+        type: "rounds", count: 1, label: (index + 1) + "° INTERVAL",
+      })),
+    },
+  };
+  assert.equal(repairEmptyYetiIntervalGroups(workout, "OTHER"), workout);
+});
