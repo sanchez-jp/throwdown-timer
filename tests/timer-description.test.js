@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { TimerEngine } from "../src/timer-engine.js";
-import { getIntervalPhaseGroups } from "../src/timer-description.js";
+import { getIntervalPhaseGroups, getStructureIntervalPhaseGroups } from "../src/timer-description.js";
 
 test("maps repeated countdown work and rest phases to ladder intervals", () => {
   const engine = new TimerEngine({ type: "sequence", blocks: [
@@ -46,4 +46,22 @@ test("does not attach an unrelated timer schedule to ladder intervals", () => {
     { type: "rest", index: 2 }
   ];
   assert.equal(getIntervalPhaseGroups(phases, 5), null);
+});
+
+
+test("maps interval timer phases to nested interval rounds in a sequence", () => {
+  const engine = new TimerEngine({ type: "sequence", blocks: [
+    { type: "intervals", rounds: 5, workSeconds: 120, restSeconds: 60 }
+  ]}, { now: () => 0 });
+  const phases = engine.phases.map((phase, index) => ({ ...phase, index }));
+  const structure = { type: "sequence", items: Array.from({ length: 5 }, (_, index) => ({
+    type: "rounds", count: 1, label: `${index + 1}° INTERVAL`, items: []
+  })) };
+  const groups = getStructureIntervalPhaseGroups(phases, structure);
+  assert.deepEqual(groups.map(group => group.map(phase => phase.type)), [
+    ["intervals", "rest"], ["intervals", "rest"], ["intervals", "rest"], ["intervals", "rest"], ["intervals"]
+  ]);
+  assert.deepEqual(groups.map(group => group.map(phase => phase.durationMs)), [
+    [120000, 60000], [120000, 60000], [120000, 60000], [120000, 60000], [120000]
+  ]);
 });
