@@ -105,14 +105,14 @@ async function unlockAudio() {
   if (audioContext.state !== "running") throw new Error("El navegador no ha permitido activar el audio.");
   return audioContext;
 }
-async function playTone(frequency=880, duration=.13) {
+async function playTone(frequency=880, duration=.13, delaySeconds=0) {
   if ($("soundButton").getAttribute("aria-pressed") !== "true") return;
   try {
     // Once audio has been unlocked by a real user gesture, schedule tones
     // synchronously. Re-awaiting resume() for every cue can lose timing and
     // is unreliable on iOS Safari.
     const context = audioContext?.state === "running" ? audioContext : await unlockAudio();
-    const now = context.currentTime;
+    const now = context.currentTime + delaySeconds;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = "square";
@@ -133,9 +133,11 @@ async function playTone(frequency=880, duration=.13) {
 function processEvents() {
   if (!engine) return;
   for (const event of engine.drainEvents()) {
-    if (event.type === "phase_changed") {
+    if (event.type === "block_completed" && event.index < engine.phases.length - 1) {
+      playTone(784,.12);
+    } else if (event.type === "phase_changed") {
       lastCountdownCue=null;
-      playTone(1046,.42);
+      playTone(1046,.22,.16);
     } else if (event.type === "time_cap_reached" || event.type === "timer_completed") {
       playTone(440,.45);
     }
