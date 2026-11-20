@@ -7,12 +7,12 @@ export function getIntervalPhaseGroups(phases, intervalCount) {
   if (!Array.isArray(phases) || !Number.isInteger(intervalCount) || intervalCount < 1) return null;
   const groups = Array.from({ length: intervalCount }, () => []);
   const repeated = phases.filter(phase => {
-    const match = String(phase?.sourcePath || "").match(/\\.repeat\\[(\\d+)\\]/);
+    const match = String(phase?.sourcePath || "").match(/\.repeat\[(\d+)\]/);
     return match && Number(match[1]) < intervalCount;
   });
   if (repeated.length) {
     repeated.forEach(phase => {
-      const match = String(phase.sourcePath).match(/\\.repeat\\[(\\d+)\\]/);
+      const match = String(phase.sourcePath).match(/\.repeat\[(\d+)\]/);
       groups[Number(match[1])].push(phase);
     });
     return groups.every(group => group.length) ? groups : null;
