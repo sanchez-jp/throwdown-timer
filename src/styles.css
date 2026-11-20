@@ -495,7 +495,12 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 .structure-item-row>.remove-movement-button,.structure-choice-alternative>.remove-movement-button{grid-row:auto;grid-column:2;justify-self:end}
 
 /* Manual RFT round counter. */
-.rft-round-counter{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;margin:12px 0 2px}
+.rft-round-counter{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px 22px;width:100%;margin:12px 0 2px}
+.rft-round-metric{display:flex;align-items:center;justify-content:center;gap:18px}
+.rft-round-reps{padding-left:18px;border-left:1px solid var(--line)}
+.timer-description-group-heading .rft-round-counter{flex-wrap:wrap}
+.timer-description-group-heading .rft-round-metric{gap:7px}
+.timer-description-group-heading .rft-round-reps{padding-left:10px}
 .rft-round-button{display:grid;place-items:center;width:48px;height:48px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--lime);font-size:30px;font-weight:700;line-height:1}
 .rft-round-button:disabled{opacity:.3;cursor:default}
 .rft-round-button:active:not(:disabled){background:#263445;transform:scale(.96)}
