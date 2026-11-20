@@ -536,9 +536,15 @@ function updateTimerDescriptionActive(snapshot) {
       item.classList.toggle("is-paused", active && snapshot.state === "paused");
     });
   });
+  const activeTimerPhase = activeState && Number.isInteger(snapshot.blockIndex)
+    ? document.querySelector(`[data-timer-phase-index="${snapshot.blockIndex}"]`) : null;
   document.querySelectorAll("[data-timer-interval-index]").forEach(item => {
-    const active = activeState && ["intervals", "rest"].includes(snapshot.blockType) && snapshot.round &&
-      Number(item.dataset.timerIntervalIndex) === snapshot.round.current - 1;
+    const active = Boolean(activeTimerPhase && item.contains(activeTimerPhase));
+    item.classList.toggle("is-active", active);
+    item.classList.toggle("is-paused", active && snapshot.state === "paused");
+  });
+  document.querySelectorAll(".timer-description-phase").forEach(item => {
+    const active = activeState && Number(item.dataset.timerPhaseIndex) === snapshot.blockIndex;
     item.classList.toggle("is-active", active);
     item.classList.toggle("is-paused", active && snapshot.state === "paused");
   });
