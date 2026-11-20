@@ -692,8 +692,6 @@ function repairEmptyRoundGroups(workout: any) {
       structure = { ...structure, items: compact };
       console.info("Repeated empty round headers rebuilt as double ladder", { rounds: 10, movementsPerRound: 3 });
       return { ...workout, structure };
-      structure = { ...structure, items: compact };
-      console.info("Repeated empty round headers collapsed into double ladder", { rounds: 10, movementsPerRound: 3 });
     }
   }
   if (structure?.type !== "sequence" || !Array.isArray(structure.items) ||
