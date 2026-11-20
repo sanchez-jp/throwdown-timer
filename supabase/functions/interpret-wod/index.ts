@@ -488,6 +488,21 @@ function getDoubleLadderGroups(workout: any) {
     return { groups: items.map((item: any) => item.items), flat: false, headers: items };
   }
 
+  // Some model responses emit one empty first-round header followed by
+  // the complete flat movement sequence, repeating the catalog order.
+  if (items.length > 1 && items[0]?.type === "rounds" && items[0].count === 1 &&
+      /^RONDA\\s+1$/i.test(String(items[0].label || "")) &&
+      (!Array.isArray(items[0].items) || items[0].items.length === 0)) {
+    const flat = items.slice(1);
+    if (flat.length >= 6 && flat.length % 3 === 0 &&
+        flat.every((node: any) => node?.type === "movement") ) {
+      const groups = Array.from({ length: flat.length / 3 }, (_, index) => flat.slice(index * 3, index * 3 + 3));
+      if (groups.every(matchesCatalogOrder)) {
+        return { groups, flat: true, headers: [] };
+      }
+    }
+  }
+
   // Some model responses interleave an empty round header before each trio:
   // rounds header, 3 movements, rounds header, 3 movements, etc.
   if (items.length >= 8 && items.length % 4 === 0) {
@@ -571,13 +586,14 @@ function repairFlatDoubleLadderSequence(workout: any) {
 
 function isEmptyDoubleLadderSemanticCorrection(workout: any, expectedRounds: number) {
   const structure = workout?.workout?.structure || workout?.structure;
-  return structure?.type === "rounds" && structure.count === expectedRounds &&
-    Array.isArray(structure.items) && structure.items.length === expectedRounds &&
-    structure.items.every((item: any, index: number) =>
-      item?.type === "rounds" && item.count === 1 &&
-      new RegExp("^round\\s+" + (index + 1) + "$", "i").test(String(item.label || "")) &&
-      (!Array.isArray(item.items) || item.items.length === 0)
-    );
+  if (!Number.isInteger(expectedRounds) || expectedRounds < 2 ||
+      structure?.type !== "sequence" || !Array.isArray(structure.items) ||
+      structure.items.length !== expectedRounds) return false;
+  return structure.items.every((item: any) =>
+    item?.type === "rounds" && item.count === 1 &&
+    typeof item.label === "string" && item.label.trim() &&
+    (!Array.isArray(item.items) || item.items.length === 0)
+  );
 }
 
 function repairEmptyRoundGroups(workout: any) {
