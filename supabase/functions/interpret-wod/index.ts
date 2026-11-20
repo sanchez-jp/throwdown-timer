@@ -671,7 +671,7 @@ function repairEmptyRoundGroups(workout: any) {
     const validTriples = Array.from({ length: 10 }, (_, roundIndex) =>
       nodes.slice(roundIndex * 3, roundIndex * 3 + 3).every((node: any) =>
         node?.type === "rounds" && node.count === 1 &&
-        new RegExp("^RONDA\\\\s+" + (roundIndex + 1) + "$", "i").test(String(node.label || "")) &&
+        new RegExp("^RONDA\\s+" + (roundIndex + 1) + "$", "i").test(String(node.label || "")) &&
         (!Array.isArray(node.items) || node.items.length === 0)
       )
     ).every(Boolean);
@@ -690,7 +690,7 @@ function repairEmptyRoundGroups(workout: any) {
   const groups = structure.items;
   if (groups.length < 2 || !groups.every((item: any) =>
     item?.type === "rounds" && item.count === 1 &&
-    typeof item.label === "string" && /^(?:RONDA\\s+\\d+|DESCENDING\\s+\\d+|ASCENDING\\s+\\d+)$/i.test(item.label.trim()) &&
+    typeof item.label === "string" && /^(?:RONDA\s+\d+|DESCENDING\s+\d+|ASCENDING\s+\d+)$/i.test(item.label.trim()) &&
     (!Array.isArray(item.items) || item.items.length === 0)
   )) return workout;
 
