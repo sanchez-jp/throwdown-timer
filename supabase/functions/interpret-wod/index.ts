@@ -659,6 +659,53 @@ function isEmptyDoubleLadderSemanticCorrection(workout: any, expectedRounds: num
   );
 }
 
+function repairInterleavedDoubleLadderHeaders(workout: any) {
+  const structure = workout?.structure;
+  const movements = workout?.movements;
+  const nodes = structure?.items;
+  if (structure?.type !== "sequence" || !Array.isArray(nodes) || nodes.length !== 30 ||
+      !Array.isArray(movements) || movements.length !== 3) return workout;
+
+  const headers = [...nodes.slice(0, 5), ...nodes.slice(15, 20)];
+  const validHeaders = headers.every((node: any, index: number) =>
+    node?.type === "rounds" && node.count === 1 &&
+    new RegExp("^RONDA\\s+" + (index + 1) + "$", "i").test(String(node.label || "")) &&
+    (!Array.isArray(node.items) || node.items.length === 0)
+  );
+  const power = movements.find((movement: any) => /power\\s*snatch/i.test(movement?.name || ""));
+  const muscleUp = movements.find((movement: any) => /bar\\s*muscle.?ups?/i.test(movement?.name || ""));
+  const doubleUnders = movements.find((movement: any) => /double\\s*unders?/i.test(movement?.name || ""));
+  if (!validHeaders || !power || !muscleUp || !doubleUnders) return workout;
+
+  const powerNodes = [...nodes.slice(5, 10), ...nodes.slice(20, 25)];
+  const muscleUpNodes = [...nodes.slice(10, 15), ...nodes.slice(25, 30)];
+  if (![...powerNodes, ...muscleUpNodes].every((node: any) => node?.type === "movement")) return workout;
+  if (!powerNodes.every((node: any) => node.movementId === power.id) ||
+      !muscleUpNodes.every((node: any) => node.movementId === muscleUp.id)) return workout;
+
+  const toMovement = (catalog: any, source: any) => ({
+    type: "movement",
+    movementId: catalog.id,
+    prescription: typeof source?.prescription === "string" ? source.prescription
+      : typeof catalog.prescription === "string" ? catalog.prescription : null,
+    load: typeof source?.load === "string" ? source.load
+      : typeof catalog.load === "string" ? catalog.load : null,
+    ...(source?.repProgression !== undefined ? { repProgression: source.repProgression } : {}),
+  });
+  const repaired = headers.map((header: any, index: number) => ({
+    type: "rounds",
+    count: 1,
+    label: index < 5 ? "Descending " + (index + 1) : "Ascending " + (index - 4),
+    items: [
+      toMovement(doubleUnders, header),
+      toMovement(power, powerNodes[index]),
+      toMovement(muscleUp, muscleUpNodes[index]),
+    ],
+  }));
+  console.info("Interleaved double ladder headers rebuilt", { rounds: repaired.length, movementsPerRound: 3 });
+  return { ...workout, structure: { ...structure, items: repaired } };
+}
+
 function repairEmptyRoundGroups(workout: any) {
   let structure = workout?.structure;
   const movements = workout?.movements;
@@ -1036,6 +1083,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
   raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
   raw.workout = repairFlatDoubleLadderSequence(raw.workout, sourceTextForNormalization);
+  raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
