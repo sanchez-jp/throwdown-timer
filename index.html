@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="./src/styles.css?v=81">
+  <link rel="stylesheet" href="./src/styles.css?v=82">
 </head>
 <body>
   <main class="app-shell">
@@ -171,18 +171,7 @@
           <div><small>RONDA / INTERVALO</small><strong id="roundValue">—</strong></div>
           <div><small id="totalLabel">TIEMPO RESTANTE</small><strong id="totalValue">12:00</strong></div>
         </div>
-        <div class="rft-round-counter hidden" id="rftRoundCounter" aria-label="Contador manual de rondas">
-          <button class="rft-round-button" id="rftRoundMinus" type="button" aria-label="Restar una ronda" disabled>−</button>
-          <div class="rft-round-progress"><div><strong id="rftRoundValue">0</strong><span id="rftRoundTarget"></span></div><small>RONDAS COMPLETADAS</small></div>
-          <button class="rft-round-button" id="rftRoundPlus" type="button" aria-label="Sumar una ronda">+</button>
-        </div>
-        <div class="timer-controls">
-          <button class="secondary-button timer-icon-button" id="pauseButton" aria-label="Iniciar" title="Iniciar">▶︎</button>
-          <button class="finish-button timer-icon-button hidden" id="finishButton" aria-label="Finalizar entrenamiento" title="Finalizar entrenamiento">■</button>
-          <button class="secondary-button timer-icon-button" id="resetButton" aria-label="Reiniciar cronómetro" title="Reiniciar cronómetro">↻</button>
-          <button class="secondary-button timer-icon-button hidden" id="skipButton" aria-label="Saltar intervalo" title="Saltar intervalo">⏭</button>
-        </div>
-        <div class="timer-tools" aria-label="Opciones del temporizador"><button class="text-button workout-details-button" id="workoutDetailsButton" type="button" aria-expanded="false">VER DESCRIPCIÓN</button><button class="tool-button timer-icon-button" id="soundButton" type="button" aria-label="Desactivar sonido" title="Desactivar sonido" aria-pressed="true">◖))</button><button class="tool-button timer-icon-button" id="fullscreenButton" type="button" aria-label="Activar pantalla completa" title="Activar pantalla completa" aria-pressed="false">⛶</button></div>
+      <div class="timer-tools" aria-label="Opciones del temporizador"><button class="text-button workout-details-button" id="workoutDetailsButton" type="button" aria-expanded="false">VER DESCRIPCIÓN</button><button class="tool-button timer-icon-button" id="soundButton" type="button" aria-label="Desactivar sonido" title="Desactivar sonido" aria-pressed="true">◖))</button><button class="tool-button timer-icon-button" id="fullscreenButton" type="button" aria-label="Activar pantalla completa" title="Activar pantalla completa" aria-pressed="false">⛶</button></div>
         <div class="workout-preview compact">
           <div class="preview-heading"><span>WORKOUT</span></div>
           <h2 id="timerWorkoutName">12' AMRAP</h2>
@@ -194,6 +183,6 @@
     </section>
     <footer>THROWDOWN TIMER <span>V 0.1 · ENGINE PREVIEW</span></footer>
   </main>
-  <script type="module" src="./src/app.js?v=41"></script>
+  <script type="module" src="./src/app.js?v=42"></script>
 </body>
 </html>
