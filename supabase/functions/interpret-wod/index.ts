@@ -670,7 +670,7 @@ function repairEmptyRoundGroups(workout: any) {
     const nodes = structure.items;
     const validTriples = Array.from({ length: 10 }, (_, roundIndex) =>
       nodes.slice(roundIndex * 3, roundIndex * 3 + 3).every((node: any) =>
-        node?.type === "rounds" && node.count === 1 &&
+        node?.type === "rounds" && Number.isInteger(node.count) && node.count >= 1 &&
         new RegExp("^RONDA\\s+" + (roundIndex + 1) + "$", "i").test(String(node.label || "")) &&
         (!Array.isArray(node.items) || node.items.length === 0)
       )
