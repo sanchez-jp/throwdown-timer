@@ -472,14 +472,35 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
 
 function getDoubleLadderGroups(workout: any) {
   const structure = workout?.structure;
+  const movements = workout?.movements;
   if (workout?.format !== "for_time" || structure?.type !== "sequence" ||
-      !Array.isArray(structure.items) || workout?.movements?.length !== 3) return null;
+      !Array.isArray(structure.items) || !Array.isArray(movements) || movements.length !== 3) return null;
 
   const items = structure.items;
+  const matchesCatalogOrder = (group: any[]) => group.length === 3 &&
+    group.every((node: any, index: number) =>
+      node?.type === "movement" && node.movementId === movements[index]?.id
+    );
+
   if (items.length && items.every((item: any) =>
-    item?.type === "rounds" && Array.isArray(item.items) && item.items.length === 3
+    item?.type === "rounds" && Array.isArray(item.items) && matchesCatalogOrder(item.items)
   )) {
-    return { groups: items.map((item: any) => item.items), flat: false };
+    return { groups: items.map((item: any) => item.items), flat: false, headers: items };
+  }
+
+  // Some model responses interleave an empty round header before each trio:
+  // rounds header, 3 movements, rounds header, 3 movements, etc.
+  if (items.length >= 8 && items.length % 4 === 0) {
+    const headers = items.filter((_: any, index: number) => index % 4 === 0);
+    const groups = headers.map((_: any, index: number) => items.slice(index * 4 + 1, index * 4 + 4));
+    const validHeaders = headers.every((header: any, index: number) =>
+      header?.type === "rounds" && header.count === 1 &&
+      new RegExp("^RONDA\\s+" + (index + 1) + "$", "i").test(String(header.label || "")) &&
+      (!Array.isArray(header.items) || header.items.length === 0)
+    );
+    if (validHeaders && groups.every(matchesCatalogOrder)) {
+      return { groups, flat: true, headers };
+    }
   }
 
   const heading = items[0];
@@ -490,10 +511,8 @@ function getDoubleLadderGroups(workout: any) {
   const flat = items.slice(1);
   if (!flat.length || flat.length % 3 !== 0 ||
       !flat.every((node: any) => node?.type === "movement")) return null;
-  return {
-    groups: Array.from({ length: flat.length / 3 }, (_, index) => flat.slice(index * 3, index * 3 + 3)),
-    flat: true,
-  };
+  const groups = Array.from({ length: flat.length / 3 }, (_, index) => flat.slice(index * 3, index * 3 + 3));
+  return { groups, flat: true, headers: [heading] };
 }
 
 function getDoubleLadderRoundCount(workout: any): number | null {
@@ -529,15 +548,15 @@ function repairFlatDoubleLadderSequence(workout: any) {
   const roundCount = getDoubleLadderRoundCount(workout);
   if (!found?.flat || !roundCount) return workout;
 
-  const flat = workout.structure.items.slice(1);
-  const items = Array.from({ length: roundCount }, (_, index) => ({
+  const preserveHeaders = Array.isArray(found.headers) && found.headers.length === roundCount;
+  const items = found.groups.map((group: any[], index: number) => ({
     type: "rounds",
     count: 1,
-    label: "Round " + (index + 1),
-    items: flat.slice(index * 3, index * 3 + 3),
+    label: preserveHeaders ? String(found.headers[index].label) : "Round " + (index + 1),
+    items: group,
   }));
   console.info("Flat double ladder grouped into explicit rounds", {
-    movements: 3, rounds: roundCount,
+    movements: 3, rounds: roundCount, interleavedHeaders: preserveHeaders,
   });
   return { ...workout, structure: { ...workout.structure, items } };
 }
