@@ -148,7 +148,9 @@ function getRftRoundTarget(workout, plan) {
   const timerRounds = plan?.blocks?.find(block => block?.type === "countup" && Number.isInteger(block.rounds) && block.rounds > 0)?.rounds;
   if (timerRounds) return timerRounds;
   const structure = workout?.structure;
-  return structure?.type === "rounds" && Number.isInteger(structure.count) && structure.count > 0 ? structure.count : null;
+  if (structure?.type === "rounds" && Number.isInteger(structure.count) && structure.count > 0) return structure.count;
+  if (structure?.type === "ladder" && Array.isArray(structure.steps) && structure.steps.length) return structure.steps.length;
+  return null;
 }
 function renderTimer(snapshot) {
   const phase = engine.phases[snapshot.blockIndex ?? 0];
@@ -388,7 +390,14 @@ function renderTimerDescription(workout, timerPlan = null) {
     group.className = "timer-description-structure-group" + (stageIndex === null ? "" : " timer-description-stage");
     if (stageIndex !== null) group.dataset.timerStageIndex = String(stageIndex);
     const heading = document.createElement("h3"); heading.textContent = label;
-    group.append(heading);
+    const headingRow = document.createElement("div");
+    headingRow.className = "timer-description-group-heading";
+    headingRow.append(heading);
+    if (label.endsWith(" RONDAS") || label.startsWith("PELDAÑO") || label.startsWith("INTERVALO")) {
+      const counter = $("rftRoundCounter");
+      if (!counter.classList.contains("hidden")) headingRow.append(counter);
+    }
+    group.append(headingRow);
     if (phases.length) {
       const schedule = document.createElement("div");
       schedule.className = "timer-description-phase-schedule";
@@ -425,9 +434,17 @@ function renderTimerDescription(workout, timerPlan = null) {
     addStructureGroup(label, structure.items);
   } else if (structure?.type === "ladder" && Array.isArray(structure.steps)) {
     const direction = { ascending: "ASCENDENTE", descending: "DESCENDENTE", alternating: "ALTERNANDO", custom: "PERSONALIZADA" }[structure.direction] || "";
+    const ladderGroup = document.createElement("section");
+    ladderGroup.className = "timer-description-structure-group timer-description-ladder";
+    const headingRow = document.createElement("div");
+    headingRow.className = "timer-description-group-heading";
     const heading = document.createElement("h3");
     heading.textContent = ["LADDER", direction].filter(Boolean).join(" · ");
-    panel.append(heading);
+    headingRow.append(heading);
+    const counter = $("rftRoundCounter");
+    if (!counter.classList.contains("hidden")) headingRow.append(counter);
+    ladderGroup.append(headingRow);
+    panel.append(ladderGroup);
     let intervalPhaseIndex = 0;
     const hasIntervalSchedule = intervalPhases.filter(phase => phase.type === "intervals").length === structure.steps.length;
     structure.steps.forEach((step, index) => {
@@ -439,6 +456,7 @@ function renderTimerDescription(workout, timerPlan = null) {
         if (rest?.type === "rest") { phases.push(rest); intervalPhaseIndex++; }
       }
       addStructureGroup(step.label || "PELDAÑO " + (index + 1), step.items, null, phases);
+      ladderGroup.append(panel.lastElementChild);
     });
   } else if (structure?.type === "sections" && Array.isArray(structure.sections)) {
     const heading = document.createElement("h3");
@@ -464,6 +482,12 @@ function renderTimerDescription(workout, timerPlan = null) {
       list.append(item);
     });
     panel.append(list);
+  }
+
+  const manualCounter = $("rftRoundCounter");
+  if (!manualCounter.classList.contains("hidden") && !panel.contains(manualCounter)) {
+    const fallbackGroup = panel.querySelector(".timer-description-structure-group");
+    (fallbackGroup || panel).append(manualCounter);
   }
 
   const notesText = workout.notes || workout.workout?.notes;
