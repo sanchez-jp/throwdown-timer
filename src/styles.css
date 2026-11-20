@@ -488,3 +488,24 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 
 /* Keep remove controls after the fields instead of overlaying their labels. */
 .structure-item-row>.remove-movement-button,.structure-choice-alternative>.remove-movement-button{grid-row:auto;grid-column:2;justify-self:end}
+
+/* Manual RFT round counter. */
+.rft-round-counter{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;margin:12px 0 2px}
+.rft-round-button{display:grid;place-items:center;width:48px;height:48px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--lime);font-size:30px;font-weight:700;line-height:1}
+.rft-round-button:disabled{opacity:.3;cursor:default}
+.rft-round-button:active:not(:disabled){background:#263445;transform:scale(.96)}
+.rft-round-progress{min-width:132px;text-align:center}
+.rft-round-progress>div{display:flex;align-items:baseline;justify-content:center;gap:4px;font-variant-numeric:tabular-nums}
+.rft-round-progress strong{font-size:clamp(25px,6vw,32px);line-height:1.1}
+.rft-round-progress span{color:var(--muted);font-size:16px;font-weight:700}
+.rft-round-progress small{display:block;margin-top:4px;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:1.2px}
+.timer-immersive .rft-round-counter{flex:0 0 auto;margin:0;gap:12px}
+.timer-immersive .rft-round-button{width:42px;height:42px;font-size:27px}
+.timer-immersive .rft-round-progress strong{font-size:clamp(20px,3vh,27px)}
+.timer-immersive .rft-round-progress small{font-size:7px;margin-top:2px}
+@media(max-height:520px) and (orientation:landscape){
+ .timer-immersive .rft-round-counter{gap:8px}
+ .timer-immersive .rft-round-button{width:34px;height:34px;font-size:23px}
+ .timer-immersive .rft-round-progress strong{font-size:19px}
+ .timer-immersive .rft-round-progress small{font-size:6px}
+}
