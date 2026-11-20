@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "throwdown-timer-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v103`;
+const CACHE_NAME = `${CACHE_PREFIX}v104`;
 const APP_SHELL = [
   "",
   "index.html",
@@ -9,11 +9,15 @@ const APP_SHELL = [
   "assets/apple-touch-icon.png",
   "assets/icon-192.png",
   "assets/icon-512.png",
-  "src/styles.css?v=79",
-  "src/app.js?v=39",
+  "src/styles.css?v=84",
+  "src/app.js?v=46",
   "src/audio-cues.js",
   "src/timer-engine.js",
   "src/timer-plan-builder.js",
+  "src/timer-description.js",
+  "src/workout-repository.js",
+  "src/wod-validator.js",
+  "src/wod-migration.js",
   "src/ai-client.js"
 ].map((path) => new URL(path, self.registration.scope).toString());
 
@@ -43,35 +47,24 @@ self.addEventListener("fetch", (event) => {
   const scopeUrl = new URL(self.registration.scope);
   if (requestUrl.origin !== scopeUrl.origin || !requestUrl.href.startsWith(scopeUrl.href)) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request);
-        if (response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(new URL("index.html", scopeUrl).toString(), response.clone());
-        }
-        return response;
-      } catch {
-        return (await caches.match(new URL("index.html", scopeUrl).toString()))
-          || (await caches.match(new URL("", scopeUrl).toString()));
-      }
-    })());
-    return;
-  }
-
   event.respondWith((async () => {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-
     try {
       const response = await fetch(request);
       if (response.ok && response.type === "basic") {
         const cache = await caches.open(CACHE_NAME);
-        await cache.put(request, response.clone());
+        const cacheKey = request.mode === "navigate"
+          ? new URL("index.html", scopeUrl).toString()
+          : request;
+        await cache.put(cacheKey, response.clone());
       }
       return response;
     } catch {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      if (request.mode === "navigate") {
+        return (await caches.match(new URL("index.html", scopeUrl).toString()))
+          || (await caches.match(new URL("", scopeUrl).toString()));
+      }
       return new Response("Recurso no disponible sin conexión.", {
         status: 503,
         statusText: "Offline",
