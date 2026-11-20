@@ -24,3 +24,12 @@ export function getIntervalPhaseGroups(phases, intervalCount) {
   if (leadingRest.length && groups.length) groups[groups.length - 1].push(...leadingRest);
   return groups.length === intervalCount ? groups : null;
 }
+
+
+export function getStructureIntervalPhaseGroups(phases, structure) {
+  const intervalCount = structure?.type === "ladder"
+    ? structure.steps?.length
+    : Array.isArray(structure?.items) && structure.items.length && structure.items.every(item => item?.type === "rounds")
+      ? structure.items.length : 0;
+  return getIntervalPhaseGroups(phases, intervalCount);
+}
