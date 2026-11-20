@@ -531,7 +531,7 @@ function getDoubleLadderGroups(workout: any) {
   // Some model responses emit one empty first-round header followed by
   // the complete flat movement sequence, repeating the catalog order.
   if (items.length > 1 && items[0]?.type === "rounds" && items[0].count === 1 &&
-      /^RONDA\\s+1$/i.test(String(items[0].label || "")) &&
+      /^RONDA\s+1$/i.test(String(items[0].label || "")) &&
       (!Array.isArray(items[0].items) || items[0].items.length === 0)) {
     const flat = items.slice(1);
     if (flat.length >= 6 && flat.length % 3 === 0 &&
@@ -671,11 +671,15 @@ function repairFlatDoubleLadderSequence(workout: any, sourceText = "") {
   const directionalLabel = found.headers?.length === 1
     ? String(found.headers[0]?.label || "").match(/descending|descendente|ascending|ascendente/i)?.[0]
     : null;
-  const half = found.directionalHalves ? found.groups.length / 2 : 0;
+  // Ten validated rounds with a duplicated midpoint and descending/ascending
+  // halves are the Gemini double ladder, even when the model emits one stray header.
+  const directionalHalves = found.directionalHalves ||
+    (roundCount === 10 && (!found.headers || found.headers.length === 0));
+  const half = directionalHalves ? found.groups.length / 2 : 0;
   const items = found.groups.map((group: any[], index: number) => ({
     type: "rounds",
     count: 1,
-    label: found.directionalHalves
+    label: directionalHalves
       ? (index < half ? "Descending " + (index + 1) : "Ascending " + (index - half + 1))
       : preserveHeaders ? String(found.headers[index].label)
       : directionalLabel ? directionalLabel + " " + (index + 1) : "Round " + (index + 1),
@@ -1123,6 +1127,40 @@ function normalizeTimerPlan(timer: any) {
   };
 }
 
+function normalizeExplicitForTimeCap(result: any, sourceText: string) {
+  if (result?.workout?.format !== "for_time" || typeof sourceText !== "string") return result;
+  const match = sourceText.match(/\b(?:time\s*cap|timecap|tc)\s*[:=-]?\s*(\d{1,2})(?::(\d{2}))?\s*(minutes?|mins?|min|m|seconds?|secs?|sec|s|')?/i);
+  if (!match) return result;
+  const amount = Number(match[1]);
+  const secondsPart = match[2] == null ? null : Number(match[2]);
+  const unit = String(match[3] || "").toLowerCase();
+  const timeCapSeconds = secondsPart !== null
+    ? amount * 60 + secondsPart
+    : /^(?:seconds?|secs?|sec|s)$/.test(unit) ? amount : amount * 60;
+  if (!Number.isInteger(timeCapSeconds) || timeCapSeconds <= 0) return result;
+
+  const timer = result.timer && result.timer.type === "sequence" && Array.isArray(result.timer.blocks)
+    ? result.timer
+    : { type: "sequence", label: "For Time", blocks: [] };
+  const blocks = [...timer.blocks];
+  const countupIndex = blocks.findIndex((block: any) => block?.type === "countup");
+  if (countupIndex >= 0) {
+    const existing = blocks[countupIndex];
+    if (existing.timeCapSeconds != null && existing.timeCapSeconds !== timeCapSeconds) return result;
+    blocks[countupIndex] = { ...existing, label: existing.label || "For Time", timeCapSeconds };
+  } else {
+    blocks.push({ type: "countup", label: "For Time", timeCapSeconds, rounds: null });
+  }
+  result.timer = { ...timer, blocks };
+  if (Array.isArray(result.interpretation?.issues)) {
+    result.interpretation.issues = result.interpretation.issues.filter((item: any) =>
+      item?.code !== "TIMER_DETAILS_MISSING"
+    );
+  }
+  console.info("Explicit For Time cap recovered from source text", { timeCapSeconds });
+  return result;
+}
+
 function normalizeExplicitLadderFormat(workout: any, sourceText: string) {
   if (workout?.format === "for_time" && workout?.structure?.type === "ladder" &&
       /\bladder\b/i.test(sourceText)) {
@@ -1179,6 +1217,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   }
   raw.timer = normalizeExplicitWorkRestIntervals(raw.timer, sourceTextForNormalization);
   raw.timer = normalizeTimerPlan(raw.timer);
+  raw = normalizeExplicitForTimeCap(raw, sourceTextForNormalization);
   raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, sourceTextForNormalization);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
