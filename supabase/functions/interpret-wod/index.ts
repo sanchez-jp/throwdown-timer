@@ -555,7 +555,7 @@ function getDoubleLadderRoundCount(workout: any): number | null {
   const descending = progressions.some((sequence: number[]) =>
     sequence.every((value, index) => index === 0 || value < sequence[index - 1])
   );
-  const hasDescendingThenAscendingHalves = found.headers?.length === found.groups.length &&
+  const hasDescendingThenAscendingHalves = (found.headers?.length === found.groups.length || found.headers?.length === 0) &&
     progressions.every((sequence: number[]) => {
       const midpoint = sequence.length / 2;
       return Number.isInteger(midpoint) && midpoint >= 2 &&
