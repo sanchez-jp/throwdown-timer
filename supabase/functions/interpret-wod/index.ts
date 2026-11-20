@@ -1535,8 +1535,31 @@ Criterio: format for_time; team athletes 2, mode shared. structure type sequence
       result = parseAndValidate(output);
     } catch (firstError) {
       const validationMessage = firstError instanceof Error ? firstError.message : "La respuesta no cumple el contrato.";
-      console.warn("AI output rejected; requesting one schema correction", validationMessage);
-      const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.\nError de validación: ${validationMessage}\nDescripción original:\n${sourceText}\nRespuesta que debes corregir:\n${output.slice(0, 14000)}`;
+      let isEmptyDualLadderCandidate = false;
+      try {
+        const candidate = JSON.parse(output);
+        const candidateWorkout = candidate?.workout;
+        const candidateItems = candidateWorkout?.structure?.items;
+        const candidateMovements = candidateWorkout?.movements;
+        if (candidateWorkout?.format === "for_time" && candidateWorkout?.structure?.type === "sequence" &&
+            Array.isArray(candidateItems) && Array.isArray(candidateMovements) && candidateMovements.length === 3) {
+          const hasDirectionalHeader = candidateItems.some((item: any) => item?.type === "rounds" &&
+            /descending|ascending|descendente|ascendente/i.test(String(item.label || "")));
+          const hasEmptyHeader = candidateItems.some((item: any) => item?.type === "rounds" &&
+            (!Array.isArray(item.items) || item.items.length === 0));
+          const flatMovements = candidateItems.filter((item: any) => item?.type === "movement");
+          const matchesCatalog = flatMovements.length >= 3 &&
+            flatMovements.every((item: any) => candidateMovements.some((movement: any) => movement?.id === item.movementId));
+          isEmptyDualLadderCandidate = hasDirectionalHeader && hasEmptyHeader && matchesCatalog;
+        }
+      } catch { /* A non-JSON response follows the standard correction path. */ }
+      console.warn("AI output rejected; requesting one schema correction", {
+        validationMessage, emptyDualLadderCandidate: isEmptyDualLadderCandidate,
+      });
+      const dualLadderGuidance = isEmptyDualLadderCandidate
+        ? "\n\nREPARACIÓN ESPECÍFICA DE DOBLE LADDER (OBLIGATORIA): la estructura candidata ha separado los encabezados DESCENDING/ASCENDING de los movimientos y ha dejado grupos vacíos. Vuelve a leer la imagen original adjunta (no te bases solo en el OCR ni en el JSON anterior). Reconstruye las dos progresiones como rondas fijas dentro de structure.type=sequence: una entrada type=rounds, count=1 por cada ronda visible, con label Descending N para la primera ladder y Ascending N para la segunda. Cada ronda debe contener los tres movimientos del catálogo, en el orden original, con la repetición literal que corresponda a esa ronda en prescription. Incluye primero todas las rondas descendentes y después todas las ascendentes. No dejes encabezados vacíos, no dejes movimientos sueltos fuera de las rondas, no pongas las progresiones en labels y no uses repProgression para representar una tabla de repeticiones fijas. No inventes ni calcules valores: copia únicamente los que se lean en la fuente. Si algún valor no puede leerse, conserva la estructura válida y marca ese dato para revisión en interpretation.\n"
+        : "";
+      const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.${dualLadderGuidance}\nError de validación: ${validationMessage}\nDescripción original:\n${sourceText}\nRespuesta que debes corregir:\n${output.slice(0, 14000)}`;
       prompt = correctionPrompt;
       let correctedResponse: Response;
       try {
