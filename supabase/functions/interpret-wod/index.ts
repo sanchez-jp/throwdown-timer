@@ -690,7 +690,7 @@ function repairEmptyRoundGroups(workout: any) {
   const groups = structure.items;
   if (groups.length < 2 || !groups.every((item: any) =>
     item?.type === "rounds" && item.count === 1 &&
-    typeof item.label === "string" && /^RONDA\s+\d+$/i.test(item.label.trim()) &&
+    typeof item.label === "string" && /^(?:RONDA\\s+\\d+|DESCENDING\\s+\\d+|ASCENDING\\s+\\d+)$/i.test(item.label.trim()) &&
     (!Array.isArray(item.items) || item.items.length === 0)
   )) return workout;
 
