@@ -660,8 +660,30 @@ function isEmptyDoubleLadderSemanticCorrection(workout: any, expectedRounds: num
 }
 
 function repairEmptyRoundGroups(workout: any) {
-  const structure = workout?.structure;
+  let structure = workout?.structure;
   const movements = workout?.movements;
+  // A correction response may split each logical round into three consecutive
+  // empty headers (one per movement), all carrying the same "RONDA N" label.
+  // Collapse only the exact 10 x 3 pattern before rebuilding catalog movements.
+  if (structure?.type === "sequence" && Array.isArray(structure.items) &&
+      structure.items.length === 30 && Array.isArray(movements) && movements.length === 3) {
+    const nodes = structure.items;
+    const validTriples = Array.from({ length: 10 }, (_, roundIndex) =>
+      nodes.slice(roundIndex * 3, roundIndex * 3 + 3).every((node: any) =>
+        node?.type === "rounds" && node.count === 1 &&
+        new RegExp("^RONDA\\\\s+" + (roundIndex + 1) + "$", "i").test(String(node.label || "")) &&
+        (!Array.isArray(node.items) || node.items.length === 0)
+      )
+    ).every(Boolean);
+    if (validTriples) {
+      const compact = Array.from({ length: 10 }, (_, roundIndex) => ({
+        ...nodes[roundIndex * 3],
+        label: roundIndex < 5 ? "Descending " + (roundIndex + 1) : "Ascending " + (roundIndex - 4),
+      }));
+      structure = { ...structure, items: compact };
+      console.info("Repeated empty round headers collapsed into double ladder", { rounds: 10, movementsPerRound: 3 });
+    }
+  }
   if (structure?.type !== "sequence" || !Array.isArray(structure.items) ||
       !Array.isArray(movements) || !movements.length) return workout;
 
