@@ -414,20 +414,23 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
         (Array.isArray(group.items) && group.items.length > 0))) return workout;
 
   const parseProgressions = (label: string) => {
-    const parts = label.split("/").map(part => part.match(/\d+(?:\s*[-–—]\s*\d+){4}/)?.[0]);
+    const parts = label.split("/").map(part => part.match(/\d+(?:\s*[-–—]\s*\d+){1,}/)?.[0]);
     if (parts.length !== 3 || parts.some(part => !part)) return null;
     const values = parts.map(part => part!.split(/\s*[-–—]\s*/).map(Number));
-    return values.every(row => row.length === 5 && row.every(value => Number.isInteger(value) && value > 0))
-      ? values : null;
+    const roundCount = values[0].length;
+    return roundCount >= 2 && values.every(row =>
+      row.length === roundCount && row.every(value => Number.isInteger(value) && value > 0)
+    ) ? values : null;
   };
   const progressions = groups.map((group: any) => parseProgressions(String(group.label || "")));
   if (progressions.some(value => !value)) {
-    console.info("Dual ladder repair skipped: labels do not contain three complete progressions", {
+    console.info("Dual ladder repair skipped: labels do not contain three aligned progressions", {
       labels: groups.map((group: any) => String(group.label || "")),
     });
     return workout;
   }
 
+  const roundCount = progressions[0][0].length;
   const barbellLoad = sourceText.match(/\bbarbell\s*[-–—:]\s*(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\b/i);
   const snatch = movements.find((movement: any) => /power\s*snatch/i.test(movement.name || ""));
   if (barbellLoad && snatch) {
@@ -435,7 +438,7 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
   }
 
   const items = groups.flatMap((group: any, groupIndex: number) =>
-    Array.from({ length: 5 }, (_, roundIndex) => ({
+    Array.from({ length: roundCount }, (_, roundIndex) => ({
       type: "rounds",
       count: 1,
       label: (directions[groupIndex] === "descending" ? "Descending " : "Ascending ") + (roundIndex + 1),
@@ -448,10 +451,94 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
     }))
   );
   console.info("Dual ladder blocks reconstructed from explicit AI labels", {
-    movements: movements.length, rounds: items.length,
+    movements: movements.length, progressionsPerBlock: roundCount, rounds: items.length,
   });
   return { ...workout, structure: { ...structure, items } };
 }
+
+function getDoubleLadderGroups(workout: any) {
+  const structure = workout?.structure;
+  if (workout?.format !== "for_time" || structure?.type !== "sequence" ||
+      !Array.isArray(structure.items) || workout?.movements?.length !== 3) return null;
+
+  const items = structure.items;
+  if (items.length && items.every((item: any) =>
+    item?.type === "rounds" && Array.isArray(item.items) && item.items.length === 3
+  )) {
+    return { groups: items.map((item: any) => item.items), flat: false };
+  }
+
+  const heading = items[0];
+  if (heading?.type !== "rounds" ||
+      (Array.isArray(heading.items) && heading.items.length > 0) ||
+      !/descending|ascending|descendente|ascendente/i.test(String(heading.label || ""))) return null;
+
+  const flat = items.slice(1);
+  if (!flat.length || flat.length % 3 !== 0 ||
+      !flat.every((node: any) => node?.type === "movement")) return null;
+  return {
+    groups: Array.from({ length: flat.length / 3 }, (_, index) => flat.slice(index * 3, index * 3 + 3)),
+    flat: true,
+  };
+}
+
+function getDoubleLadderRoundCount(workout: any): number | null {
+  const found = getDoubleLadderGroups(workout);
+  if (!found || found.groups.length < 2) return null;
+
+  const movementIds = found.groups[0].map((node: any) => node?.movementId);
+  if (new Set(movementIds).size !== 3 || !movementIds.every((id: any) => typeof id === "string") ||
+      !found.groups.every((group: any[]) => group.length === 3 && group.every((node: any, index: number) =>
+        node?.type === "movement" && node.movementId === movementIds[index]
+      ))) return null;
+
+  const values = found.groups.map((group: any[]) => group.map((node: any) => {
+    const match = String(node?.prescription ?? "").trim().match(/^(\d+)(?:\s*(?:reps?|repeticiones?))?$/i);
+    return match ? Number(match[1]) : null;
+  }));
+  if (values.some((round: any[]) => round.some((value: number | null) => value === null))) return null;
+
+  const progressions = movementIds.map((_: string, movementIndex: number) =>
+    values.map((round: any[]) => round[movementIndex] as number)
+  );
+  const ascending = progressions.some((sequence: number[]) =>
+    sequence.every((value, index) => index === 0 || value > sequence[index - 1])
+  );
+  const descending = progressions.some((sequence: number[]) =>
+    sequence.every((value, index) => index === 0 || value < sequence[index - 1])
+  );
+  return ascending && descending ? found.groups.length : null;
+}
+
+function repairFlatDoubleLadderSequence(workout: any) {
+  const found = getDoubleLadderGroups(workout);
+  const roundCount = getDoubleLadderRoundCount(workout);
+  if (!found?.flat || !roundCount) return workout;
+
+  const flat = workout.structure.items.slice(1);
+  const items = Array.from({ length: roundCount }, (_, index) => ({
+    type: "rounds",
+    count: 1,
+    label: "Round " + (index + 1),
+    items: flat.slice(index * 3, index * 3 + 3),
+  }));
+  console.info("Flat double ladder grouped into explicit rounds", {
+    movements: 3, rounds: roundCount,
+  });
+  return { ...workout, structure: { ...workout.structure, items } };
+}
+
+function isEmptyDoubleLadderSemanticCorrection(workout: any, expectedRounds: number) {
+  const structure = workout?.workout?.structure || workout?.structure;
+  return structure?.type === "rounds" && structure.count === expectedRounds &&
+    Array.isArray(structure.items) && structure.items.length === expectedRounds &&
+    structure.items.every((item: any, index: number) =>
+      item?.type === "rounds" && item.count === 1 &&
+      new RegExp("^round\\s+" + (index + 1) + "$", "i").test(String(item.label || "")) &&
+      (!Array.isArray(item.items) || item.items.length === 0)
+    );
+}
+
 function repairEmptyRoundGroups(workout: any) {
   const structure = workout?.structure;
   const movements = workout?.movements;
@@ -796,6 +883,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
   raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
+  raw.workout = repairFlatDoubleLadderSequence(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
@@ -1521,9 +1609,16 @@ Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corr
               findings: Array.isArray(review.findings) ? review.findings.slice(0, 5) : [],
             });
           } catch (correctionError) {
-            console.warn("AI semantic correction rejected; keeping validated interpretation",
-              correctionError instanceof Error ? correctionError.message : "unknown");
-            addSemanticReviewIssue("SEMANTIC_CORRECTION_REJECTED", "La corrección semántica no superó la validación. Revisa el WOD original antes de iniciar.");
+            const expectedRounds = getDoubleLadderRoundCount(result.workout);
+            if (expectedRounds && isEmptyDoubleLadderSemanticCorrection(review.correctedResult, expectedRounds)) {
+              console.warn("AI empty double-ladder correction ignored; keeping validated interpretation", {
+                rounds: expectedRounds,
+              });
+            } else {
+              console.warn("AI semantic correction rejected; keeping validated interpretation",
+                correctionError instanceof Error ? correctionError.message : "unknown");
+              addSemanticReviewIssue("SEMANTIC_CORRECTION_REJECTED", "La corrección semántica no superó la validación. Revisa el WOD original antes de iniciar.");
+            }
           }
         } else if (review.status === "uncertain") {
           const findings = Array.isArray(review.findings) ? review.findings.filter((item: any) => typeof item === "string") : [];
