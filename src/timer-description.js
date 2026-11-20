@@ -5,26 +5,42 @@
  */
 export function getIntervalPhaseGroups(phases, intervalCount) {
   if (!Array.isArray(phases) || !Number.isInteger(intervalCount) || intervalCount < 1) return null;
+  const groups = Array.from({ length: intervalCount }, () => []);
+  const repeated = phases.filter(phase => {
+    const match = String(phase?.sourcePath || "").match(/\\.repeat\\[(\\d+)\\]/);
+    return match && Number(match[1]) < intervalCount;
+  });
+  if (repeated.length) {
+    repeated.forEach(phase => {
+      const match = String(phase.sourcePath).match(/\\.repeat\\[(\\d+)\\]/);
+      groups[Number(match[1])].push(phase);
+    });
+    return groups.every(group => group.length) ? groups : null;
+  }
+  const roundPhases = phases.filter(phase =>
+    Number.isInteger(phase?.round) && phase.totalRounds === intervalCount
+  );
+  if (roundPhases.length) {
+    roundPhases.forEach(phase => groups[phase.round - 1]?.push(phase));
+    return groups.every(group => group.length) ? groups : null;
+  }
   const schedule = phases.filter(phase =>
     phase && (phase.type === "intervals" || phase.type === "countdown" || phase.type === "rest")
   );
-  if (schedule.filter(phase => phase.type !== "rest").length !== intervalCount) return null;
-
-  const groups = [];
-  let leadingRest = [];
-  schedule.forEach(phase => {
-    if (phase.type === "rest") {
-      if (groups.length) groups[groups.length - 1].push(phase);
-      else leadingRest.push(phase);
-      return;
+  const work = schedule.filter(phase => phase.type !== "rest");
+  if (work.length < intervalCount) return null;
+  const selected = work.length === intervalCount ? schedule : schedule.slice(-intervalCount * 2);
+  let current = -1;
+  selected.forEach(phase => {
+    if (phase.type !== "rest") {
+      current++;
+      if (current < intervalCount) groups[current].push(phase);
+    } else if (current >= 0 && current < intervalCount) {
+      groups[current].push(phase);
     }
-    groups.push([...leadingRest, phase]);
-    leadingRest = [];
   });
-  if (leadingRest.length && groups.length) groups[groups.length - 1].push(...leadingRest);
-  return groups.length === intervalCount ? groups : null;
+  return groups.every(group => group.length) ? groups : null;
 }
-
 
 export function getStructureIntervalPhaseGroups(phases, structure) {
   const intervalCount = structure?.type === "ladder"
