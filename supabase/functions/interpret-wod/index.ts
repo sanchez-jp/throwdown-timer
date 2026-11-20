@@ -512,7 +512,7 @@ function getDoubleLadderGroups(workout: any) {
     const flat = headerCount > 0 ? items.slice(headerCount) : [];
     const validHeaders = headers.length === 10 && headers.every((header: any, index: number) =>
       header?.type === "rounds" && header.count === 1 &&
-      new RegExp("^RONDA\\\\s+" + (index + 1) + "$", "i").test(String(header.label || "")) &&
+      new RegExp("^RONDA\\s+" + (index + 1) + "$", "i").test(String(header.label || "")) &&
       (!Array.isArray(header.items) || header.items.length === 0)
     );
     if (validHeaders && flat.length === headers.length * 3 &&
@@ -625,9 +625,9 @@ function repairFlatDoubleLadderSequence(workout: any, sourceText = "") {
   if (!found?.flat || !roundCount) return workout;
 
   const preserveHeaders = Array.isArray(found.headers) && found.headers.length === roundCount;
-  const barbellLoad = sourceText.match(/\\bbarbell\\s*[-–—:]\\s*(\\d+(?:[.,]\\d+)?\\s*\\/\\s*\\d+(?:[.,]\\d+)?)\\s*kg\\b/i);
-  const snatch = workout.movements?.find((movement: any) => /power\\s*snatch/i.test(movement.name || ""));
-  if (barbellLoad && snatch) snatch.load = barbellLoad[1].replace(/\\s*\\/\\s*/g, "/").replace(/,/g, ".") + " kg";
+  const barbellLoad = sourceText.match(/\bbarbell\s*[-–—:]\s*(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\b/i);
+  const snatch = workout.movements?.find((movement: any) => /power\s*snatch/i.test(movement.name || ""));
+  if (barbellLoad && snatch) snatch.load = barbellLoad[1].replace(/\s*\/\s*/g, "/").replace(/,/g, ".") + " kg";
   const directionalLabel = found.headers?.length === 1
     ? String(found.headers[0]?.label || "").match(/descending|descendente|ascending|ascendente/i)?.[0]
     : null;
