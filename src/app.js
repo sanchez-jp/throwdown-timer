@@ -63,6 +63,8 @@ let editingWorkoutId = null;
 let creatingWorkout = false;
 let editorReturnView = "library";
 let timerPlanLoadError = false;
+let rftRoundCount = 0;
+let rftRoundTarget = null;
 let editingSchemaVersion = 2;
 let editingLegacyFormat = null;
 let editingStructureSupported = true;
@@ -136,6 +138,18 @@ function processEvents() {
     }
   }
 }
+function renderRftRoundCounter() {
+  $("rftRoundValue").textContent = String(rftRoundCount);
+  $("rftRoundTarget").textContent = rftRoundTarget === null ? "" : ` / ${rftRoundTarget}`;
+  $("rftRoundMinus").disabled = rftRoundCount === 0;
+  $("rftRoundPlus").disabled = rftRoundTarget !== null && rftRoundCount >= rftRoundTarget;
+}
+function getRftRoundTarget(workout, plan) {
+  const timerRounds = plan?.blocks?.find(block => block?.type === "countup" && Number.isInteger(block.rounds) && block.rounds > 0)?.rounds;
+  if (timerRounds) return timerRounds;
+  const structure = workout?.structure;
+  return structure?.type === "rounds" && Number.isInteger(structure.count) && structure.count > 0 ? structure.count : null;
+}
 function renderTimer(snapshot) {
   const phase = engine.phases[snapshot.blockIndex ?? 0];
   const emomMinute = snapshot.blockType === "emom" && snapshot.round
@@ -156,6 +170,7 @@ function renderTimer(snapshot) {
     snapshot.phase==="rest" ? (emomMinute ? "DESCANSO · MINUTO " + snapshot.round.current + "/" + snapshot.round.total : "DESCANSO") :
     emomMinute || (countupStage ? countupStage.toUpperCase() : (snapshot.state==="idle" ? "PREPARADO" : (phase?.label || "EN CURSO").toUpperCase()));
   $("roundValue").textContent = snapshot.round ? `${snapshot.round.current} / ${snapshot.round.total}` : "—";
+  renderRftRoundCounter();
   const totalLabel = countup ? (snapshot.totalRemainingMs === null ? "TIEMPO TRANSCURRIDO" : "HASTA TIME CAP") : "TIEMPO RESTANTE";
   $("totalLabel").textContent = totalLabel;
   const total = countup && snapshot.totalRemainingMs === null ? snapshot.totalElapsedMs : snapshot.totalRemainingMs;
@@ -468,6 +483,12 @@ function showTimer(w = presets[selected], sourceView = "home") {
   returnView = sourceView;
   const plan = w.plan || w.timer;
   if (!plan) return;
+  const format = String(w.workout?.format || w.format || "").toLowerCase();
+  const isRft = format === "rounds_for_time";
+  rftRoundCount = 0;
+  rftRoundTarget = isRft ? getRftRoundTarget(w.workout, plan) : null;
+  $("rftRoundCounter").classList.toggle("hidden", !isRft);
+  renderRftRoundCounter();
   engine=new TimerEngine(plan);
   $("setupPanel").classList.add("hidden");
   $("timerPanel").classList.remove("hidden");
@@ -520,9 +541,19 @@ $("pauseButton").addEventListener("click", async () => {
   if (result.state === "running") { await requestWakeLock(); startDisplayLoop(); }
   else { stopDisplayLoop(); await releaseWakeLock(); }
 });
+$("rftRoundMinus").addEventListener("click", () => {
+  rftRoundCount = Math.max(0, rftRoundCount - 1);
+  renderRftRoundCounter();
+});
+$("rftRoundPlus").addEventListener("click", () => {
+  rftRoundCount = rftRoundTarget === null ? rftRoundCount + 1 : Math.min(rftRoundTarget, rftRoundCount + 1);
+  renderRftRoundCounter();
+});
 $("resetButton").addEventListener("click", async () => {
   if (!engine) return;
   prestartState = null;
+  rftRoundCount = 0;
+  renderRftRoundCounter();
   prestartRemainingMs = 10000;
   lastPrestartCue = 11;
   const snap = engine.reset();
