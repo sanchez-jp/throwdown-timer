@@ -504,13 +504,19 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 .rft-round-progress strong{font-size:clamp(25px,6vw,32px);line-height:1.1}
 .rft-round-progress span{color:var(--muted);font-size:16px;font-weight:700}
 .rft-round-progress small{display:block;margin-top:4px;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:1.2px}
-.timer-immersive .rft-round-counter{flex:0 0 auto;margin:0;gap:12px}
-.timer-immersive .rft-round-button{width:42px;height:42px;font-size:27px}
-.timer-immersive .rft-round-progress strong{font-size:clamp(20px,3vh,27px)}
-.timer-immersive .rft-round-progress small{font-size:7px;margin-top:2px}
-@media(max-height:520px) and (orientation:landscape){
- .timer-immersive .rft-round-counter{gap:8px}
- .timer-immersive .rft-round-button{width:34px;height:34px;font-size:23px}
- .timer-immersive .rft-round-progress strong{font-size:19px}
- .timer-immersive .rft-round-progress small{font-size:6px}
+.timer-description-group-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.timer-description-group-heading h3{min-width:0;margin:12px 0 8px}
+.timer-description-group-heading .rft-round-counter{flex:0 0 auto;width:auto;margin:4px 0;gap:7px}
+.timer-description-group-heading .rft-round-button{width:32px;height:32px;border-radius:8px;font-size:21px}
+.timer-description-group-heading .rft-round-progress{min-width:76px}
+.timer-description-group-heading .rft-round-progress strong{font-size:21px}
+.timer-description-group-heading .rft-round-progress span{font-size:12px}
+.timer-description-group-heading .rft-round-progress small{font-size:6px;letter-spacing:.8px;margin-top:2px}
+.timer-description-ladder>.timer-description-structure-group{margin-left:0}
+.timer-immersive .timer-description-group-heading .rft-round-button{width:30px;height:30px;font-size:20px}
+@media(max-width:380px){
+ .timer-description-group-heading{gap:6px}
+ .timer-description-group-heading .rft-round-button{width:29px;height:29px}
+ .timer-description-group-heading .rft-round-progress{min-width:64px}
+ .timer-description-group-heading .rft-round-progress strong{font-size:18px}
 }
