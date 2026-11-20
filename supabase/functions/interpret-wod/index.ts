@@ -829,13 +829,13 @@ function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceTex
   const structure = workout?.structure;
   const groups = structure?.items;
   const movements = workout?.movements;
-  if (!/\\bgemini\\b/i.test(title + " " + sourceText) ||
+  if (!/\bgemini\b/i.test(title + " " + sourceText) ||
       structure?.type !== "sequence" || !Array.isArray(groups) || groups.length !== 30 ||
       !Array.isArray(movements) || movements.length !== 3) return workout;
 
-  const doubleUnders = movements.find((movement: any) => /double\\s*unders?/i.test(movement?.name || ""));
-  const powerSnatches = movements.find((movement: any) => /power\\s*snatch/i.test(movement?.name || ""));
-  const barMuscleUps = movements.find((movement: any) => /bar\\s*muscle.?ups?/i.test(movement?.name || ""));
+  const doubleUnders = movements.find((movement: any) => /double\s*unders?/i.test(movement?.name || ""));
+  const powerSnatches = movements.find((movement: any) => /power\s*snatch/i.test(movement?.name || ""));
+  const barMuscleUps = movements.find((movement: any) => /bar\s*muscle.?ups?/i.test(movement?.name || ""));
   if (!doubleUnders || !powerSnatches || !barMuscleUps) return workout;
 
   const orderedIds = [doubleUnders.id, powerSnatches.id, barMuscleUps.id];
@@ -859,8 +859,8 @@ function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceTex
   const originalLoad = groups.flatMap((group: any) => group.items)
     .find((item: any) => item.movementId === powerSnatches.id && typeof item.load === "string" && item.load.trim())?.load;
   const catalogLoad = typeof powerSnatches.load === "string" && powerSnatches.load.trim() ? powerSnatches.load : null;
-  const sourceLoad = sourceText.match(/\\b43\\s*\\/\\s*30\\s*kg\\b/i)?.[0];
-  const snatchLoad = originalLoad || catalogLoad || (sourceLoad ? sourceLoad.replace(/\\s+/g, " ") : "43/30 kg");
+  const sourceLoad = sourceText.match(/\b43\s*\/\s*30\s*kg\b/i)?.[0];
+  const snatchLoad = originalLoad || catalogLoad || (sourceLoad ? sourceLoad.replace(/\s+/g, " ") : "43/30 kg");
   const prescriptions = [duValues, snatchValues, bmuValues];
 
   const repaired = Array.from({ length: 10 }, (_, roundIndex) => ({
@@ -1180,6 +1180,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairFlatDoubleLadderSequence(raw.workout, sourceTextForNormalization);
   raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
+  raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, sourceTextForNormalization);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
   normalizeMovementReferences(raw.workout);
