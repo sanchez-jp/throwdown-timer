@@ -1175,8 +1175,12 @@ function createStructureItemRow(item = {}) {
   const row = document.createElement("div"); row.className = "structure-item-row"; row.dataset.structureType = item.type || "movement";
   if (item.type === "rounds") {
     row.classList.add("structure-nested-group");
+    row.dataset.structureLabel = typeof item.label === "string" ? item.label : "";
     const heading = document.createElement("div"); heading.className = "structure-nested-heading";
-    const title = document.createElement("strong"); title.textContent = "Grupo de rondas";
+    const title = document.createElement("strong");
+    title.textContent = row.dataset.structureLabel
+      ? "Grupo de rondas · " + row.dataset.structureLabel
+      : "Grupo de rondas";
     const count = document.createElement("input"); count.className = "editor-input structure-count"; count.type = "number"; count.name = "nestedRoundCount"; count.min = "1"; count.max = "1000"; count.value = item.count || 5;
     heading.append(title, structureField("Número de rondas", count));
     const children = document.createElement("div"); children.className = "structure-items";
@@ -1395,7 +1399,8 @@ function collectSemanticStructure() {
       const count = Number(row.querySelector('[name="nestedRoundCount"]').value);
       const items = collectNodes(row.querySelector(":scope > .structure-items"));
       if (!Number.isInteger(count) || count < 1 || !items.length) throw new Error("Completa el número de rondas y sus movimientos.");
-      return {type:"rounds",count,items};
+      const label = row.dataset.structureLabel?.trim();
+      return {type:"rounds",count,...(label?{label}:{}),items};
     }
     if (nodeType === "choice") {
       const alternatives = [...row.querySelectorAll(":scope > .structure-choice-alternatives > .structure-choice-alternative")].map(option => ({label:option.querySelector('[name="alternativeLabel"]').value.trim(),items:collectNodes(option.querySelector(".structure-items"))}));
