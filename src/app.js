@@ -1971,7 +1971,8 @@ initializeRepository();
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
   try {
-    await navigator.serviceWorker.register("./service-worker.js", { scope: "./" });
+    const registration = await navigator.serviceWorker.register("./service-worker.js", { scope: "./" });
+    await registration.update();
   } catch (error) {
     console.warn("No se ha podido registrar el modo offline de Throwdown Timer.", error);
   }
