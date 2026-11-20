@@ -672,9 +672,9 @@ function repairInterleavedDoubleLadderHeaders(workout: any) {
     new RegExp("^RONDA\\s+" + (index + 1) + "$", "i").test(String(node.label || "")) &&
     (!Array.isArray(node.items) || node.items.length === 0)
   );
-  const power = movements.find((movement: any) => /power\\s*snatch/i.test(movement?.name || ""));
-  const muscleUp = movements.find((movement: any) => /bar\\s*muscle.?ups?/i.test(movement?.name || ""));
-  const doubleUnders = movements.find((movement: any) => /double\\s*unders?/i.test(movement?.name || ""));
+  const power = movements.find((movement: any) => /power\s*snatch/i.test(movement?.name || ""));
+  const muscleUp = movements.find((movement: any) => /bar\s*muscle.?ups?/i.test(movement?.name || ""));
+  const doubleUnders = movements.find((movement: any) => /double\s*unders?/i.test(movement?.name || ""));
   if (!validHeaders || !power || !muscleUp || !doubleUnders) return workout;
 
   const powerNodes = [...nodes.slice(5, 10), ...nodes.slice(20, 25)];
