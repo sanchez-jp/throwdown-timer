@@ -2,7 +2,7 @@ import { TimerEngine } from "./timer-engine.js";
 import { getCountdownCueSecond } from "./audio-cues.js";
 import { createWorkoutRepository } from "./workout-repository.js";
 import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
-import { getIntervalPhaseGroups } from "./timer-description.js";
+import { getStructureIntervalPhaseGroups } from "./timer-description.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -350,11 +350,11 @@ function renderTimerDescription(workout, timerPlan = null) {
   const movementById = new Map(movements.filter(m => m && m.id).map(m => [m.id, m]));
   const emomBlock = timerPlan?.blocks?.find(block => block?.type === "emom" && Array.isArray(block.intervalLabels) && block.intervalLabels.length);
   const timedStageBlock = timerPlan?.blocks?.find(block => block?.type === "countup" && Array.isArray(block.stages) && block.stages.length);
-  const intervalPhaseGroups = timerPlan ? getIntervalPhaseGroups(
+  const intervalPhaseGroups = timerPlan ? getStructureIntervalPhaseGroups(
     new TimerEngine(timerPlan, { now: () => 0 }).phases.map((phase, index) => ({ ...phase, index })),
-    structure?.type === "ladder" ? structure.steps.length : 0
+    structure
   ) : null;
-  const renderStructureNodes = (items, container, isEmomSequence = false) => {
+  const renderStructureNodes = (items, container, isEmomSequence = false, phaseGroups = null) => {
     const list = document.createElement("ul");
     list.className = "timer-description-list" + (isEmomSequence ? " timer-emom-schedule" : "");
     (items || []).forEach((entry, index) => {
@@ -369,9 +369,24 @@ function renderTimerDescription(workout, timerPlan = null) {
           .map(note => note.trim()).filter(note => note && !movementName.toLocaleLowerCase().includes(note.toLocaleLowerCase()));
         item.textContent = [visiblePrescription, movementName, entry.load || movement?.load, formatLoadProgression(entry.loadProgression), formatRepProgression(entry.repProgression), ...visibleNotes].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
-        const nested = document.createElement("section"); nested.className = "timer-description-nested-group";
+        const phases = phaseGroups?.[index] || [];
+        const nested = document.createElement("section");
+        nested.className = "timer-description-nested-group" + (phases.length ? " timer-description-stage" : "");
+        if (phases.length) nested.dataset.timerIntervalIndex = String(index);
         const heading = document.createElement("h4"); heading.textContent = entry.label || ((Number(entry.count) || 1) + ((Number(entry.count) || 1) === 1 ? " RONDA" : " RONDAS"));
-        nested.append(heading); renderStructureNodes(entry.items, nested); item.append(nested);
+        nested.append(heading);
+        if (phases.length) {
+          const schedule = document.createElement("div"); schedule.className = "timer-description-phase-schedule";
+          phases.forEach(phase => {
+            const phaseLabel = document.createElement("div");
+            phaseLabel.className = "timer-description-phase";
+            phaseLabel.dataset.timerPhaseIndex = String(phase.index);
+            phaseLabel.textContent = `${phase.type === "rest" ? "DESCANSO" : "TRABAJO"} · ${formatTime(phase.durationMs)}`;
+            schedule.append(phaseLabel);
+          });
+          nested.append(schedule);
+        }
+        renderStructureNodes(entry.items, nested); item.append(nested);
       } else if (entry?.type === "choice") {
         const choice = document.createElement("section"); choice.className = "timer-description-choice";
         const heading = document.createElement("h4"); heading.textContent = "ELIGE UNA OPCIÓN"; choice.append(heading);
@@ -431,7 +446,7 @@ function renderTimerDescription(workout, timerPlan = null) {
       });
       group.append(list);
     } else {
-      renderStructureNodes(items, group);
+      renderStructureNodes(items, group, false, intervalPhaseGroups);
     }
     panel.append(group);
   };
@@ -520,6 +535,12 @@ function updateTimerDescriptionActive(snapshot) {
       item.classList.toggle("is-active", active);
       item.classList.toggle("is-paused", active && snapshot.state === "paused");
     });
+  });
+  document.querySelectorAll("[data-timer-interval-index]").forEach(item => {
+    const active = activeState && ["intervals", "rest"].includes(snapshot.blockType) && snapshot.round &&
+      Number(item.dataset.timerIntervalIndex) === snapshot.round.current - 1;
+    item.classList.toggle("is-active", active);
+    item.classList.toggle("is-paused", active && snapshot.state === "paused");
   });
   document.querySelectorAll("[data-timer-stage-index]").forEach(item => {
     const active = activeState && snapshot.blockType === "countup" &&
