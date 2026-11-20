@@ -65,6 +65,8 @@ let editorReturnView = "library";
 let timerPlanLoadError = false;
 let rftRoundCount = 0;
 let rftRoundTarget = null;
+let amrapExtraReps = 0;
+let manualCounterMode = null;
 let editingSchemaVersion = 2;
 let editingLegacyFormat = null;
 let editingStructureSupported = true;
@@ -143,6 +145,10 @@ function renderRftRoundCounter() {
   $("rftRoundTarget").textContent = rftRoundTarget === null ? "" : ` / ${rftRoundTarget}`;
   $("rftRoundMinus").disabled = rftRoundCount === 0;
   $("rftRoundPlus").disabled = rftRoundTarget !== null && rftRoundCount >= rftRoundTarget;
+  $("amrapRepValue").textContent = String(amrapExtraReps);
+  $("amrapRepMinus").disabled = amrapExtraReps === 0;
+  $("amrapRepCounter").classList.toggle("hidden", manualCounterMode !== "amrap");
+  $("rftRoundCounter").classList.toggle("is-amrap", manualCounterMode === "amrap");
 }
 function getRftRoundTarget(workout, plan) {
   const timerRounds = plan?.blocks?.find(block => block?.type === "countup" && Number.isInteger(block.rounds) && block.rounds > 0)?.rounds;
@@ -539,9 +545,12 @@ function showTimer(w = presets[selected], sourceView = "home") {
   if (!plan) return;
   const format = String(w.workout?.format || w.format || "").toLowerCase();
   const isRft = format === "rounds_for_time";
+  const isAmrap = format === "amrap";
+  manualCounterMode = isRft ? "rft" : isAmrap ? "amrap" : null;
   rftRoundCount = 0;
+  amrapExtraReps = 0;
   rftRoundTarget = isRft ? getRftRoundTarget(w.workout, plan) : null;
-  $("rftRoundCounter").classList.toggle("hidden", !isRft);
+  $("rftRoundCounter").classList.toggle("hidden", !manualCounterMode);
   renderRftRoundCounter();
   engine=new TimerEngine(plan);
   $("setupPanel").classList.add("hidden");
@@ -603,10 +612,19 @@ $("rftRoundPlus").addEventListener("click", () => {
   rftRoundCount = rftRoundTarget === null ? rftRoundCount + 1 : Math.min(rftRoundTarget, rftRoundCount + 1);
   renderRftRoundCounter();
 });
+$("amrapRepMinus").addEventListener("click", () => {
+  amrapExtraReps = Math.max(0, amrapExtraReps - 1);
+  renderRftRoundCounter();
+});
+$("amrapRepPlus").addEventListener("click", () => {
+  amrapExtraReps++;
+  renderRftRoundCounter();
+});
 $("resetButton").addEventListener("click", async () => {
   if (!engine) return;
   prestartState = null;
   rftRoundCount = 0;
+  amrapExtraReps = 0;
   renderRftRoundCounter();
   prestartRemainingMs = 10000;
   lastPrestartCue = 11;
