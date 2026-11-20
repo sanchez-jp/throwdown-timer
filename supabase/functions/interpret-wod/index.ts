@@ -401,6 +401,46 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
   const rawItems = structure?.items;
   if (structure?.type !== "sequence" || !Array.isArray(rawItems) || movements.length !== 3) return workout;
 
+  // Image interpretation can flatten each complete ladder into a directional
+  // heading followed by fifteen movement nodes (five ordered triplets).
+  // Rebuild only this exact 32-node shape; keep each movement's own prescription.
+  if (rawItems.length === 32 &&
+      [0, 16].every(index => rawItems[index]?.type === "rounds" &&
+        (!Array.isArray(rawItems[index].items) || rawItems[index].items.length === 0)) &&
+      rawItems[0].label && rawItems[16].label) {
+    const directionOfHeader = (label: any) => {
+      const value = String(label || "").toLocaleLowerCase();
+      return /descending|descendente/.test(value) ? "descending"
+        : /ascending|ascendente/.test(value) ? "ascending" : null;
+    };
+    const directions = [directionOfHeader(rawItems[0].label), directionOfHeader(rawItems[16].label)];
+    const blocks = [rawItems.slice(1, 16), rawItems.slice(17, 32)];
+    const matchesOrder = (node: any, index: number) =>
+      node?.type === "movement" && node.movementId === movements[index % 3]?.id;
+    if (directions[0] === "descending" && directions[1] === "ascending" &&
+        blocks.every(block => block.length === 15 &&
+          block.every((node: any, index: number) => matchesOrder(node, index)))) {
+      const items = blocks.flatMap((block, blockIndex) =>
+        Array.from({ length: 5 }, (_, roundIndex) => ({
+          type: "rounds",
+          count: 1,
+          label: (blockIndex === 0 ? "Descending " : "Ascending ") + (roundIndex + 1),
+          items: block.slice(roundIndex * 3, roundIndex * 3 + 3).map((node: any) => ({
+            type: "movement",
+            movementId: node.movementId,
+            prescription: typeof node.prescription === "string" ? node.prescription : null,
+            load: typeof node.load === "string" ? node.load : null,
+            ...(node.repProgression !== undefined ? { repProgression: node.repProgression } : {}),
+          })),
+        }))
+      );
+      console.info("Dual ladder rebuilt from directional headers and ordered movement triplets", {
+        rounds: items.length, movementsPerRound: 3,
+      });
+      return { ...workout, structure: { ...structure, items } };
+    }
+  }
+
   // The correction model may flatten the two ladder blocks into:
   // heading + three movements + heading + three movements.
   // Accept that shape only when both movement groups match the catalog order exactly.
