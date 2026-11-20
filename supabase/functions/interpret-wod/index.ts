@@ -445,7 +445,7 @@ function repairDualLadderBlocks(workout: any, sourceText: string) {
   }
 
   const roundCount = progressions[0][0].length;
-  const barbellLoad = sourceText.match(/\bbarbell\s*[-–—:]\s*(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\b/i);
+  const barbellLoad = sourceText.match(/\b(?:barbell|barra)\b[^0-9]{0,20}(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\b/i);
   const snatch = movements.find((movement: any) => /power\s*snatch/i.test(movement.name || ""));
   if (barbellLoad && snatch) {
     snatch.load = barbellLoad[1].replace(/\s*\/\s*/g, "/").replace(/,/g, ".") + " kg";
