@@ -528,6 +528,16 @@ function getDoubleLadderGroups(workout: any) {
     return { groups: items.map((item: any) => item.items), flat: false, headers: items };
   }
 
+  // Gemini image imports may return only the 30 movement nodes, with no
+  // round headers at all. Group by the exact three-movement catalog order;
+  // getDoubleLadderRoundCount separately verifies the mirrored progression.
+  if (items.length === 30 && items.every((node: any) => node?.type === "movement")) {
+    const groups = Array.from({ length: 10 }, (_, index) => items.slice(index * 3, index * 3 + 3));
+    if (groups.every(matchesCatalogOrder)) {
+      return { groups, flat: true, headers: [], directionalHalves: true };
+    }
+  }
+
   // Some model responses emit one empty first-round header followed by
   // the complete flat movement sequence, repeating the catalog order.
   if (items.length > 1 && items[0]?.type === "rounds" && items[0].count === 1 &&
