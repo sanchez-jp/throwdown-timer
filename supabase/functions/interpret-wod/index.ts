@@ -2092,14 +2092,43 @@ Comprueba especialmente:
 El texto original es la fuente de verdad. No des por correcta una interpretación solo porque el JSON sea estructuralmente válido. Si el candidato coloca una progresión de N valores fuera de un circuito de N rondas sin que el original indique un finisher separado, es una discrepancia semántica y debe corregirse agrupando cada valor al final de su ronda. Si no hay certeza por el contexto, devuelve uncertain y explica la ambigüedad.
 
 Para una doble ladder explícita, una corrección completa de ambas mitades prevalece sobre cualquier candidato que solo contenga una. Devuelve status "valid" si no detectas discrepancias semánticas. Devuelve "corrected" únicamente si encuentras un error claro y puedes corregirlo sin suposiciones; en ese caso, correctedResult debe contener el objeto completo schemaVersion 2 corregido. Conserva todos los datos correctos y no inventes información. Devuelve "uncertain" si el texto admite más de una interpretación o no puedes resolver una discrepancia con seguridad; en ese caso correctedResult debe ser null. Incluye findings breves y concretos. No cambies el significado del WOD para hacerlo encajar con el JSON.`;
+    const groqReviewSystemPrompt = `Eres un revisor independiente de WODs. Compara la fuente original (incluida la imagen) con el JSON candidato; la fuente prevalece y el candidato no es evidencia. Comprueba todos los movimientos, orden, repeticiones, cargas, unidades, rondas, estructura, dinámica de equipo y temporizador. No inventes ni corrijas por intuición. En AMRAP solo acepta incrementos de repeticiones si son explícitos y visibles; una cifra o "+" aislado no basta. Si detectas un error inequívoco, devuelve corrected con el objeto schemaVersion 2 completo; si todo es correcto, valid; si hay ambigüedad, uncertain y correctedResult:null. Devuelve también findings[], verifiedMovements (sourceName, sourceEvidence, movementId o null) y verifiedProgressions (movementId, increment, sourceEvidence). La evidencia debe proceder directamente de la fuente original, nunca del JSON candidato ni de OCR. Responde solo JSON válido.`;
     const reviewPrompt = hasImage
       ? `Compara la interpretación candidata directamente con el WOD de la imagen original adjunta. La transcripción sourceText de abajo fue generada por otro modelo y puede contener errores: úsala solo como índice de lectura, nunca como prueba de que una anotación existe. Comprueba directamente en la imagen cada movimiento, repetición, carga y progresión. Un AMRAP repite la secuencia con las repeticiones indicadas; acepta repProgression solo si el incremento por movimiento es claramente visible o si la estructura es inequívocamente una ladder. Si una progresión no se ve claramente, corrígela si el valor base sí es legible; si tampoco puedes determinarlo, devuelve uncertain.\\n\\nTRANSCRIPCIÓN OCR NO VERIFICADA:\\n${result.sourceText || "(no disponible)"}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`
       : `Compara el WOD original con la interpretación candidata. Si es correcta, no la modifiques.\\n\\nWOD ORIGINAL:\\n${sourceText}\\n\\nINTERPRETACIÓN CANDIDATA:\\n${JSON.stringify(result)}\\n\\nDevuelve exclusivamente el objeto JSON de revisión definido en el esquema.`;
+    let reviewResponse: Response | null = null;
+    let reviewProvider: "gemini" | "groq" = selectedProvider;
+    let reviewModel = selectedModel;
     try {
-      const reviewResponse = await requestWithTransientRetries(() => selectedProvider === "groq"
-        ? requestGroq(7000, selectedModel, reviewPrompt, reviewSystemPrompt)
-        : requestGemini(selectedModel, hasImage ? 12000 : 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema),
-      `${selectedProvider} semantic review`);
+      const reviewCandidates = selectedProvider === "groq"
+        ? [
+            { provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel },
+            { provider: "gemini" as const, model: primaryModel },
+          ]
+        : [
+            { provider: "gemini" as const, model: selectedModel },
+            ...(groqApiKey && groqCanInterpretImage
+              ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
+              : []),
+          ];
+      for (const candidate of reviewCandidates) {
+        const candidateResponse = await requestWithTransientRetries(
+          () => candidate.provider === "groq"
+            ? requestGroq(9000, candidate.model, reviewPrompt, groqReviewSystemPrompt)
+            : requestGemini(candidate.model, hasImage ? 12000 : 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema),
+          `${candidate.provider} semantic review`,
+        );
+        if (candidateResponse?.ok) {
+          reviewResponse = candidateResponse;
+          reviewProvider = candidate.provider;
+          reviewModel = candidate.model;
+          break;
+        }
+        if (candidateResponse) {
+          const detail = await candidateResponse.text().catch(() => "");
+          console.warn(`${candidate.provider} semantic review unavailable`, candidateResponse.status, detail.slice(0, 350));
+        }
+      }
       if (reviewResponse?.ok) {
         const reviewText = await extractText(reviewResponse);
         const review = JSON.parse(reviewText);
@@ -2110,7 +2139,7 @@ Para una doble ladder explícita, una corrección completa de ambas mitades prev
           try {
             result = normalizeResult(review.correctedResult, sourceText || result.sourceText || review.correctedResult.sourceText || "", hasImage);
             console.info("AI semantic review corrected interpretation", {
-              provider: selectedProvider, model: selectedModel,
+              provider: reviewProvider, model: reviewModel,
               durationMs: Date.now() - semanticReviewStartedAt,
               findings: Array.isArray(review.findings) ? review.findings.slice(0, 5) : [],
             });
@@ -2131,12 +2160,12 @@ Para una doble ladder explícita, una corrección completa de ambas mitades prev
           addSemanticReviewIssue("SEMANTIC_REVIEW_UNCERTAIN",
             "La revisión automática no ha podido confirmar la fidelidad del WOD: " + (findings.slice(0, 3).join(" ") || "revisa movimientos, repeticiones y cargas frente al original."));
           console.info("AI semantic review uncertain", {
-            provider: selectedProvider, model: selectedModel,
+            provider: reviewProvider, model: reviewModel,
             durationMs: Date.now() - semanticReviewStartedAt,
           });
         } else if (review.status === "valid") {
           console.info("AI semantic review passed", {
-            provider: selectedProvider, model: selectedModel,
+            provider: reviewProvider, model: reviewModel,
             durationMs: Date.now() - semanticReviewStartedAt,
           });
         } else {
