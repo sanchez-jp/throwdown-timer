@@ -1086,9 +1086,10 @@ function normalizeEmomIntervalLabels(result: any, sourceText: string) {
   return result;
 }
 
-function validatePlan(timer: any): string | null {
+function validatePlan(timer: any, workoutFormat: string | null = null): string | null {
   if (timer === null) return null;
   if (!timer || timer.type !== "sequence" || !Array.isArray(timer.blocks) || !timer.blocks.length) return "El plan del temporizador no es válido.";
+  const allowsSegmentedCountups = workoutFormat === "strength_plus_wod";
   let countups = 0;
   for (let i = 0; i < timer.blocks.length; i++) {
     const block = timer.blocks[i];
@@ -1096,10 +1097,10 @@ function validatePlan(timer: any): string | null {
     if (error) return error;
     if (block.type === "countup") {
       countups++;
-      if (i !== timer.blocks.length - 1) return "For Time debe ser el último segmento del temporizador.";
+      if (!allowsSegmentedCountups && i !== timer.blocks.length - 1) return "For Time debe ser el último segmento del temporizador.";
     }
   }
-  return countups > 1 ? "Solo se permite un segmento For Time." : null;
+  return !allowsSegmentedCountups && countups > 1 ? "Solo se permite un segmento For Time." : null;
 }
 
 function normalizeTimerPlan(timer: any) {
@@ -1285,7 +1286,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
     }));
     throw new Error(structureError);
   }
-  const timerError = validatePlan(raw.timer);
+  const timerError = validatePlan(raw.timer, raw.workout.format);
   if (timerError) {
     console.error("AI timer validation diagnostic", JSON.stringify({
       timerType: raw.timer?.type,
