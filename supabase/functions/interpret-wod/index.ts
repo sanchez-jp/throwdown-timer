@@ -1216,6 +1216,25 @@ function normalizeWorkoutDescription(description: string, sourceText: string) {
   return repeatsSourceLine ? "" : value;
 }
 
+function removeEmptyRestSections(workout: any) {
+  const structure = workout?.structure;
+  if (workout?.format !== "strength_plus_wod" || structure?.type !== "sections" ||
+      !Array.isArray(structure.sections)) return workout;
+  const sections = structure.sections.filter((section: any) => {
+    const isRest = /^rest(?:\\b|\\s|$)/i.test(String(section?.name || "").trim());
+    const items = section?.structure?.items;
+    return !(isRest && section?.structure?.type === "sequence" &&
+      Array.isArray(items) && items.length === 0);
+  });
+  if (sections.length !== structure.sections.length) {
+    console.info("Removed empty REST section; rest remains represented by timer", {
+      removed: structure.sections.length - sections.length,
+    });
+    return { ...workout, structure: { ...structure, sections } };
+  }
+  return workout;
+}
+
 function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImage = false) {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
@@ -1233,6 +1252,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
+  raw.workout = removeEmptyRestSections(raw.workout);
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
   raw.workout = repairEmptyYetiIntervalGroups(raw.workout, raw.title);
   raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
