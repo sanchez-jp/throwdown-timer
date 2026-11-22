@@ -1235,6 +1235,43 @@ function removeEmptyRestSections(workout: any) {
   return workout;
 }
 
+function normalizeStrengthPlusWodSections(workout: any) {
+  const structure = workout?.structure;
+  if (workout?.format !== "strength_plus_wod" || structure?.type !== "sections" ||
+      !Array.isArray(structure.sections)) return workout;
+  const movements = Array.isArray(workout.movements) ? workout.movements : [];
+  const visit = (nodes: any[], callback: (node: any) => void) => {
+    if (!Array.isArray(nodes)) return;
+    for (const node of nodes) {
+      if (node?.type === "movement") callback(node);
+      else if (node?.type === "rounds") visit(node.items, callback);
+      else if (node?.type === "choice") for (const option of node.alternatives || []) visit(option.items, callback);
+    }
+  };
+  const sections = structure.sections.map((section: any, index: number) => {
+    let isFind3Rm = false;
+    visit(section?.structure?.items, (node: any) => {
+      if (/find\\s*3\\s*rm/i.test(String(node.prescription || "")) ||
+          /find\\s*3\\s*rm/i.test(String(section.name || ""))) {
+        isFind3Rm = true;
+        node.prescription = "Find 3RM";
+        node.load = null;
+        delete node.loadProgression;
+        const movement = movements.find((item: any) => item.id === node.movementId);
+        if (movement) {
+          movement.load = null;
+          movement.prescription = "Find 3RM";
+        }
+      }
+    });
+    let name = String(section.name || "").trim();
+    if (isFind3Rm && !/find\\s*3\\s*rm/i.test(name)) name += " · FIND 3RM";
+    if (workout.format === "amrap" && index === 0 && !/\\bamrap\\b/i.test(name)) name += " · AMRAP";
+    return { ...section, name };
+  });
+  return { ...workout, structure: { ...structure, sections } };
+}
+
 function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImage = false) {
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
@@ -1253,6 +1290,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
   raw.workout = removeEmptyRestSections(raw.workout);
+  raw.workout = normalizeStrengthPlusWodSections(raw.workout);
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
   raw.workout = repairEmptyYetiIntervalGroups(raw.workout, raw.title);
   raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
