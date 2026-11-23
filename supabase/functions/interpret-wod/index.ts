@@ -839,6 +839,63 @@ function repairEmptyRoundGroups(workout: any) {
 }
 
 
+function repairEmptyAmrapIntervalHeaders(workout: any, sourceText: string) {
+  const structure = workout?.structure;
+  const movements = workout?.movements;
+  const headers = structure?.items;
+  if (workout?.format !== "intervals" || structure?.type !== "sequence" ||
+      !Array.isArray(headers) || headers.length !== 5 ||
+      !Array.isArray(movements) || movements.length !== 6) return workout;
+
+  const normalize = (value: string) => value.toLocaleLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+  const expected = [/^AMRAP\s+6\s+MINUTES$/i, /^REST\s+3\s+MINUTES$/i,
+    /^AMRAP\s+6\s+MINUTES$/i, /^REST\s+3\s+MINUTES$/i, /^AMRAP\s+6\s+MINUTES$/i];
+  const emptyHeaders = headers.every((node: any, index: number) =>
+    node?.type === "rounds" && node.count === 1 &&
+    (!Array.isArray(node.items) || node.items.length === 0) &&
+    expected[index].test(String(node.label || "")));
+  if (!emptyHeaders) return workout;
+
+  const lines = (typeof sourceText === "string" ? sourceText : "")
+    .split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
+  let lineIndex = 0;
+  const occurrences = movements.map((movement: any) => {
+    if (typeof movement?.id !== "string" || typeof movement?.name !== "string" || !movement.name.trim()) return null;
+    const name = normalize(movement.name);
+    for (; lineIndex < lines.length; lineIndex++) {
+      const current = lineIndex;
+      if (!normalize(lines[current]).includes(name)) continue;
+      const line = lines[lineIndex++];
+      const prescription = line.match(/^\s*(\d+(?:[.,]\d+)?(?:\s*-\s*[a-z]+)?)/i)?.[1]
+        ?.replace(/\s+/g, " ").replace(/\s*-\s*/g, "-") || movement.prescription || null;
+      return {
+        type: "movement",
+        movementId: movement.id,
+        prescription: typeof prescription === "string" ? prescription : null,
+        load: typeof movement.load === "string" ? movement.load : null,
+      };
+    }
+    return {
+      type: "movement",
+      movementId: movement.id,
+      prescription: typeof movement.prescription === "string" ? movement.prescription : null,
+      load: typeof movement.load === "string" ? movement.load : null,
+    };
+  });
+  if (occurrences.some((item: any) => !item)) return workout;
+
+  const sections = [0, 1, 2].map(index => ({
+    name: headers[index * 2].label,
+    structure: { type: "sequence", items: occurrences.slice(index * 2, index * 2 + 2) },
+  }));
+  console.warn("Empty AMRAP interval headers rebuilt from ordered movement catalog", {
+    sections: sections.length, movementsPerSection: 2,
+  });
+  return { ...workout, structure: { type: "sections", sections } };
+}
+
+
 function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceText: string) {
   const structure = workout?.structure;
   const groups = structure?.items;
@@ -1297,6 +1354,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairFlatDoubleLadderSequence(raw.workout, sourceTextForNormalization);
   raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
+  raw.workout = repairEmptyAmrapIntervalHeaders(raw.workout, sourceTextForNormalization);
   raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, sourceTextForNormalization);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
