@@ -411,10 +411,11 @@ function renderTimerDescription(workout, timerPlan = null) {
     });
     container.append(list);
   };
-  const addStructureGroup = (label, items, stageIndex = null, phases = []) => {
+  const addStructureGroup = (label, items, stageIndex = null, phases = [], timerPhaseIndex = null) => {
     const group = document.createElement("section");
-    group.className = "timer-description-structure-group" + (stageIndex === null ? "" : " timer-description-stage");
+    group.className = "timer-description-structure-group" + (stageIndex === null && timerPhaseIndex === null ? "" : " timer-description-stage");
     if (stageIndex !== null) group.dataset.timerStageIndex = String(stageIndex);
+    if (timerPhaseIndex !== null) group.dataset.timerPhaseIndex = String(timerPhaseIndex);
     const heading = document.createElement("h3"); heading.textContent = label;
     const headingRow = document.createElement("div");
     headingRow.className = "timer-description-group-heading";
@@ -481,8 +482,12 @@ function renderTimerDescription(workout, timerPlan = null) {
     heading.textContent = "ESTRUCTURA POR SECCIONES";
     panel.append(heading);
     const hasTimedStages = timedStageBlock && timedStageBlock.stages.length === structure.sections.length;
+    const hasAlternatingTimerBlocks = timerPlan?.type === "sequence" &&
+      timerPlan.blocks.length === structure.sections.length &&
+      timerPlan.blocks.every(block => ["countdown", "countup", "emom", "intervals", "rest"].includes(block?.type));
     structure.sections.forEach((section, index) =>
-      addStructureGroup(section.name || "SECCIÓN " + (index + 1), section.structure?.items, hasTimedStages ? index : null)
+      addStructureGroup(section.name || "SECCIÓN " + (index + 1), section.structure?.items,
+        hasTimedStages ? index : null, [], hasAlternatingTimerBlocks ? index : null)
     );
   } else if (emomBlock) {
     addStructureGroup("SECUENCIA", []);
