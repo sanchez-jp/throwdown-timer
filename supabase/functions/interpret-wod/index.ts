@@ -2091,17 +2091,17 @@ Contrato: {schemaVersion:2,title,workout:{format,description,movements:[{id,name
         : "";
       const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.${dualLadderGuidance}\nError de validación: ${validationMessage}\nDescripción original:\n${sourceText}\nRespuesta que debes corregir:\n${output.slice(0, 14000)}`;
       prompt = correctionPrompt;
-      const correctionCandidates = selectedProvider === "groq"
-        ? [
-            { provider: "groq" as const, model: selectedModel },
-            { provider: "gemini" as const, model: primaryModel },
-          ]
-        : [
-            { provider: "gemini" as const, model: selectedModel },
-            ...(groqApiKey && groqCanInterpretImage
-              ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
-              : []),
-          ];
+      const correctionCandidates = [
+        ...(selectedProvider === "groq"
+          ? [{ provider: "groq" as const, model: selectedModel }]
+          : [{ provider: "gemini" as const, model: selectedModel }]),
+        ...modelCandidates
+          .filter(model => selectedProvider !== "gemini" || model !== selectedModel)
+          .map(model => ({ provider: "gemini" as const, model })),
+        ...(selectedProvider !== "groq" && groqApiKey && groqCanInterpretImage
+          ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
+          : []),
+      ];
       let correctedResponse: Response | null = null;
       let correctionFailureStatus = 503;
       for (const candidate of correctionCandidates) {
