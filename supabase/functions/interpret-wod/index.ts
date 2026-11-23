@@ -1087,6 +1087,43 @@ function validateBlock(block: any, depth = 0): string | null {
   return "El plan contiene un bloque de temporizador no compatible.";
 }
 
+function normalizeThreeBlockAmrapRest(result: any, sourceText: string) {
+  const workout = result?.workout;
+  const sections = workout?.structure?.sections;
+  if (workout?.format !== "intervals" || workout?.structure?.type !== "sections" ||
+      !Array.isArray(sections) || sections.length !== 3 || typeof sourceText !== "string") return result;
+
+  const normalize = (value: string) => value.toLowerCase().replace(/\\s+/g, " ").trim();
+  const isSixMinuteAmrap = (section: any) => /^amrap\\s*6\\s*minutes?$/i.test(normalize(String(section?.name || "")));
+  if (!sections.every(isSixMinuteAmrap)) return result;
+
+  const amrapCount = (sourceText.match(/\\bAMRAP\\s*6\\s*MINUTES?\\b/gi) || []).length;
+  const restCount = (sourceText.match(/\\bREST\\s*3\\s*MINUTES?\\b/gi) || []).length;
+  if (amrapCount < 3 || restCount < 2) return result;
+
+  const description = String(workout.description || "").trim();
+  const restDescription = "Descansa 3 minutos entre cada bloque AMRAP.";
+  const updatedDescription = /descansa?\\s+3\\s+minutos?\\s+entre\\s+(?:cada\\s+)?bloques?/i.test(description)
+    ? description : [description, restDescription].filter(Boolean).join(" · ");
+
+  result.workout = { ...workout, description: updatedDescription };
+  result.timer = {
+    type: "sequence",
+    label: "SPIDER-PIG · 3 bloques",
+    blocks: [
+      { type: "countdown", label: "AMRAP 1 · 6 min", durationSeconds: 360 },
+      { type: "rest", label: "DESCANSO · 3 min", durationSeconds: 180 },
+      { type: "countdown", label: "AMRAP 2 · 6 min", durationSeconds: 360 },
+      { type: "rest", label: "DESCANSO · 3 min", durationSeconds: 180 },
+      { type: "countdown", label: "AMRAP 3 · 6 min", durationSeconds: 360 },
+    ],
+  };
+  console.info("Normalized three-block AMRAP with explicit inter-block rests", {
+    blocks: result.timer.blocks.length, totalSeconds: 1440,
+  });
+  return result;
+}
+
 function normalizeEmomIntervalLabels(result: any, sourceText: string) {
   if (!["emom", "e2mom"].includes(result?.workout?.format) || !Array.isArray(result?.timer?.blocks)) return result;
   const emomBlocks = result.timer.blocks.filter((block: any) => block?.type === "emom");
@@ -1323,6 +1360,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   }
   raw.timer = normalizeExplicitWorkRestIntervals(raw.timer, sourceTextForNormalization);
   raw.timer = normalizeTimerPlan(raw.timer);
+  raw = normalizeThreeBlockAmrapRest(raw, sourceTextForNormalization);
   raw = normalizeExplicitForTimeCap(raw, sourceTextForNormalization);
   raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, sourceTextForNormalization);
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
