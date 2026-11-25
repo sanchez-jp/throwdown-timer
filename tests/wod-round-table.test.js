@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeExplicitForTimeRoundTable } from "../supabase/functions/interpret-wod/wod-round-table.js";
+import { inferExplicitWorkoutFormat, normalizeExplicitForTimeRoundTable } from "../supabase/functions/interpret-wod/wod-round-table.js";
 
 test("turns an explicit descending For Time table into fixed round groups", () => {
   const raw = {
@@ -70,4 +70,11 @@ FOR TIME 14 MIN
   assert.deepEqual(result.workout.structure.items.map(round => round.items[0].load), ["25 kg", "30 kg", "35 kg"]);
   assert.equal(result.workout.movements[0].load, null);
   assert.equal(result.workout.movements[1].prescription, null);
+});
+
+test("infers an explicit workout format from model description when OCR text is unavailable", () => {
+  assert.equal(inferExplicitWorkoutFormat("", "FOR TIME 14 MIN", "GIMNÁSTICOS"), "for_time");
+  assert.equal(inferExplicitWorkoutFormat("", "AMRAP 12 MIN"), "amrap");
+  assert.equal(inferExplicitWorkoutFormat("", "E2MOM 10 MIN"), "e2mom");
+  assert.equal(inferExplicitWorkoutFormat("", "custom workout"), null);
 });

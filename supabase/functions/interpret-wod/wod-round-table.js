@@ -1,3 +1,9 @@
+export function inferExplicitWorkoutFormat(...values) {
+  const text = values.filter(value => typeof value === "string").join("\n");
+  const match = text.match(/\b(for\s+time|e2mom|amrap|emom|tabata|chipper|ladder|death\s+by)\b/i);
+  return match ? match[1].toLowerCase().replace(/\s+/g, "_") : null;
+}
+
 function movementTokens(value) {
   const tokens = String(value || "").toLocaleLowerCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

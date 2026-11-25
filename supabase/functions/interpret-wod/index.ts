@@ -3,7 +3,7 @@ import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expan
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, shouldFlagUnverifiedMovementCoverage } from "./wod-semantic-review.js";
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
-import { normalizeExplicitForTimeRoundTable } from "./wod-round-table.js";
+import { inferExplicitWorkoutFormat, normalizeExplicitForTimeRoundTable } from "./wod-round-table.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1430,7 +1430,10 @@ function completeSafeResponseDefaults(raw: any, sourceText: string) {
   }
 
   if (!formats.has(raw.workout.format)) {
-    const explicit = sourceText.match(/\\b(for\\s+time|amrap|emom|e2mom|tabata|chipper|ladder|death\\s+by)\\b/i)?.[1]?.toLowerCase().replace(/\\s+/g, "_");
+    const explicit = inferExplicitWorkoutFormat(
+      sourceText, raw.workout.description, raw.title, raw.timer?.label,
+      ...(Array.isArray(raw.timer?.blocks) ? raw.timer.blocks.map((block: any) => block?.label) : [])
+    );
     if (explicit) raw.workout.format = explicit;
   }
   if (raw.timer === undefined && raw.workout.format === "for_time") {
