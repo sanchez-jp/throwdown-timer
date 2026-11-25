@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inferExplicitWorkoutFormat, normalizeExplicitForTimeRoundTable } from "../supabase/functions/interpret-wod/wod-round-table.js";
+import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable } from "../supabase/functions/interpret-wod/wod-round-table.js";
 
 test("turns an explicit descending For Time table into fixed round groups", () => {
   const raw = {
