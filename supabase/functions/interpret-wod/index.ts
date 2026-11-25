@@ -1416,7 +1416,34 @@ function normalizeStrengthPlusWodSections(workout: any) {
   return { ...workout, structure: { ...structure, sections } };
 }
 
+function completeSafeResponseDefaults(raw: any, sourceText: string) {
+  if (!raw || typeof raw !== "object" || !raw.workout || typeof raw.workout !== "object") return raw;
+
+  // Defaults only non-semantic envelope fields; never fabricate movements or structure.
+  if (raw.schemaVersion == null) raw.schemaVersion = 2;
+  if (typeof raw.title !== "string" || !raw.title.trim()) raw.title = "NUEVO WOD";
+  if (typeof raw.workout.description !== "string") raw.workout.description = "";
+  if (!raw.interpretation || typeof raw.interpretation !== "object") raw.interpretation = { status: "ready", issues: [] };
+  else {
+    if (typeof raw.interpretation.status !== "string") raw.interpretation.status = "ready";
+    if (!Array.isArray(raw.interpretation.issues)) raw.interpretation.issues = [];
+  }
+
+  if (!formats.has(raw.workout.format)) {
+    const explicit = sourceText.match(/\\b(for\\s+time|amrap|emom|e2mom|tabata|chipper|ladder|death\\s+by)\\b/i)?.[1]?.toLowerCase().replace(/\\s+/g, "_");
+    if (explicit) raw.workout.format = explicit;
+  }
+  if (raw.timer === undefined && raw.workout.format === "for_time") {
+    const cap = sourceText.match(/\\b(?:time\\s*cap|for\\s+time)\\s*(?::|-)?\\s*(\\d+)\\s*(?:min|minutes?|m)\\b/i);
+    raw.timer = { type: "sequence", label: "For Time", blocks: [{
+      type: "countup", label: "For Time", timeCapSeconds: cap ? Number(cap[1]) * 60 : null, rounds: null,
+    }] };
+  }
+  return raw;
+}
+
 function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImage = false) {
+  raw = completeSafeResponseDefaults(raw, sourceTextForNormalization);
   raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
   raw = expandDescendingIntervalProgression(raw);
   raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
@@ -1432,9 +1459,20 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw = normalizeExplicitForTimeCap(raw, sourceTextForNormalization);
   raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, sourceTextForNormalization);
   if (raw && (typeof raw.title !== "string" || !raw.title.trim())) raw.title = "NUEVO WOD";
-  if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
-      !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
-      !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
+  const missingFields: string[] = [];
+  if (!raw || raw.schemaVersion !== 2) missingFields.push("schemaVersion");
+  if (!raw || typeof raw.title !== "string" || !raw.title.trim()) missingFields.push("title");
+  if (!raw?.workout || typeof raw.workout !== "object") missingFields.push("workout");
+  else {
+    if (!formats.has(raw.workout.format)) missingFields.push("workout.format");
+    if (typeof raw.workout.description !== "string") missingFields.push("workout.description");
+    if (!Array.isArray(raw.workout.movements) || raw.workout.movements.length === 0) missingFields.push("workout.movements");
+    if (!raw.workout.structure || typeof raw.workout.structure !== "object") missingFields.push("workout.structure");
+  }
+  if (missingFields.length) {
+    console.error("AI response missing required fields", { missingFields, sourceTextAvailable: Boolean(sourceTextForNormalization) });
+    throw new Error("La IA ha devuelto una interpretación incompleta (" + missingFields.join(", ") + ").");
+  }
   raw.workout = removeEmptyRestSections(raw.workout);
   raw.workout = normalizeStrengthPlusWodSections(raw.workout);
   raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
