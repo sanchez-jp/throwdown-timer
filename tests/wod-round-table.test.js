@@ -78,3 +78,22 @@ test("infers an explicit workout format from model description when OCR text is 
   assert.equal(inferExplicitWorkoutFormat("", "E2MOM 10 MIN"), "e2mom");
   assert.equal(inferExplicitWorkoutFormat("", "custom workout"), null);
 });
+
+
+test("recovers omitted workout format from coherent structure and timer without another AI request", () => {
+  assert.equal(inferWorkoutFormatFromStructure(
+    { structure: { type: "sequence" } },
+    { type: "sequence", blocks: [{ type: "countup", label: "For Time", timeCapSeconds: 840 }] }
+  ), "for_time");
+  assert.equal(inferWorkoutFormatFromStructure(
+    { structure: { type: "rounds" } },
+    { type: "sequence", blocks: [{ type: "countup", label: "For Time", rounds: 5 }] }
+  ), "rounds_for_time");
+  assert.equal(inferWorkoutFormatFromStructure(
+    { structure: { type: "sequence" } },
+    { type: "sequence", blocks: [{ type: "countdown", label: "AMRAP" }] }
+  ), null);
+  assert.equal(inferWorkoutFormatFromStructure(
+    { structure: { type: "sequence" } }, null
+  ), null);
+});

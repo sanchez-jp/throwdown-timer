@@ -168,3 +168,21 @@ export function normalizeExplicitForTimeRoundTable(raw, sourceText) {
     workout: { ...workout, movements: updatedMovements, structure: { type: "sequence", items } },
   };
 }
+
+
+export function inferWorkoutFormatFromStructure(workout, timer) {
+  const structureType = workout?.structure?.type;
+  if (structureType === "chipper") return "chipper";
+  if (structureType === "ladder") return "ladder";
+  const blocks = Array.isArray(timer?.blocks) ? timer.blocks : [];
+  const timerTypes = new Set(blocks.map(block => block?.type));
+  if (timerTypes.has("intervals")) return "intervals";
+  if (timerTypes.has("emom")) return "emom";
+  if (timerTypes.has("e2mom")) return "e2mom";
+  if (timerTypes.has("tabata")) return "tabata";
+  if (timerTypes.has("countup")) {
+    if (structureType === "rounds") return "rounds_for_time";
+    if (structureType === "sequence") return "for_time";
+  }
+  return null;
+}

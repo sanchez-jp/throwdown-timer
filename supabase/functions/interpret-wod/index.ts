@@ -3,7 +3,7 @@ import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expan
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, shouldFlagUnverifiedMovementCoverage } from "./wod-semantic-review.js";
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
-import { inferExplicitWorkoutFormat, normalizeExplicitForTimeRoundTable } from "./wod-round-table.js";
+import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable } from "./wod-round-table.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1435,6 +1435,13 @@ function completeSafeResponseDefaults(raw: any, sourceText: string) {
       ...(Array.isArray(raw.timer?.blocks) ? raw.timer.blocks.map((block: any) => block?.label) : [])
     );
     if (explicit) raw.workout.format = explicit;
+    else {
+      const inferred = inferWorkoutFormatFromStructure(raw.workout, raw.timer);
+      if (inferred) {
+        raw.workout.format = inferred;
+        console.info("Recovered missing workout format from existing structure and timer", { format: inferred });
+      }
+    }
   }
   if (raw.timer === undefined && raw.workout.format === "for_time") {
     const cap = sourceText.match(/\\b(?:time\\s*cap|for\\s+time)\\s*(?::|-)?\\s*(\\d+)\\s*(?:min|minutes?|m)\\b/i);
