@@ -41,19 +41,19 @@ function explicitDumbbellBannerLoad(sourceText, workout, tableItems) {
 }
 
 function parseAlignedValues(value) {
-  return value.split(/\\s*[-–—]\\s*/).map(item => item.trim()).filter(Boolean);
+  return value.split(/\s*[-–—]\s*/).map(item => item.trim()).filter(Boolean);
 }
 
 function normalizeTransposedRoundTable(raw, sourceText, workout, movements) {
   const rows = [];
-  for (const sourceLine of sourceText.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean)) {
+  for (const sourceLine of sourceText.split(/\r?\n/).map(line => line.trim()).filter(Boolean)) {
     const movement = matchMovementLine(sourceLine, movements);
     if (!movement) continue;
-    const reps = sourceLine.match(/^\\s*(?:[-•*]\\s*)?(\\d+(?:[.,]\\d+)?(?:\\s*[-–—]\\s*\\d+(?:[.,]\\d+)?){1,})\\s+/);
+    const reps = sourceLine.match(/^\s*(?:[-•*]\s*)?(\d+(?:[.,]\d+)?(?:\s*[-–—]\s*\d+(?:[.,]\d+)?){1,})\s+/);
     if (!reps) continue;
     const values = parseAlignedValues(reps[1]);
-    const loadMatch = sourceLine.match(/\\b(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+(?:[.,]\\d+)?){2,})\\s*kg\\b/i);
-    const loads = loadMatch ? loadMatch[1].split(/\\s*\\/\\s*/).map(value => value.trim()) : null;
+    const loadMatch = sourceLine.match(/\b(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?){2,})\s*kg\b/i);
+    const loads = loadMatch ? loadMatch[1].split(/\s*\/\s*/).map(value => value.trim()) : null;
     rows.push({ movementId: movement.id, sourceLine, reps: values, loads });
   }
 
