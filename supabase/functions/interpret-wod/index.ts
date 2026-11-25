@@ -1423,9 +1423,12 @@ function completeSafeResponseDefaults(raw: any, sourceText: string) {
   if (raw.schemaVersion == null) raw.schemaVersion = 2;
   if (typeof raw.title !== "string" || !raw.title.trim() || /^NUEVO\\s+WOD$/i.test(raw.title.trim())) {
     const inferredTitle = inferWorkoutTitle(sourceText, raw.sourceText, raw.workout.description);
-    const format = inferExplicitWorkoutFormat(sourceText, raw.workout.description, raw.timer?.label);
+    const format = inferExplicitWorkoutFormat(
+      sourceText, raw.workout.description, raw.timer?.label,
+      ...(Array.isArray(raw.timer?.blocks) ? raw.timer.blocks.map((block: any) => block?.label) : [])
+    ) || inferWorkoutFormatFromStructure(raw.workout, raw.timer);
     const cap = raw.timer?.blocks?.find((block: any) => block?.type === "countup")?.timeCapSeconds;
-    const formatLabel = format === "for_time" ? "FOR TIME" : format?.toUpperCase();
+    const formatLabel = format === "for_time" || format === "rounds_for_time" ? "FOR TIME" : format?.toUpperCase();
     const timerTitle = [formatLabel, Number.isInteger(cap) && cap > 0 ? Math.round(cap / 60) + " MIN" : null].filter(Boolean).join(" · ");
     raw.title = inferredTitle || timerTitle || "NUEVO WOD";
   }
