@@ -9,13 +9,27 @@ function movementTokens(value) {
   return tokens.map(token => token.endsWith("s") && token.length > 3 ? token.slice(0, -1) : token);
 }
 
+function tokensEquivalent(left, right) {
+  if (left === right) return true;
+  if (Math.abs(left.length - right.length) > 1 || Math.min(left.length, right.length) < 5) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (left.length > right.length) i++;
+    else if (right.length > left.length) j++;
+    else { i++; j++; }
+  }
+  return edits + (i < left.length || j < right.length ? 1 : 0) <= 1;
+}
+
 function matchMovementLine(line, movements) {
   const lineTokens = movementTokens(line);
   const matches = movements.filter(movement => {
     const nameTokens = movementTokens(movement?.name);
     if (!nameTokens.length) return false;
     for (let index = 0; index <= lineTokens.length - nameTokens.length; index++) {
-      if (nameTokens.every((token, offset) => lineTokens[index + offset] === token)) return true;
+      if (nameTokens.every((token, offset) => tokensEquivalent(lineTokens[index + offset], token))) return true;
     }
     return false;
   });
