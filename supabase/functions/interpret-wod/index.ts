@@ -2209,10 +2209,10 @@ Contrato: {schemaVersion:2,title,workout:{format,description,movements:[{id,name
       }
     }
     const semanticReviewStartedAt = Date.now();
-    const addSemanticReviewIssue = (code: string, message: string) => {
+    const addSemanticReviewIssue = (code: string, message: string, severity: "blocking" | "warning" = "blocking") => {
       result.interpretation.issues = Array.isArray(result.interpretation?.issues) ? result.interpretation.issues : [];
-      result.interpretation.issues.push({ severity: "blocking", code, message: message.slice(0, 400), fieldPath: null, question: null });
-      result.interpretation.status = "needs_review";
+      result.interpretation.issues.push({ severity, code, message: message.slice(0, 400), fieldPath: null, question: null });
+      if (severity === "blocking") result.interpretation.status = "needs_review";
     };
     let semanticProgressionEvidence: any[] = [];
     let semanticMovementEvidence: any[] = [];
@@ -2325,14 +2325,14 @@ Para una doble ladder explícita, una corrección completa de ambas mitades prev
         const detail = reviewResponse ? await reviewResponse.text() : "provider timeout after bounded retries";
         console.warn("AI semantic review unavailable; keeping validated interpretation",
           reviewResponse?.status || "timeout", detail.slice(0, 300));
-        addSemanticReviewIssue("SEMANTIC_REVIEW_UNAVAILABLE", "No se pudo verificar la fidelidad semántica del WOD. Revisa movimientos, repeticiones y cargas frente al original.");
+        addSemanticReviewIssue("SEMANTIC_REVIEW_UNAVAILABLE", "La revisión automática no ha podido completarse por indisponibilidad de los proveedores. Comprueba manualmente movimientos, repeticiones y cargas frente al original.", "warning");
       }
     } catch (reviewError) {
       console.warn("AI semantic review failed; keeping validated interpretation", {
         durationMs: Date.now() - semanticReviewStartedAt,
         error: reviewError instanceof Error ? reviewError.name : "unknown",
       });
-      addSemanticReviewIssue("SEMANTIC_REVIEW_UNAVAILABLE", "No se pudo verificar la fidelidad semántica del WOD. Revisa movimientos, repeticiones y cargas frente al original.");
+      addSemanticReviewIssue("SEMANTIC_REVIEW_UNAVAILABLE", "La revisión automática no ha podido completarse por indisponibilidad de los proveedores. Comprueba manualmente movimientos, repeticiones y cargas frente al original.", "warning");
     }
 
     const movementCoverage = findUnverifiedMovementCoverage(result.workout, semanticMovementEvidence);

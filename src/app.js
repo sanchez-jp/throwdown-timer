@@ -1910,8 +1910,13 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     $("aiReviewConfirmation").classList.remove("hidden");
     $("aiReviewConfirmed").checked = false;
     const issues = result.interpretation.issues || [];
-    status.textContent = issues.length
-      ? "Interpretación recibida con observaciones:\n" + issues.map(item => "• " + item.message + (item.question ? " " + item.question : "")).join("\n") + "\nRevisa todos los campos antes de guardar."
+    const blockingIssues = issues.filter(item => item.severity !== "warning");
+    const warningIssues = issues.filter(item => item.severity === "warning");
+    const issueMessages = [];
+    if (blockingIssues.length) issueMessages.push("Interpretación recibida con observaciones:\n" + blockingIssues.map(item => "• " + item.message + (item.question ? " " + item.question : "")).join("\n"));
+    if (warningIssues.length) issueMessages.push("Avisos:\n" + warningIssues.map(item => "• " + item.message).join("\n"));
+    status.textContent = issueMessages.length
+      ? issueMessages.join("\n") + "\nComprueba todos los campos frente al original antes de guardar."
       : "Interpretación recibida. Revisa el título, los movimientos, su orden y el temporizador antes de guardar.";
     if (result.timer === null) {
       status.textContent += "\nNo se ha inventado una duración: configura el temporizador manualmente.";
