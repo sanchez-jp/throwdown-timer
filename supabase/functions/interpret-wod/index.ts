@@ -3,7 +3,7 @@ import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expan
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, shouldFlagUnverifiedMovementCoverage } from "./wod-semantic-review.js";
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
-import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable } from "./wod-round-table.js";
+import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, inferWorkoutTitle, normalizeExplicitForTimeRoundTable } from "./wod-round-table.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1421,7 +1421,14 @@ function completeSafeResponseDefaults(raw: any, sourceText: string) {
 
   // Defaults only non-semantic envelope fields; never fabricate movements or structure.
   if (raw.schemaVersion == null) raw.schemaVersion = 2;
-  if (typeof raw.title !== "string" || !raw.title.trim()) raw.title = "NUEVO WOD";
+  if (typeof raw.title !== "string" || !raw.title.trim() || /^NUEVO\\s+WOD$/i.test(raw.title.trim())) {
+    const inferredTitle = inferWorkoutTitle(sourceText, raw.sourceText, raw.workout.description);
+    const format = inferExplicitWorkoutFormat(sourceText, raw.workout.description, raw.timer?.label);
+    const cap = raw.timer?.blocks?.find((block: any) => block?.type === "countup")?.timeCapSeconds;
+    const formatLabel = format === "for_time" ? "FOR TIME" : format?.toUpperCase();
+    const timerTitle = [formatLabel, Number.isInteger(cap) && cap > 0 ? Math.round(cap / 60) + " MIN" : null].filter(Boolean).join(" · ");
+    raw.title = inferredTitle || timerTitle || "NUEVO WOD";
+  }
   if (typeof raw.workout.description !== "string") raw.workout.description = "";
   if (!raw.interpretation || typeof raw.interpretation !== "object") raw.interpretation = { status: "ready", issues: [] };
   else {
@@ -1469,7 +1476,9 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw = normalizeSectionRestBlocks(raw);
   raw = normalizeExplicitForTimeCap(raw, effectiveSourceText);
   raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, effectiveSourceText);
-  if (raw && (typeof raw.title !== "string" || !raw.title.trim())) raw.title = "NUEVO WOD";
+  if (raw && (typeof raw.title !== "string" || !raw.title.trim() || /^NUEVO\\s+WOD$/i.test(raw.title.trim()))) {
+    raw.title = inferWorkoutTitle(effectiveSourceText, raw.workout?.description) || raw.title;
+  }
   const missingFields: string[] = [];
   if (!raw || raw.schemaVersion !== 2) missingFields.push("schemaVersion");
   if (!raw || typeof raw.title !== "string" || !raw.title.trim()) missingFields.push("title");
@@ -1496,8 +1505,8 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, effectiveSourceText);
   raw = normalizeSectionRestBlocks(raw);
   raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, effectiveSourceText);
-  raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
   raw.workout = applyAlignedRoundProgressions(raw.workout, effectiveSourceText);
+  raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
   normalizeMovementReferences(raw.workout);
   raw.workout = repairAmrapRepProgressions(raw.workout, effectiveSourceText, !sourceIsImage);
   raw.workout = omitEmptyRepProgressions(raw.workout);
@@ -2361,7 +2370,12 @@ Para una doble ladder explícita, una corrección completa de ambas mitades prev
           });
         } else {
           console.warn("AI semantic review returned an unknown status; keeping validated interpretation");
-          addSemanticReviewIssue("SEMANTIC_REVIEW_INVALID", "La revisión semántica devolvió un resultado no válido. Revisa el WOD original antes de iniciar.");
+          console.warn("AI semantic review returned an unsupported status", {
+            provider: reviewProvider, model: reviewModel,
+            status: review.status ?? null, keys: Object.keys(review).slice(0, 12),
+          });
+          addSemanticReviewIssue("SEMANTIC_REVIEW_INVALID",
+            "La revisión automática ha devuelto una respuesta con formato no reconocido. Comprueba los campos frente al WOD original.", "warning");
         }
       } else {
         const detail = reviewResponse ? await reviewResponse.text() : "provider timeout after bounded retries";

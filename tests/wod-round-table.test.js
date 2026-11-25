@@ -97,3 +97,59 @@ test("recovers omitted workout format from coherent structure and timer without 
     { structure: { type: "sequence" } }, null
   ), null);
 });
+
+test("normalizes fixed For Time rounds from aligned rows when one movement has constant reps", () => {
+  const raw = {
+    title: "NUEVO WOD",
+    workout: {
+      format: "custom",
+      description: "",
+      movements: [
+        { id: "db-bench-press", name: "DB Bench Press", prescription: "30-20-10", load: "25/30/35 kg" },
+        { id: "bar-muscle-ups", name: "Bar Muscle-Ups", prescription: "15-10-5", load: null },
+        { id: "sit-ups", name: "Sit-Ups", prescription: "30", load: null },
+      ],
+      structure: { type: "sequence", items: [
+        { type: "rounds", count: 1, label: "RONDA 1", items: [] },
+        { type: "rounds", count: 1, label: "RONDA 2", items: [] },
+        { type: "rounds", count: 1, label: "RONDA 3", items: [] },
+      ] },
+    },
+    timer: { type: "sequence", label: "For Time", blocks: [{ type: "countup", label: "For Time", timeCapSeconds: 840 }] },
+  };
+  const result = normalizeExplicitForTimeRoundTable(raw, "");
+  assert.equal(result.workout.format, "for_time");
+  assert.deepEqual(result.workout.structure.items.map(round => round.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  ]);
+  assert.deepEqual(result.workout.structure.items.map(round => round.items[0].load), ["25 kg", "30 kg", "35 kg"]);
+  assert.equal(result.workout.movements[0].prescription, null);
+  assert.equal(result.workout.movements[0].load, null);
+});
+
+test("normalizes aligned source rows with a scalar movement repeated across rounds", () => {
+  const raw = {
+    workout: {
+      format: "for_time",
+      description: "",
+      movements: [
+        { id: "db-bench-press", name: "DB Bench Press", prescription: null, load: null },
+        { id: "bar-muscle-ups", name: "Bar Muscle-Ups", prescription: null, load: null },
+        { id: "sit-ups", name: "Sit-Ups", prescription: null, load: null },
+      ],
+      structure: { type: "sequence", items: [] },
+    },
+    timer: { type: "sequence", label: "For Time", blocks: [{ type: "countup", label: "For Time", timeCapSeconds: 840 }] },
+  };
+  const source = "FOR TIME 14 MIN\n30-20-10 DB BENCH PRESS 25/30/35 KG\n15-10-5 BMU\n30 SIT UPS";
+  const result = normalizeExplicitForTimeRoundTable(raw, source);
+  assert.deepEqual(result.workout.structure.items.map(round => round.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  ]);
+  assert.deepEqual(result.workout.structure.items.map(round => round.items[0].load), ["25 kg", "30 kg", "35 kg"]);
+});
+
+test("infers a descriptive title from a short source heading", () => {
+  assert.equal(inferWorkoutTitle("GIMNÁSTICOS\nFOR TIME 14 MIN\n30-20-10 DB BENCH PRESS"), "GIMNÁSTICOS");
+  assert.equal(inferWorkoutTitle("FOR TIME 14 MIN"), null);
+});
