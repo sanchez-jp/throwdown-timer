@@ -1431,6 +1431,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw = normalizeSectionRestBlocks(raw);
   raw = normalizeExplicitForTimeCap(raw, sourceTextForNormalization);
   raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, sourceTextForNormalization);
+  if (raw && (typeof raw.title !== "string" || !raw.title.trim())) raw.title = "NUEVO WOD";
   if (!raw || raw.schemaVersion !== 2 || typeof raw.title !== "string" || !raw.title.trim() ||
       !raw.workout || !formats.has(raw.workout.format) || typeof raw.workout.description !== "string" ||
       !Array.isArray(raw.workout.movements)) throw new Error("La IA ha devuelto una interpretación incompleta.");
