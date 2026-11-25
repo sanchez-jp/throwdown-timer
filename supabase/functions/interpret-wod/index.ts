@@ -760,6 +760,45 @@ function repairInterleavedDoubleLadderHeaders(workout: any) {
   return { ...workout, structure: { ...structure, items: repaired } };
 }
 
+function nestFlatMovementsUnderEmptyRoundHeaders(workout: any) {
+  const structure = workout?.structure;
+  const nodes = structure?.items;
+  if (!["sequence", "chipper"].includes(structure?.type) ||
+      !Array.isArray(nodes) || !nodes.some((node: any) =>
+        node?.type === "rounds" && (!Array.isArray(node.items) || node.items.length === 0))) return workout;
+
+  const grouped: any[] = [];
+  let currentRound: any = null;
+  let changed = false;
+  for (const node of nodes) {
+    if (node?.type === "rounds") {
+      if (currentRound) {
+        if (!currentRound.items.length) return workout;
+        grouped.push(currentRound);
+      }
+      if (!Number.isInteger(node.count) || node.count < 1 ||
+          (node.label !== undefined && (typeof node.label !== "string" || !node.label.trim())) ||
+          (Array.isArray(node.items) && node.items.length)) return workout;
+      currentRound = { ...node, items: [] };
+      changed = true;
+      continue;
+    }
+    if (node?.type !== "movement" || !currentRound) return workout;
+    currentRound.items.push(node);
+  }
+  if (currentRound) {
+    if (!currentRound.items.length) return workout;
+    grouped.push(currentRound);
+  }
+  if (!changed || !grouped.length) return workout;
+
+  console.info("Flat movements nested under their preceding round headers", {
+    rounds: grouped.length,
+    movementsPerRound: grouped.map((round: any) => round.items.length),
+  });
+  return { ...workout, structure: { ...structure, items: grouped } };
+}
+
 function repairEmptyRoundGroups(workout: any) {
   let structure = workout?.structure;
   const movements = workout?.movements;
@@ -1402,6 +1441,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
   raw.workout = repairFlatDoubleLadderSequence(raw.workout, sourceTextForNormalization);
   raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
+  raw.workout = nestFlatMovementsUnderEmptyRoundHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, sourceTextForNormalization);
   raw = normalizeSectionRestBlocks(raw);
