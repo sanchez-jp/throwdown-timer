@@ -841,47 +841,40 @@ function repairEmptyRoundGroups(workout: any) {
 
 function repairEmptyTimedWorkHeaders(workout: any, timer: any, sourceText: string) {
   const structure = workout?.structure;
-  const headers = structure?.items;
   const movements = workout?.movements;
   const blocks = timer?.blocks;
   if (workout?.format !== "intervals" || structure?.type !== "sequence" ||
-      !Array.isArray(headers) || headers.length < 3 ||
+      !Array.isArray(structure.items) ||
+      !structure.items.some((node: any) => node?.type === "rounds" &&
+        (!Array.isArray(node.items) || node.items.length === 0)) ||
       !Array.isArray(movements) || !movements.length ||
-      !Array.isArray(blocks) || blocks.length !== headers.length ||
+      !Array.isArray(blocks) || blocks.length !== 1 ||
+      blocks[0]?.type !== "intervals" || !Number.isInteger(blocks[0].rounds) ||
       typeof sourceText !== "string" || !sourceText.trim()) return workout;
 
-  const isRestLabel = (value: any) => /\b(?:rest|descanso)\b/i.test(String(value || ""));
-  const isEmptyHeader = (node: any) => node?.type === "rounds" && node.count === 1 &&
-    (!Array.isArray(node.items) || node.items.length === 0) && node.movementId == null &&
-    typeof node.label === "string" && node.label.trim();
-  if (!headers.every(isEmptyHeader) ||
-      !headers.every((header: any, index: number) =>
-        isRestLabel(header.label) === (blocks[index]?.type === "rest")) ||
-      isRestLabel(headers[0].label) || isRestLabel(headers[headers.length - 1].label)) return workout;
-
-  const escapeRegex = (value: string) => value.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&");
-  const headerMatches = headers.map((header: any) => {
-    const pattern = escapeRegex(String(header.label).trim()).replace(/\s+/g, "\\s+");
-    return new RegExp(pattern, "ig");
-  });
-  const positions: { start: number; end: number }[] = [];
-  let searchFrom = 0;
-  for (const pattern of headerMatches) {
-    pattern.lastIndex = searchFrom;
-    const match = pattern.exec(sourceText);
-    if (!match) return workout;
-    positions.push({ start: match.index, end: match.index + match[0].length });
-    searchFrom = match.index + match[0].length;
-  }
+  const headingPattern = /\b(AMRAP|REST|DESCANSO)\s+(\d+)\s*(?:MINUTES?|MINS?|MIN|M|')(?=\s|$)/ig;
+  const headings = [...sourceText.matchAll(headingPattern)].map((match: any) => ({
+    type: /^(?:REST|DESCANSO)$/i.test(match[1]) ? "rest" : "work",
+    minutes: Number(match[2]),
+    start: match.index,
+    end: match.index + match[0].length,
+    label: match[0].trim(),
+  }));
+  const workHeadings = headings.filter((heading: any) => heading.type === "work");
+  const restHeadings = headings.filter((heading: any) => heading.type === "rest");
+  const interval = blocks[0];
+  if (workHeadings.length !== interval.rounds ||
+      restHeadings.length !== (interval.restSeconds > 0 ? interval.rounds - 1 : 0) ||
+      workHeadings.some((heading: any) => heading.minutes * 60 !== interval.workSeconds) ||
+      restHeadings.some((heading: any) => heading.minutes * 60 !== interval.restSeconds)) return workout;
 
   const normalize = (value: string) => value.toLocaleLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
   const sections: any[] = [];
   let movementIndex = 0;
-  for (let index = 0; index < headers.length; index++) {
-    if (isRestLabel(headers[index].label)) continue;
-    const segment = normalize(sourceText.slice(positions[index].end,
-      positions[index + 1]?.start ?? sourceText.length));
+  for (const heading of workHeadings) {
+    const nextHeading = headings.find((candidate: any) => candidate.start > heading.start);
+    const segment = normalize(sourceText.slice(heading.end, nextHeading?.start ?? sourceText.length));
     const items: any[] = [];
     while (movementIndex < movements.length) {
       const movement = movements[movementIndex];
@@ -896,13 +889,17 @@ function repairEmptyTimedWorkHeaders(workout: any, timer: any, sourceText: strin
       movementIndex++;
     }
     if (!items.length) return workout;
-    sections.push({ name: headers[index].label, structure: { type: "sequence", items } });
+    sections.push({
+      name: heading.label,
+      structure: { type: "sequence", items },
+    });
   }
-  if (movementIndex !== movements.length || !sections.length) return workout;
+  if (movementIndex !== movements.length) return workout;
 
-  console.info("Empty timed work headers rebuilt from source-verified movement groups", {
+  console.info("Empty interval round groups rebuilt from source-verified work/rest headings", {
     workSections: sections.length,
     movementsPerSection: sections.map((section: any) => section.structure.items.length),
+    timerRounds: interval.rounds,
   });
   return { ...workout, structure: { type: "sections", sections } };
 }
