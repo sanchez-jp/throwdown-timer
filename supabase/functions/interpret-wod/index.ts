@@ -1446,21 +1446,22 @@ function completeSafeResponseDefaults(raw: any, sourceText: string) {
 }
 
 function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImage = false) {
-  raw = completeSafeResponseDefaults(raw, sourceTextForNormalization);
-  raw = attachTrailingOptionalLoad(raw, sourceTextForNormalization);
+  const effectiveSourceText = sourceTextForNormalization || (typeof raw?.sourceText === "string" ? raw.sourceText : "");
+  raw = completeSafeResponseDefaults(raw, effectiveSourceText);
+  raw = attachTrailingOptionalLoad(raw, effectiveSourceText);
   raw = expandDescendingIntervalProgression(raw);
-  raw = expandAlternatingCleanVariants(raw, sourceTextForNormalization);
-  raw = expandProgressiveLoadLadder(raw, sourceTextForNormalization);
+  raw = expandAlternatingCleanVariants(raw, effectiveSourceText);
+  raw = expandProgressiveLoadLadder(raw, effectiveSourceText);
   raw = normalizeLadderDirection(raw);
   if (raw?.workout) {
     raw.workout = normalizeCommonStructureDrift(raw.workout, raw.timer);
-    raw.workout = normalizeExplicitLadderFormat(raw.workout, sourceTextForNormalization);
+    raw.workout = normalizeExplicitLadderFormat(raw.workout, effectiveSourceText);
   }
-  raw.timer = normalizeExplicitWorkRestIntervals(raw.timer, sourceTextForNormalization);
+  raw.timer = normalizeExplicitWorkRestIntervals(raw.timer, effectiveSourceText);
   raw.timer = normalizeTimerPlan(raw.timer);
   raw = normalizeSectionRestBlocks(raw);
-  raw = normalizeExplicitForTimeCap(raw, sourceTextForNormalization);
-  raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, sourceTextForNormalization);
+  raw = normalizeExplicitForTimeCap(raw, effectiveSourceText);
+  raw.timer = removeUnsupportedCountupStages(raw.timer, raw.workout?.format, effectiveSourceText);
   if (raw && (typeof raw.title !== "string" || !raw.title.trim())) raw.title = "NUEVO WOD";
   const missingFields: string[] = [];
   if (!raw || raw.schemaVersion !== 2) missingFields.push("schemaVersion");
@@ -1473,28 +1474,28 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
     if (!raw.workout.structure || typeof raw.workout.structure !== "object") missingFields.push("workout.structure");
   }
   if (missingFields.length) {
-    console.error("AI response missing required fields", { missingFields, sourceTextAvailable: Boolean(sourceTextForNormalization) });
+    console.error("AI response missing required fields", { missingFields, sourceTextAvailable: Boolean(effectiveSourceText) });
     throw new Error("La IA ha devuelto una interpretación incompleta (" + missingFields.join(", ") + ").");
   }
   raw.workout = removeEmptyRestSections(raw.workout);
   raw.workout = normalizeStrengthPlusWodSections(raw.workout);
-  raw.workout = repairEmptyAmrapLoadProgression(raw.workout, sourceTextForNormalization);
+  raw.workout = repairEmptyAmrapLoadProgression(raw.workout, effectiveSourceText);
   raw.workout = repairEmptyYetiIntervalGroups(raw.workout, raw.title);
-  raw.workout = repairDualLadderBlocks(raw.workout, sourceTextForNormalization);
-  raw.workout = repairFlatDoubleLadderSequence(raw.workout, sourceTextForNormalization);
+  raw.workout = repairDualLadderBlocks(raw.workout, effectiveSourceText);
+  raw.workout = repairFlatDoubleLadderSequence(raw.workout, effectiveSourceText);
   raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
   raw.workout = nestFlatMovementsUnderEmptyRoundHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
-  raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, sourceTextForNormalization);
+  raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, effectiveSourceText);
   raw = normalizeSectionRestBlocks(raw);
-  raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, sourceTextForNormalization);
-  raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
-  raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
+  raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, effectiveSourceText);
+  raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
+  raw.workout = applyAlignedRoundProgressions(raw.workout, effectiveSourceText);
   normalizeMovementReferences(raw.workout);
-  raw.workout = repairAmrapRepProgressions(raw.workout, sourceTextForNormalization, !sourceIsImage);
+  raw.workout = repairAmrapRepProgressions(raw.workout, effectiveSourceText, !sourceIsImage);
   raw.workout = omitEmptyRepProgressions(raw.workout);
-  raw = normalizeExplicitRunningClockStages(raw, sourceTextForNormalization);
-  raw = normalizeEmomIntervalLabels(raw, sourceTextForNormalization);
+  raw = normalizeExplicitRunningClockStages(raw, effectiveSourceText);
+  raw = normalizeEmomIntervalLabels(raw, effectiveSourceText);
   const structureError = validateStructure(raw.workout);
   if (structureError) {
     const structure = raw.workout.structure || {};
@@ -1554,7 +1555,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
       fieldPath: typeof item.fieldPath === "string" ? item.fieldPath.slice(0, 120) : null,
       question: typeof item.question === "string" ? item.question.slice(0, 300) : null,
     })) : [];
-  const unverifiedRepProgressions = findUnverifiedAmrapRepProgressions(raw.workout, sourceTextForNormalization);
+  const unverifiedRepProgressions = findUnverifiedAmrapRepProgressions(raw.workout, effectiveSourceText);
   if (unverifiedRepProgressions.length) {
     issues.push(issue("REP_PROGRESSION_UNVERIFIED",
       "No se pudo confirmar en la fuente la progresión por vuelta de: " + unverifiedRepProgressions.join(", ") + ". Revisa el incremento y su movimiento." ,
@@ -1565,7 +1566,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   }
   const workout = {
     format: raw.workout.format,
-    description: normalizeWorkoutDescription(raw.workout.description.slice(0, 2000), sourceTextForNormalization),
+    description: normalizeWorkoutDescription(raw.workout.description.slice(0, 2000), effectiveSourceText),
     team: (() => {
       const team = raw.workout.team;
       const athletes = Number.isInteger(team?.athletes) && team.athletes >= 1 && team.athletes <= 4 ? team.athletes : 1;
@@ -1591,7 +1592,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
     workout,
     timer: raw.timer,
     interpretation: { status: issues.some(item => item.severity === "blocking") ? "needs_review" : "ready", issues },
-    sourceText: sourceTextForNormalization.slice(0, 8000) || null,
+    sourceText: effectiveSourceText.slice(0, 8000) || null,
   };
 }
 
