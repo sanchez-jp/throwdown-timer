@@ -2,6 +2,7 @@ function movementTokens(value) {
   const tokens = String(value || "").toLocaleLowerCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\bdb\b/g, "dumbbell")
+    .replace(/\bbmu\b/g, "bar muscle ups")
     .replace(/\bhspu\b/g, "handstand push up")
     .replace(/\bc2b\b/g, "chest to bar")
     .replace(/[^a-z0-9]+/g, " ")
