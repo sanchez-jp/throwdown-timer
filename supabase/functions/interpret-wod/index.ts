@@ -839,45 +839,73 @@ function repairEmptyRoundGroups(workout: any) {
 }
 
 
-function repairEmptyAmrapIntervalHeaders(workout: any, sourceText: string) {
+function repairEmptyTimedWorkHeaders(workout: any, timer: any, sourceText: string) {
   const structure = workout?.structure;
-  const movements = workout?.movements;
   const headers = structure?.items;
+  const movements = workout?.movements;
+  const blocks = timer?.blocks;
   if (workout?.format !== "intervals" || structure?.type !== "sequence" ||
-      !Array.isArray(movements) || movements.length !== 6 ||
-      !Array.isArray(headers) || ![3, 5].includes(headers.length)) return workout;
+      !Array.isArray(headers) || headers.length < 3 ||
+      !Array.isArray(movements) || !movements.length ||
+      !Array.isArray(blocks) || blocks.length !== headers.length ||
+      typeof sourceText !== "string" || !sourceText.trim()) return workout;
 
-  const expected = headers.length === 3
-    ? [/^AMRAP\\s+6\\s+MINUTES$/i, /^AMRAP\\s+6\\s+MINUTES$/i, /^AMRAP\\s+6\\s+MINUTES$/i]
-    : [/^AMRAP\\s+6\\s+MINUTES$/i, /^REST\\s+3\\s+MINUTES$/i,
-       /^AMRAP\\s+6\\s+MINUTES$/i, /^REST\\s+3\\s+MINUTES$/i, /^AMRAP\\s+6\\s+MINUTES$/i];
-  const emptyHeaders = headers.every((node: any, index: number) =>
-    node?.type === "rounds" && node.count === 1 &&
-    (!Array.isArray(node.items) || node.items.length === 0) &&
-    node.movementId == null && expected[index].test(String(node.label || "")));
-  if (!emptyHeaders || movements.some((movement: any) =>
-    typeof movement?.id !== "string" || typeof movement?.name !== "string" || !movement.name.trim())) return workout;
+  const isRestLabel = (value: any) => /\b(?:rest|descanso)\b/i.test(String(value || ""));
+  const isEmptyHeader = (node: any) => node?.type === "rounds" && node.count === 1 &&
+    (!Array.isArray(node.items) || node.items.length === 0) && node.movementId == null &&
+    typeof node.label === "string" && node.label.trim();
+  if (!headers.every(isEmptyHeader) ||
+      !headers.every((header: any, index: number) =>
+        isRestLabel(header.label) === (blocks[index]?.type === "rest")) ||
+      isRestLabel(headers[0].label) || isRestLabel(headers[headers.length - 1].label)) return workout;
 
-  const workHeaders = headers.length === 3 ? headers : [headers[0], headers[2], headers[4]];
-  const sections = workHeaders.map((header: any, index: number) => ({
-    name: header.label,
-    structure: {
-      type: "sequence",
-      items: movements.slice(index * 2, index * 2 + 2).map((movement: any) => ({
+  const escapeRegex = (value: string) => value.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&");
+  const headerMatches = headers.map((header: any) => {
+    const pattern = escapeRegex(String(header.label).trim()).replace(/\s+/g, "\\s+");
+    return new RegExp(pattern, "ig");
+  });
+  const positions: { start: number; end: number }[] = [];
+  let searchFrom = 0;
+  for (const pattern of headerMatches) {
+    pattern.lastIndex = searchFrom;
+    const match = pattern.exec(sourceText);
+    if (!match) return workout;
+    positions.push({ start: match.index, end: match.index + match[0].length });
+    searchFrom = match.index + match[0].length;
+  }
+
+  const normalize = (value: string) => value.toLocaleLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  const sections: any[] = [];
+  let movementIndex = 0;
+  for (let index = 0; index < headers.length; index++) {
+    if (isRestLabel(headers[index].label)) continue;
+    const segment = normalize(sourceText.slice(positions[index].end,
+      positions[index + 1]?.start ?? sourceText.length));
+    const items: any[] = [];
+    while (movementIndex < movements.length) {
+      const movement = movements[movementIndex];
+      if (typeof movement?.id !== "string" || typeof movement?.name !== "string" ||
+          !movement.name.trim() || !segment.includes(normalize(movement.name))) break;
+      items.push({
         type: "movement",
         movementId: movement.id,
         prescription: typeof movement.prescription === "string" ? movement.prescription : null,
         load: typeof movement.load === "string" ? movement.load : null,
-      })),
-    },
-  }));
-  console.warn("Empty AMRAP interval headers rebuilt from ordered movement catalog", {
-    originalHeaders: headers.length, sections: sections.length,
+      });
+      movementIndex++;
+    }
+    if (!items.length) return workout;
+    sections.push({ name: headers[index].label, structure: { type: "sequence", items } });
+  }
+  if (movementIndex !== movements.length || !sections.length) return workout;
+
+  console.info("Empty timed work headers rebuilt from source-verified movement groups", {
+    workSections: sections.length,
     movementsPerSection: sections.map((section: any) => section.structure.items.length),
   });
   return { ...workout, structure: { type: "sections", sections } };
 }
-
 function repairExpandedGeminiDoubleLadder(workout: any, title: string, sourceText: string) {
   const structure = workout?.structure;
   const groups = structure?.items;
@@ -1378,7 +1406,8 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairFlatDoubleLadderSequence(raw.workout, sourceTextForNormalization);
   raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
-  raw.workout = repairEmptyAmrapIntervalHeaders(raw.workout, sourceTextForNormalization);
+  raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, sourceTextForNormalization);
+  raw = normalizeSectionRestBlocks(raw);
   raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, sourceTextForNormalization);
   raw = normalizeExplicitForTimeRoundTable(raw, sourceTextForNormalization);
   raw.workout = applyAlignedRoundProgressions(raw.workout, sourceTextForNormalization);
