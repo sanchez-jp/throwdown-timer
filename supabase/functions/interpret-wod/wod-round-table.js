@@ -74,7 +74,7 @@ function parseLoadValues(value) {
   const match = String(value || "").trim().match(/^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?){1,})\s*(kg|lb|lbs)?$/i);
   return match ? {
     values: match[1].split(/\s*\/\s*/).map(item => item.trim()),
-    unit: match[2] || "kg",
+    unit: (match[2] || "kg").toLowerCase(),
   } : null;
 }
 
@@ -130,13 +130,61 @@ function normalizeTransposedRoundTable(raw, sourceText, workout, movements) {
     const loadMatch = prefix.match(/(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?){1,})\s*(kg|lb|lbs)\b/i);
     const loads = loadMatch ? {
       values: loadMatch[1].split(/\s*\/\s*/).map(value => value.trim()),
-      unit: loadMatch[2],
+      unit: loadMatch[2].toLowerCase(),
     } : null;
     rows.push({ movementId: movement.id, sourceLine, reps, loads });
   }
   if (rows.length !== movements.length || new Set(rows.map(row => row.movementId)).size !== movements.length) return raw;
   const roundCount = Math.max(...rows.flatMap(row => [row.reps.length, row.loads?.values.length || 1]));
   return buildRoundTable(raw, workout, movements, rows, roundCount);
+}
+
+function normalizeGroupedRoundRows(raw, sourceText, workout, movements) {
+  const entries = [];
+  for (const sourceLine of sourceText.split(/\r?\n/).map(line => line.trim()).filter(Boolean)) {
+    const movement = matchMovementLine(sourceLine, movements);
+    if (!movement) continue;
+    const prescription = parsePrescriptionPrefix(sourceLine);
+    if (prescription) entries.push({ movementId: movement.id, prescription, sourceLine });
+  }
+  const movementCount = movements.length;
+  if (entries.length < movementCount * 2 || entries.length % movementCount !== 0) return raw;
+  const roundCount = entries.length / movementCount;
+  if (roundCount < 2 || roundCount > 30) return raw;
+  const expectedOrder = entries.slice(0, movementCount).map(item => item.movementId);
+  if (new Set(expectedOrder).size !== movementCount) return raw;
+  for (let round = 0; round < roundCount; round++) {
+    if (entries.slice(round * movementCount, (round + 1) * movementCount)
+      .some((item, index) => item.movementId !== expectedOrder[index])) return raw;
+  }
+  const banner = sourceText.match(/\b(?:dumbbell|db)\s*[-–—:]\s*(\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)\s*kg\b/i);
+  const targetId = banner
+    ? movements.filter(movement => /\b(?:dumbbell|db)\b/i.test(movement.name)).map(movement => movement.id)
+    : [];
+  const bannerLoad = banner && targetId.length === 1
+    ? banner[1].replace(/\s*[x×]\s*/g, " × ").replace(/\s*\/\s*/g, "/") + " kg"
+    : null;
+  const items = Array.from({ length: roundCount }, (_, round) => ({
+    type: "rounds", count: 1, label: "RONDA " + (round + 1),
+    items: entries.slice(round * movementCount, (round + 1) * movementCount).map(entry => ({
+      type: "movement", movementId: entry.movementId, prescription: entry.prescription,
+      load: bannerLoad && targetId[0] === entry.movementId
+        ? bannerLoad
+        : movements.find(movement => movement.id === entry.movementId)?.load ?? null,
+    })),
+  }));
+  const prescriptionsByMovement = new Map(movements.map(movement => [movement.id, []]));
+  entries.forEach(entry => prescriptionsByMovement.get(entry.movementId).push(entry.prescription));
+  const updatedMovements = movements.map(movement => {
+    const values = prescriptionsByMovement.get(movement.id) || [];
+    return {
+      ...movement,
+      prescription: new Set(values.map(value => value.toLowerCase())).size > 1 ? null : values[0] ?? movement.prescription,
+      ...(bannerLoad && targetId[0] === movement.id ? { load: bannerLoad } : {}),
+    };
+  });
+  console.info("Grouped For Time rounds normalized from source", { rounds: roundCount, movements: movementCount });
+  return { ...raw, workout: { ...workout, format: "for_time", movements: updatedMovements, structure: { type: "sequence", items } } };
 }
 
 function normalizeCatalogRoundTable(raw, workout, movements) {
@@ -168,12 +216,13 @@ export function normalizeExplicitForTimeRoundTable(raw, sourceText) {
   if (!isForTime || workout.structure?.type !== "sequence" || !Array.isArray(workout.structure.items)) return raw;
 
   const normalizedWorkout = { ...workout, format: "for_time" };
-  const base = { ...raw, workout: normalizedWorkout };
   if (typeof sourceText === "string" && sourceText.trim()) {
-    const transposed = normalizeTransposedRoundTable(base, sourceText, normalizedWorkout, movements);
-    if (transposed !== base) return transposed;
+    const transposed = normalizeTransposedRoundTable(raw, sourceText, normalizedWorkout, movements);
+    if (transposed !== raw) return transposed;
+    const grouped = normalizeGroupedRoundRows(raw, sourceText, normalizedWorkout, movements);
+    if (grouped !== raw) return grouped;
   }
-  return normalizeCatalogRoundTable(base, normalizedWorkout, movements);
+  return normalizeCatalogRoundTable(raw, normalizedWorkout, movements);
 }
 
 export function inferWorkoutTitle(...values) {
