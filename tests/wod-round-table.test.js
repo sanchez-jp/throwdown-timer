@@ -42,3 +42,32 @@ test("leaves a For Time structure untouched when source rows do not match all mo
   };
   assert.equal(normalizeExplicitForTimeRoundTable(raw, "21 Pull-Ups\n18 Pull-Ups"), raw);
 });
+
+
+test("normalizes aligned repetitions and per-round loads written across movement rows", () => {
+  const raw = {
+    workout: {
+      format: "for_time",
+      description: "",
+      movements: [
+        { id: "db-bench-press", name: "DB Bench Press", prescription: "30", load: "25/30/35 kg" },
+        { id: "bar-muscle-ups", name: "Bar Muscle-Ups", prescription: "15", load: null },
+        { id: "sit-ups", name: "Sit-Ups", prescription: "30", load: null },
+      ],
+      structure: { type: "sequence", items: [] },
+    },
+  };
+  const source = `-GIMNASTICOS
+FOR TIME 14 MIN
+30-20-10 DB BENCH PRESS 25/30/35 KG
+15-10-5 BMU
+30-30-30 SIT UPS`;
+  const result = normalizeExplicitForTimeRoundTable(raw, source);
+  assert.equal(result.workout.structure.items.length, 3);
+  assert.deepEqual(result.workout.structure.items.map(round => round.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  ]);
+  assert.deepEqual(result.workout.structure.items.map(round => round.items[0].load), ["25 kg", "30 kg", "35 kg"]);
+  assert.equal(result.workout.movements[0].load, null);
+  assert.equal(result.workout.movements[1].prescription, null);
+});
