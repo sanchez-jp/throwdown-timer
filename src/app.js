@@ -1954,11 +1954,17 @@ async function renderLibrary() {
 async function initializeRepository() {
   try {
     repository = createWorkoutRepository();
-    await repository.list();
+    // A failed initial library read must not disable the WOD editor.
+    // Keep the repository available so a subsequent IndexedDB operation can retry.
     $("saveWorkoutButton").disabled = false;
     $("libraryButton").disabled = false;
     $("createWorkoutButton").disabled = false;
     $("newWorkoutButton").disabled = false;
+    try {
+      await repository.list();
+    } catch (error) {
+      showLibraryError(error);
+    }
   } catch (error) {
     repository = null;
     $("saveWorkoutButton").disabled = true;
