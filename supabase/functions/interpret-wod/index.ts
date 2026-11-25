@@ -2199,17 +2199,14 @@ Contrato: {schemaVersion:2,title,workout:{format,description,movements:[{id,name
         : "";
       const correctionPrompt = `La respuesta anterior no ha superado la validación de Throwdown Timer. Corrige exclusivamente los errores estructurales indicados. Conserva exactamente el significado, orden, repeticiones, movimientos, cargas y tiempos de la descripción original. No inventes ningún dato. Devuelve un único JSON completo que cumpla el esquema de respuesta.${dualLadderGuidance}\nError de validación: ${validationMessage}\nDescripción original:\n${sourceText}\nRespuesta que debes corregir:\n${output.slice(0, 14000)}`;
       prompt = correctionPrompt;
-      const correctionCandidates = [
-        ...(selectedProvider === "groq"
-          ? [{ provider: "groq" as const, model: selectedModel }]
-          : [{ provider: "gemini" as const, model: selectedModel }]),
-        ...modelCandidates
-          .filter(model => selectedProvider !== "gemini" || model !== selectedModel)
-          .map(model => ({ provider: "gemini" as const, model })),
-        ...(selectedProvider !== "groq" && groqApiKey && groqCanInterpretImage
+      // A correction is a narrow repair, not a second full interpretation.
+      // Try only the independent provider (one request, no retry storm).
+      const correctionCandidates = selectedProvider === "groq"
+        ? [{ provider: "gemini" as const, model: primaryModel }]
+        : groqApiKey && groqCanInterpretImage
           ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
-          : []),
-      ];
+          : modelCandidates.filter(model => model !== selectedModel).slice(0, 1)
+            .map(model => ({ provider: "gemini" as const, model }));
       let correctedResponse: Response | null = null;
       let correctionFailureStatus = 503;
       for (const candidate of correctionCandidates) {
@@ -2218,7 +2215,7 @@ Contrato: {schemaVersion:2,title,workout:{format,description,movements:[{id,name
             () => candidate.provider === "groq"
               ? requestGroq(10000, candidate.model, correctionPrompt.slice(0, 16000), groqSystemPrompt)
               : requestGemini(candidate.model, hasImage ? 14000 : 8000, correctionPrompt, systemPrompt),
-            `${candidate.provider} correction`,
+            `${candidate.provider} correction`, 1,
           );
           if (candidateResponse?.ok) {
             correctedResponse = candidateResponse;
@@ -2290,23 +2287,19 @@ Para una doble ladder explícita, una corrección completa de ambas mitades prev
     let reviewProvider: "gemini" | "groq" = selectedProvider;
     let reviewModel = selectedModel;
     try {
+      // Keep semantic review independent: one different provider, one attempt.
       const reviewCandidates = selectedProvider === "groq"
-        ? [
-            { provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel },
-            { provider: "gemini" as const, model: primaryModel },
-          ]
-        : [
-            { provider: "gemini" as const, model: selectedModel },
-            ...(groqApiKey && groqCanInterpretImage
-              ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
-              : []),
-          ];
+        ? [{ provider: "gemini" as const, model: primaryModel }]
+        : groqApiKey && groqCanInterpretImage
+          ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
+          : modelCandidates.filter(model => model !== selectedModel).slice(0, 1)
+            .map(model => ({ provider: "gemini" as const, model }));
       for (const candidate of reviewCandidates) {
         const candidateResponse = await requestWithTransientRetries(
           () => candidate.provider === "groq"
             ? requestGroq(9000, candidate.model, reviewPrompt, groqReviewSystemPrompt)
             : requestGemini(candidate.model, hasImage ? 12000 : 7000, reviewPrompt, reviewSystemPrompt, semanticReviewSchema),
-          `${candidate.provider} semantic review`,
+          `${candidate.provider} semantic review`, 1,
         );
         if (candidateResponse?.ok) {
           reviewResponse = candidateResponse;
