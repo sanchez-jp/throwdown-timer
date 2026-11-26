@@ -271,4 +271,9 @@ FOR TIME 14 MIN
   assert.equal(normalizeWorkoutTitle("NUEVO WOD", source), "-GIMNÁSTICOS");
   assert.equal(normalizeWorkoutTitle("-GIMNÁSTICOS"), "-GIMNÁSTICOS");
   assert.equal(normalizeWorkoutTitle("GIMNÁSTICOS"), "NUEVO WOD");
+  const sequenceSource = `-GIMNÁSTICOS
+SECUENCIA
+RONDA 1
+30 DB BENH PRESS`;
+  assert.equal(normalizeWorkoutTitle("GIMNASTICOS", sequenceSource), "-GIMNÁSTICOS");
 });

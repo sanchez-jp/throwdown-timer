@@ -432,7 +432,7 @@ export function normalizeWorkoutTitle(value, sourceText = "") {
     .map(line => line.trim()).filter(Boolean)
     .slice(0, 2);
   if (explicitHeading.length >= 2 && /^-\s*[^-]/.test(explicitHeading[0]) &&
-      /^(?:for\s+time|amrap|emom|e2mom|tabata|chipper|ladder|death\s+by)\b/i.test(explicitHeading[1])) {
+      /^(?:for\s+time|amrap|emom|e2mom|tabata|chipper|ladder|death\s+by|secuencia|sequence)\b/i.test(explicitHeading[1])) {
     return explicitHeading[0].replace(/\s+/g, " ").trim();
   }
   const title = typeof value === "string" ? value.trim() : "";
