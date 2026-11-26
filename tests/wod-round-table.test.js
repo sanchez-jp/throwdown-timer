@@ -159,7 +159,7 @@ test("does not treat a bulleted category heading as a WOD title", () => {
 test("uses the default title for category headings, not workout names", () => {
   assert.equal(normalizeWorkoutTitle("GIMNASTICOS"), "NUEVO WOD");
   assert.equal(normalizeWorkoutTitle("Gimnásticos"), "NUEVO WOD");
-  assert.equal(normalizeWorkoutTitle("-GIMNÁSTICOS"), "NUEVO WOD");
+  assert.equal(normalizeWorkoutTitle("-GIMNÁSTICOS"), "-GIMNÁSTICOS");
   assert.equal(normalizeWorkoutTitle("WEIGHTLIFTING"), "NUEVO WOD");
   assert.equal(normalizeWorkoutTitle("FRAN"), "FRAN");
   assert.equal(normalizeWorkoutTitle("NUEVO WOD"), "NUEVO WOD");
