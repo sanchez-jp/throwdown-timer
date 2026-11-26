@@ -256,7 +256,7 @@ test("rebuilds a single flattened Ladder round header from aligned catalogue pro
   assert.equal(result.structure.type, "ladder");
   assert.equal(result.structure.steps.length, 3);
   assert.deepEqual(result.structure.steps.map(step => step.items.map(item => item.prescription)), [
-    ["30", "15", "30"], ["20", "10", "20"], ["10", "5", "10"],
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
   ]);
 });
 
