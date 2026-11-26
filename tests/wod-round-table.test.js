@@ -248,7 +248,7 @@ test("rebuilds a single flattened Ladder round header from aligned catalogue pro
       },
     },
   };
-  const result = normalizeExplicitLadderRoundTable(raw, "LADDER");
+  const result = normalizeExplicitLadderRoundTable(raw.workout, "LADDER");
   assert.equal(result.workout.structure.type, "ladder");
   assert.equal(result.workout.structure.steps.length, 3);
   assert.deepEqual(result.workout.structure.steps.map(step => step.items.map(item => item.prescription)), [

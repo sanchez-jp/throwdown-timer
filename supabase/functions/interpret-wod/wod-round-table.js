@@ -13,7 +13,7 @@ function movementTokens(value) {
     .replace(/\bc2b\b/g, "chest to bar")
     .replace(/[^a-z0-9]+/g, " ")
     .trim().split(/\s+/).filter(Boolean);
-  return tokens.map(token => token.endsWith("s") && token.length > 3 ? token.slice(0, -1) : token);
+  return tokens.map(token => token === "ups" ? "up" : token.endsWith("s") && token.length > 3 ? token.slice(0, -1) : token);
 }
 
 function tokensEquivalent(left, right) {
