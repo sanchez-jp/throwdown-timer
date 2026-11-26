@@ -241,6 +241,88 @@ export function normalizeExplicitLadderRoundTable(workout, sourceText = "") {
   const explicitFormat = inferExplicitWorkoutFormat(sourceText, workout.description);
   if (workout.format !== "ladder" && explicitFormat !== "ladder") return workout;
 
+  // Prefer the original OCR/source transcription over the model's flattened
+  // movement catalogue. This preserves per-round reps and loads even when the
+  // model has already collapsed a progression to its first value.
+  const sourceRows = [];
+  if (typeof sourceText === "string" && sourceText.trim()) {
+    for (const movement of movements) {
+      const matches = sourceText.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean)
+        .map(sourceLine => {
+          if (matchMovementLine(sourceLine, [movement]) !== movement) return null;
+          const repMatch = sourceLine.replace(/^\\s*(?:[-•*]\\s*)?/, "")
+            .match(/^(\\d+(?:[.,]\\d+)?(?:\\s*[-–—]\\s*\\d+(?:[.,]\\d+)?){0,})\\s+/);
+          if (!repMatch) return null;
+          const loadMatch = sourceLine.match(/(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+(?:[.,]\\d+)?){1,})\\s*(kg|lb|lbs)\\b/i);
+          return {
+            movement,
+            reps: parseRepValues(repMatch[1]),
+            loads: loadMatch ? {
+              values: loadMatch[1].split(/\\s*\\/\\s*/).map(value => value.trim()),
+              unit: loadMatch[2].toLowerCase(),
+            } : null,
+          };
+        }).filter(Boolean);
+      if (matches.length !== 1) { sourceRows.length = 0; break; }
+      sourceRows.push(matches[0]);
+    }
+  }
+  const sourceRoundCount = sourceRows.length === movements.length
+    ? Math.max(...sourceRows.flatMap(row => [row.reps?.length || 0, row.loads?.values.length || 1]))
+    : 0;
+  const sourceIsComplete = sourceRoundCount >= 2 && sourceRoundCount <= 30 &&
+    sourceRows.every(row => row.reps && [1, sourceRoundCount].includes(row.reps.length) &&
+      (!row.loads || [1, sourceRoundCount].includes(row.loads.values.length)));
+  if (sourceIsComplete && sourceRows.some(row =>
+    row.reps.length > 1 || row.loads?.values.length > 1)) {
+    const sourceSteps = Array.from({ length: sourceRoundCount }, (_, roundIndex) => ({
+      label: "Ronda " + (roundIndex + 1),
+      items: sourceRows.map(row => {
+        const existingItems = workout.structure?.type === "ladder"
+          ? workout.structure.steps?.[0]?.items
+          : workout.structure?.type === "sequence"
+            ? workout.structure.items?.flatMap(group => group?.items || [])
+            : [];
+        const base = existingItems?.find(item => item?.movementId === row.movement.id) || {};
+        return {
+          ...base,
+          type: "movement",
+          movementId: row.movement.id,
+          prescription: row.reps[row.reps.length === 1 ? 0 : roundIndex],
+          load: row.loads
+            ? row.loads.values[row.loads.values.length === 1 ? 0 : roundIndex] + " " + row.loads.unit
+            : row.movement.load ?? null,
+        };
+      }),
+    }));
+    const sourceMovements = movements.map(movement => {
+      const row = sourceRows.find(item => item.movement.id === movement.id);
+      const sameReps = row.reps.every(value => value === row.reps[0]);
+      const sameLoads = !row.loads || row.loads.values.every(value => value === row.loads.values[0]);
+      return {
+        ...movement,
+        prescription: sameReps ? row.reps[0] : null,
+        ...(row.loads ? { load: sameLoads ? row.loads.values[0] + " " + row.loads.unit : null } : {}),
+      };
+    });
+    console.info("Ladder round table reconstructed from original source transcription", {
+      rounds: sourceRoundCount,
+      movements: sourceRows.length,
+      roundSpecificLoads: sourceRows.filter(row => row.loads?.values.length > 1).length,
+    });
+    return {
+      ...workout,
+      format: "ladder",
+      movements: sourceMovements,
+      structure: {
+        ...(workout.structure?.type === "ladder" ? workout.structure : {}),
+        type: "ladder",
+        direction: workout.structure?.direction || "custom",
+        steps: sourceSteps,
+      },
+    };
+  }
+
   const structure = workout.structure;
   const existingSteps = structure?.type === "ladder" && Array.isArray(structure.steps)
     ? structure.steps

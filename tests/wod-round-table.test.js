@@ -165,6 +165,33 @@ test("uses the default title for category headings, not workout names", () => {
   assert.equal(normalizeWorkoutTitle("NUEVO WOD"), "NUEVO WOD");
 });
 
+
+test("reconstructs Ladder reps and per-round loads from source transcription", () => {
+  const raw = {
+    title: "NUEVO WOD",
+    workout: {
+      format: "ladder",
+      movements: [
+        { id: "db-bench", name: "DB Bench Press", prescription: "30-20-10", load: "25 kg" },
+        { id: "bmu", name: "Bar Muscle-Up", prescription: "15-10-5", load: null },
+        { id: "situps", name: "Sit-Ups", prescription: "30-20-10", load: null },
+      ],
+      structure: { type: "ladder", direction: "descending", steps: [] },
+    },
+  };
+  const source = "-GIMNASTICOS\\nFOR TIME 14 MIN\\n30-20-10 DB BENH PRESS 25/30/35 KG\\n15-10-5 BMU\\n30-30-30 SIT UPS";
+  const result = normalizeExplicitLadderRoundTable(raw.workout, source);
+  assert.equal(result.structure.steps.length, 3);
+  assert.deepEqual(result.structure.steps.map(step => step.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  ]);
+  assert.deepEqual(result.structure.steps.map(step => step.items[0].load), [
+    "25 kg", "30 kg", "35 kg",
+  ]);
+  assert.equal(result.movements[0].load, null);
+  assert.equal(result.movements[2].prescription, "30");
+});
+
 test("expands a Ladder catalogue progression into per-round movement prescriptions and loads", () => {
   const raw = {
     title: "NUEVO WOD",
