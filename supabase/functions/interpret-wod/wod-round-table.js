@@ -246,7 +246,7 @@ export function inferWorkoutTitle(...values) {
 export function normalizeWorkoutTitle(value) {
   const title = typeof value === "string" ? value.trim() : "";
   const normalized = title.toLocaleLowerCase().normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
   const categoryTitles = new Set([
     "gimnastico", "gimnasticos", "gymnastics", "gymnastic",
     "halterofilia", "weightlifting", "fuerza", "strength",
@@ -255,7 +255,7 @@ export function normalizeWorkoutTitle(value) {
     "tecnica", "technique", "skills", "skill", "warm up", "warmup",
     "gimnasia", "gym"
   ]);
-  if (!title || /^nuevo\\s+wod$/i.test(title) || /^[-•*]/.test(title) || categoryTitles.has(normalized)) return "NUEVO WOD";
+  if (!title || /^nuevo\s+wod$/i.test(title) || /^[-•*]/.test(title) || categoryTitles.has(normalized)) return "NUEVO WOD";
   return title;
 }
 
