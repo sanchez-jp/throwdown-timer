@@ -218,7 +218,7 @@ test("expands a Ladder catalogue progression into per-round movement prescriptio
       },
     },
   };
-  const result = normalizeExplicitLadderRoundTable(raw, "LADDER\nFOR TIME 14 MIN");
+  const result = normalizeExplicitLadderRoundTable(raw.workout, "LADDER\nFOR TIME 14 MIN");
   assert.equal(result.workout.format, "ladder");
   assert.equal(result.workout.structure.steps.length, 3);
   assert.deepEqual(result.workout.structure.steps.map(step => step.items.map(item => item.prescription)), [
