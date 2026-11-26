@@ -179,7 +179,11 @@ test("reconstructs Ladder reps and per-round loads from source transcription", (
       structure: { type: "ladder", direction: "descending", steps: [] },
     },
   };
-  const source = "-GIMNASTICOS\\nFOR TIME 14 MIN\\n30-20-10 DB BENH PRESS 25/30/35 KG\\n15-10-5 BMU\\n30-30-30 SIT UPS";
+  const source = `-GIMNASTICOS
+FOR TIME 14 MIN
+30-20-10 DB BENH PRESS 25/30/35 KG
+15-10-5 BMU
+30-30-30 SIT UPS`;
   const result = normalizeExplicitLadderRoundTable(raw.workout, source);
   assert.equal(result.structure.steps.length, 3);
   assert.deepEqual(result.structure.steps.map(step => step.items.map(item => item.prescription)), [
