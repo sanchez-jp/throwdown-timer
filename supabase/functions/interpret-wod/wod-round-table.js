@@ -233,6 +233,7 @@ export function inferWorkoutTitle(...values) {
       const line = rawLine.trim();
       if (line.length > 48 || line.length < 3 || /^nuevo\s+wod$/i.test(line)) continue;
       if (/\b(for\s+time|amrap|emom|e2mom|tabata|chipper|ladder|time\s*cap)\b/i.test(line)) continue;
+      if (/^\d+(?:\s*[-–—/]\s*\d+)*\s+[a-z]/i.test(line)) continue;
       if (/^\d+(?:\s*[-–—/]\s*\d+)+\s*(?:kg|lb)?$/i.test(line)) continue;
       if (/^\d+\s*(?:min|minutes?|m)\b/i.test(line)) continue;
       if (/^[\d\s.,/+-]+$/.test(line)) continue;
