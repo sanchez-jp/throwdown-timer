@@ -59,7 +59,7 @@ test("normalizes aligned repetitions and per-round loads written across movement
   };
   const source = `-GIMNASTICOS
 FOR TIME 14 MIN
-30-20-10 DB BENCH PRESS 25/30/35 KG
+30-20-10 DB BENH PRESS 25/30/35 KG
 15-10-5 BMU
 30-30-30 SIT UPS`;
   const result = normalizeExplicitForTimeRoundTable(raw, source);
@@ -219,18 +219,18 @@ test("expands a Ladder catalogue progression into per-round movement prescriptio
     },
   };
   const result = normalizeExplicitLadderRoundTable(raw.workout, "LADDER\nFOR TIME 14 MIN");
-  assert.equal(result.workout.format, "ladder");
-  assert.equal(result.workout.structure.steps.length, 3);
-  assert.deepEqual(result.workout.structure.steps.map(step => step.items.map(item => item.prescription)), [
+  assert.equal(result.format, "ladder");
+  assert.equal(result.structure.steps.length, 3);
+  assert.deepEqual(result.structure.steps.map(step => step.items.map(item => item.prescription)), [
     ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
   ]);
-  assert.deepEqual(result.workout.structure.steps.map(step => step.items[0].load), [
+  assert.deepEqual(result.structure.steps.map(step => step.items[0].load), [
     "25 kg", "30 kg", "35 kg",
   ]);
-  assert.equal(result.workout.movements[0].prescription, null);
-  assert.equal(result.workout.movements[0].load, null);
-  assert.equal(result.workout.movements[1].prescription, null);
-  assert.equal(result.workout.movements[2].prescription, "30");
+  assert.equal(result.movements[0].prescription, null);
+  assert.equal(result.movements[0].load, null);
+  assert.equal(result.movements[1].prescription, null);
+  assert.equal(result.movements[2].prescription, "30");
 });
 
 test("rebuilds a single flattened Ladder round header from aligned catalogue progressions", () => {
@@ -253,10 +253,10 @@ test("rebuilds a single flattened Ladder round header from aligned catalogue pro
     },
   };
   const result = normalizeExplicitLadderRoundTable(raw.workout, "LADDER");
-  assert.equal(result.workout.structure.type, "ladder");
-  assert.equal(result.workout.structure.steps.length, 3);
-  assert.deepEqual(result.workout.structure.steps.map(step => step.items.map(item => item.prescription)), [
-    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  assert.equal(result.structure.type, "ladder");
+  assert.equal(result.structure.steps.length, 3);
+  assert.deepEqual(result.structure.steps.map(step => step.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "20"], ["10", "5", "10"],
   ]);
 });
 

@@ -18,7 +18,7 @@ function movementTokens(value) {
 
 function tokensEquivalent(left, right) {
   if (left === right) return true;
-  if (Math.abs(left.length - right.length) > 1 || Math.min(left.length, right.length) < 5) return false;
+  if (Math.abs(left.length - right.length) > 1 || Math.min(left.length, right.length) < 4) return false;
   let i = 0, j = 0, edits = 0;
   while (i < left.length && j < right.length) {
     if (left[i] === right[j]) { i++; j++; continue; }
