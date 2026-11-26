@@ -249,10 +249,19 @@ export function normalizeExplicitLadderRoundTable(workout, sourceText = "") {
     for (const movement of movements) {
       const matches = sourceText.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
         .map(sourceLine => {
-          if (matchMovementLine(sourceLine, [movement]) !== movement) return null;
           const repMatch = sourceLine.replace(/^\s*(?:[-•*]\s*)?/, "")
             .match(/^(\d+(?:[.,]\d+)?(?:\s*[-–—]\s*\d+(?:[.,]\d+)?){0,})\s+/);
           if (!repMatch) return null;
+          const description = sourceLine.slice(sourceLine.indexOf(repMatch[0]) + repMatch[0].length)
+            .replace(/\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)+\s*(?:kg|lb|lbs)\b/ig, "")
+            .toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "");
+          const movementName = String(movement.name).toLocaleLowerCase().normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+          const directNameMatch = description.includes(movementName) ||
+            (movementName.includes("situp") && description.includes("situps")) ||
+            (movementName.includes("barmuscleup") && description.includes("bmu"));
+          if (matchMovementLine(sourceLine, [movement]) !== movement && !directNameMatch) return null;
           const loadMatch = sourceLine.match(/(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?){1,})\s*(kg|lb|lbs)\b/i);
           return {
             movement,
