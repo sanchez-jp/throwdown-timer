@@ -191,3 +191,38 @@ test("accepts nested rounds and mutually exclusive cardio alternatives", () => {
   }});
   assert.equal(validateWodV2(value),true);
 });
+
+
+test("accepts explicit rest nodes between AMRAP work blocks", () => {
+  const value = wod({
+    workout: {
+      format: "intervals",
+      description: "3 bloques AMRAP de 6 minutos con 3 minutos de descanso entre bloques",
+      movements: [
+        { id: "ww", name: "Wall Walks", prescription: "3", load: null, notes: null },
+        { id: "snatch", name: "Power Snatches", prescription: "9", load: "40 kg", notes: null }
+      ],
+      structure: { type: "sequence", items: [
+        { type: "rounds", count: 1, label: "AMRAP 6 MINUTES", items: [
+          { type: "movement", movementId: "ww", prescription: "3" },
+          { type: "movement", movementId: "snatch", prescription: "9", load: "40 kg" }
+        ]},
+        { type: "rest", label: "REST 3 MINUTES", durationSeconds: 180 },
+        { type: "rounds", count: 1, label: "AMRAP 6 MINUTES", items: [
+          { type: "movement", movementId: "ww", prescription: "3" },
+          { type: "movement", movementId: "snatch", prescription: "9", load: "40 kg" }
+        ]}
+      ]}
+    },
+    timer: { type: "sequence", label: "Intervals", blocks: [
+      { type: "intervals", label: "Work / Rest", rounds: 3, workSeconds: 360, restSeconds: 180, startWithRest: false }
+    ]}
+  });
+  assert.equal(validateWodV2(value), true);
+});
+
+test("rejects a rest node without a positive duration", () => {
+  const value = wod();
+  value.workout.structure.items.push({ type: "rest", label: "REST" });
+  assert.throws(() => validateWodV2(value), error => error.code === "INVALID_REST_NODE");
+});

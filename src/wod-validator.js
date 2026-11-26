@@ -43,6 +43,11 @@ function validateStructure(node, movementIds, path = "workout.structure", depth 
   }
 
   switch (node.type) {
+    case "rest":
+      if (!nonEmptyString(node.label) || !Number.isInteger(node.durationSeconds) || node.durationSeconds <= 0) {
+        fail("INVALID_REST_NODE", "Un descanso necesita una etiqueta y una duración positiva en segundos.", path);
+      }
+      return;
     case "movement":
       if (!nonEmptyString(node.movementId) || !movementIds.has(node.movementId)) {
         fail("UNKNOWN_MOVEMENT_REFERENCE", "La estructura referencia un movimiento que no existe.", path + ".movementId");

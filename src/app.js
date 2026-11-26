@@ -362,7 +362,10 @@ function renderTimerDescription(workout, timerPlan = null) {
     (items || []).forEach((entry, index) => {
       const item = document.createElement("li");
       if (isEmomSequence) item.dataset.intervalIndex = String(index);
-      if (entry?.type === "movement") {
+      if (entry?.type === "rest") {
+        item.className = "timer-description-rest";
+        item.textContent = [entry.label || "DESCANSO", formatTime(entry.durationSeconds * 1000)].filter(Boolean).join(" · ");
+      } else if (entry?.type === "movement") {
         const movement = movementById.get(entry.movementId);
         const movementName = movement?.name || "Movimiento no disponible";
         const prescription = entry.prescription || movement?.prescription;
@@ -1498,6 +1501,7 @@ function renderStructureSettings(structure = null) {
 }
 function isStructureEditorCompatible(structure) {
   const validNodes = items => Array.isArray(items) && items.length > 0 && items.every(item => {
+    if (item?.type === "rest") return typeof item.label === "string" && item.label.trim() && Number.isInteger(item.durationSeconds) && item.durationSeconds > 0;
     if (item?.type === "movement") return true;
     if (item?.type === "rounds") return Number.isInteger(item.count) && item.count > 0 && validNodes(item.items);
     if (item?.type === "choice") return Array.isArray(item.alternatives) && item.alternatives.length >= 2 && item.alternatives.every(option => option.label?.trim() && validNodes(option.items));

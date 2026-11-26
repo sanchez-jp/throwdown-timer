@@ -1046,6 +1046,32 @@ function applyAlignedRoundProgressions(workout: any, sourceText: string) {
   return workout;
 }
 
+function normalizeRestStructureNodes(workout: any) {
+  const normalize = (items: any[]) => {
+    if (!Array.isArray(items)) return;
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
+      if (item?.type === "rest") {
+        const label = typeof item.label === "string" && item.label.trim() ? item.label.trim() : "Descanso";
+        const explicitSeconds = Number(item.durationSeconds);
+        const durationMatch = label.match(/(\d+)\s*(?:min(?:ute)?s?|m)\b/i);
+        const durationSeconds = Number.isInteger(explicitSeconds) && explicitSeconds > 0
+          ? explicitSeconds
+          : durationMatch ? Number(durationMatch[1]) * 60 : null;
+        if (durationSeconds) items[index] = { type: "rest", label, durationSeconds };
+      } else if (item?.type === "rounds") normalize(item.items);
+      else if (item?.type === "choice" && Array.isArray(item.alternatives)) {
+        item.alternatives.forEach((option: any) => normalize(option?.items));
+      }
+    }
+  };
+  const structure = workout?.structure;
+  if (["sequence", "rounds", "chipper"].includes(structure?.type)) normalize(structure.items);
+  else if (structure?.type === "ladder") structure.steps?.forEach((step: any) => normalize(step?.items));
+  else if (structure?.type === "sections") structure.sections?.forEach((section: any) => normalize(section?.structure?.items));
+  return workout;
+}
+
 function invalidMovementReferences(workout: any) {
   const ids = new Set((workout?.movements || []).map((m: any) => m?.id).filter((id: any) => typeof id === "string"));
   const invalid: any[] = [];
@@ -1089,6 +1115,7 @@ function validateStructure(workout: any): string | null {
     }
   }
   const checkNodes = (items: any[], depth = 0): boolean => Array.isArray(items) && items.length > 0 && depth <= 8 && items.every(item => {
+    if (item?.type === "rest") return typeof item.label === "string" && item.label.trim() && Number.isInteger(item.durationSeconds) && item.durationSeconds > 0;
     if (item?.type === "movement") return typeof item.movementId === "string" && ids.has(item.movementId) &&
       (item.prescription === undefined || item.prescription === null || typeof item.prescription === "string") &&
       (item.load === undefined || item.load === null || typeof item.load === "string");
@@ -1497,6 +1524,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, effectiveSourceText);
   raw.workout = applyAlignedRoundProgressions(raw.workout, effectiveSourceText);
   raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
+  normalizeRestStructureNodes(raw.workout);
   normalizeMovementReferences(raw.workout);
   raw.workout = repairAmrapRepProgressions(raw.workout, effectiveSourceText, !sourceIsImage);
   raw.workout = omitEmptyRepProgressions(raw.workout);
