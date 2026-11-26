@@ -228,7 +228,9 @@ export function normalizeExplicitForTimeRoundTable(raw, sourceText) {
 export function inferWorkoutTitle(...values) {
   for (const value of values) {
     if (typeof value !== "string") continue;
-    for (const line of value.split(/\r?\n/).map(item => item.replace(/^\s*[-•*]\s*/, "").trim()).filter(Boolean)) {
+    for (const rawLine of value.split(/\r?\n/)) {
+      if (/^\s*[-•*]\s*/.test(rawLine)) continue;
+      const line = rawLine.trim();
       if (line.length > 48 || line.length < 3 || /^nuevo\s+wod$/i.test(line)) continue;
       if (/\b(for\s+time|amrap|emom|e2mom|tabata|chipper|ladder|time\s*cap)\b/i.test(line)) continue;
       if (/^\d+(?:\s*[-–—/]\s*\d+)+\s*(?:kg|lb)?$/i.test(line)) continue;

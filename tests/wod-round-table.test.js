@@ -149,7 +149,8 @@ test("normalizes aligned source rows with a scalar movement repeated across roun
   assert.deepEqual(result.workout.structure.items.map(round => round.items[0].load), ["25 kg", "30 kg", "35 kg"]);
 });
 
-test("infers a descriptive title from a short source heading", () => {
-  assert.equal(inferWorkoutTitle("GIMNÁSTICOS\nFOR TIME 14 MIN\n30-20-10 DB BENCH PRESS"), "GIMNÁSTICOS");
+test("does not treat a bulleted category heading as a WOD title", () => {
+  assert.equal(inferWorkoutTitle("-GIMNÁSTICOS\nFOR TIME 14 MIN\n30-20-10 DB BENCH PRESS"), null);
+  assert.equal(inferWorkoutTitle("• GIMNÁSTICOS\nFOR TIME 14 MIN"), null);
   assert.equal(inferWorkoutTitle("FOR TIME 14 MIN"), null);
 });
