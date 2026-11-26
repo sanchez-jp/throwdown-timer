@@ -1051,10 +1051,11 @@ function normalizeRestStructureNodes(workout: any) {
     if (!Array.isArray(items)) return;
     for (let index = 0; index < items.length; index++) {
       const item = items[index];
-      if (item?.type === "rest") {
+      const restAsRounds = item?.type === "rounds" && /^(?:rest|descanso)\\b/i.test(String(item.label || "").trim());
+      if (item?.type === "rest" || restAsRounds) {
         const label = typeof item.label === "string" && item.label.trim() ? item.label.trim() : "Descanso";
         const explicitSeconds = Number(item.durationSeconds);
-        const durationMatch = label.match(/(\d+)\s*(?:min(?:ute)?s?|m)\b/i);
+        const durationMatch = label.match(/(\\d+)\\s*(?:min(?:ute)?s?|m)\\b/i);
         const durationSeconds = Number.isInteger(explicitSeconds) && explicitSeconds > 0
           ? explicitSeconds
           : durationMatch ? Number(durationMatch[1]) * 60 : null;
