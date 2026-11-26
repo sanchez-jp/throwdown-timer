@@ -427,8 +427,16 @@ export function inferWorkoutTitle(...values) {
   return null;
 }
 
-export function normalizeWorkoutTitle(value) {
+export function normalizeWorkoutTitle(value, sourceText = "") {
+  const explicitHeading = String(sourceText || "").split(/\r?\n/)
+    .map(line => line.trim()).filter(Boolean)
+    .slice(0, 2);
+  if (explicitHeading.length >= 2 && /^-\s*[^-]/.test(explicitHeading[0]) &&
+      /^(?:for\s+time|amrap|emom|e2mom|tabata|chipper|ladder|death\s+by)\b/i.test(explicitHeading[1])) {
+    return explicitHeading[0].replace(/\s+/g, " ").trim();
+  }
   const title = typeof value === "string" ? value.trim() : "";
+  if (/^[-•*]\s*\S/.test(title)) return title.replace(/\s+/g, " ");
   const normalized = title.toLocaleLowerCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
   const categoryTitles = new Set([

@@ -260,3 +260,15 @@ test("rebuilds a single flattened Ladder round header from aligned catalogue pro
   ]);
 });
 
+
+
+test("preserves an explicitly hyphen-prefixed workout title from the source heading", () => {
+  const source = `-GIMNÁSTICOS
+FOR TIME 14 MIN
+30-20-10 DB BENCH PRESS 25/30/35 KG
+15-10-5 BMU
+30-30-30 SIT UPS`;
+  assert.equal(normalizeWorkoutTitle("NUEVO WOD", source), "-GIMNÁSTICOS");
+  assert.equal(normalizeWorkoutTitle("-GIMNÁSTICOS"), "-GIMNÁSTICOS");
+  assert.equal(normalizeWorkoutTitle("GIMNÁSTICOS"), "NUEVO WOD");
+});
