@@ -193,7 +193,7 @@ FOR TIME 14 MIN
     "25 kg", "30 kg", "35 kg",
   ]);
   assert.equal(result.movements[0].load, null);
-  assert.equal(result.movements[2].prescription, null);
+  assert.equal(result.movements[2].prescription, "30");
 });
 
 test("expands a Ladder catalogue progression into per-round movement prescriptions and loads", () => {

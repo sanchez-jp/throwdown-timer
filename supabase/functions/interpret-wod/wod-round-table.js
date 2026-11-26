@@ -365,7 +365,7 @@ export function normalizeExplicitLadderRoundTable(workout, sourceText = "") {
 
   const updatedMovements = movements.map((movement, index) => ({
     ...movement,
-    prescription: rows[index].reps.length === 1 ? rows[index].reps[0] : null,
+    prescription: rows[index].reps.every(value => value === rows[index].reps[0]) ? rows[index].reps[0] : null,
     ...(rows[index].loads
       ? { load: rows[index].loads.values.length === 1
           ? rows[index].loads.values[0] + " " + rows[index].loads.unit
