@@ -247,18 +247,18 @@ export function normalizeExplicitLadderRoundTable(workout, sourceText = "") {
   const sourceRows = [];
   if (typeof sourceText === "string" && sourceText.trim()) {
     for (const movement of movements) {
-      const matches = sourceText.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean)
+      const matches = sourceText.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
         .map(sourceLine => {
           if (matchMovementLine(sourceLine, [movement]) !== movement) return null;
-          const repMatch = sourceLine.replace(/^\\s*(?:[-•*]\\s*)?/, "")
-            .match(/^(\\d+(?:[.,]\\d+)?(?:\\s*[-–—]\\s*\\d+(?:[.,]\\d+)?){0,})\\s+/);
+          const repMatch = sourceLine.replace(/^\s*(?:[-•*]\s*)?/, "")
+            .match(/^(\d+(?:[.,]\d+)?(?:\s*[-–—]\s*\d+(?:[.,]\d+)?){0,})\s+/);
           if (!repMatch) return null;
-          const loadMatch = sourceLine.match(/(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+(?:[.,]\\d+)?){1,})\\s*(kg|lb|lbs)\\b/i);
+          const loadMatch = sourceLine.match(/(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?){1,})\s*(kg|lb|lbs)\b/i);
           return {
             movement,
             reps: parseRepValues(repMatch[1]),
             loads: loadMatch ? {
-              values: loadMatch[1].split(/\\s*\\/\\s*/).map(value => value.trim()),
+              values: loadMatch[1].split(/\s*\/\s*/).map(value => value.trim()),
               unit: loadMatch[2].toLowerCase(),
             } : null,
           };
