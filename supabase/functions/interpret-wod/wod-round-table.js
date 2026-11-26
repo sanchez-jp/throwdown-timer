@@ -225,6 +225,99 @@ export function normalizeExplicitForTimeRoundTable(raw, sourceText) {
   return normalizeCatalogRoundTable(raw, normalizedWorkout, movements);
 }
 
+
+/**
+ * Expands catalogue-level aligned progressions into editable Ladder steps.
+ * It is intentionally data-driven: the step count must agree with the model's
+ * ladder structure (when present) and every movement must have either one
+ * constant prescription or one value per step.
+ */
+export function normalizeExplicitLadderRoundTable(workout, sourceText = "") {
+  const movements = Array.isArray(workout?.movements) ? workout.movements : [];
+  if (movements.length < 2 ||
+      movements.some(movement => typeof movement?.id !== "string" || typeof movement?.name !== "string") ||
+      new Set(movements.map(movement => movement.id)).size !== movements.length) return workout;
+
+  const explicitFormat = inferExplicitWorkoutFormat(sourceText, workout.description);
+  if (workout.format !== "ladder" && explicitFormat !== "ladder") return workout;
+
+  const structure = workout.structure;
+  const existingSteps = structure?.type === "ladder" && Array.isArray(structure.steps)
+    ? structure.steps
+    : [];
+  const roundGroups = structure?.type === "sequence" && Array.isArray(structure.items)
+    ? structure.items.filter(item => item?.type === "rounds")
+    : [];
+  const existingRoundCount = existingSteps.length > 1
+    ? existingSteps.length
+    : roundGroups.length === 1 && Number.isInteger(roundGroups[0]?.count) && roundGroups[0].count > 1
+      ? roundGroups[0].count
+      : null;
+
+  const rows = movements.map(movement => ({
+    movement,
+    reps: parseRepValues(movement.prescription),
+    loads: parseLoadValues(movement.load),
+  }));
+  if (rows.some(row => !row.reps)) return workout;
+
+  const progressionCount = Math.max(...rows.flatMap(row => [
+    row.reps.length, row.loads?.values.length || 1,
+  ]));
+  const roundCount = existingRoundCount || progressionCount;
+  if (roundCount < 2 || roundCount > 30 || progressionCount !== roundCount ||
+      rows.some(row => ![1, roundCount].includes(row.reps.length) ||
+        (row.loads && ![1, roundCount].includes(row.loads.values.length)))) return workout;
+
+  const hasProgression = rows.some(row => row.reps.length > 1 || row.loads?.values.length > 1);
+  if (!hasProgression) return workout;
+
+  const updatedMovements = movements.map((movement, index) => ({
+    ...movement,
+    prescription: rows[index].reps.length === 1 ? rows[index].reps[0] : null,
+    ...(rows[index].loads
+      ? { load: rows[index].loads.values.length === 1
+          ? rows[index].loads.values[0] + " " + rows[index].loads.unit
+          : null }
+      : {}),
+  }));
+  const sourceItems = existingSteps[0]?.items ||
+    (roundGroups[0]?.items || []).filter(item => item?.type === "movement");
+  const sourceById = new Map(sourceItems.map(item => [item.movementId, item]));
+  const steps = Array.from({ length: roundCount }, (_, roundIndex) => ({
+    label: String(existingSteps[roundIndex]?.label || "").trim() || "Ronda " + (roundIndex + 1),
+    items: rows.map(row => {
+      const base = sourceById.get(row.movement.id) || {};
+      return {
+        ...base,
+        type: "movement",
+        movementId: row.movement.id,
+        prescription: row.reps[row.reps.length === 1 ? 0 : roundIndex],
+        load: row.loads
+          ? row.loads.values[row.loads.values.length === 1 ? 0 : roundIndex] + " " + row.loads.unit
+          : row.movement.load ?? null,
+      };
+    }),
+  }));
+
+  console.info("Ladder progression table normalized from movement catalogue", {
+    rounds: roundCount,
+    movements: rows.length,
+    roundSpecificLoads: rows.filter(row => row.loads?.values.length > 1).length,
+  });
+  return {
+    ...workout,
+    format: "ladder",
+    movements: updatedMovements,
+    structure: {
+      ...(structure?.type === "ladder" ? structure : {}),
+      type: "ladder",
+      direction: structure?.direction || "custom",
+      steps,
+    },
+  };
+}
+
 export function inferWorkoutTitle(...values) {
   for (const value of values) {
     if (typeof value !== "string") continue;

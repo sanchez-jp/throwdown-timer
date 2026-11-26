@@ -164,3 +164,68 @@ test("uses the default title for category headings, not workout names", () => {
   assert.equal(normalizeWorkoutTitle("FRAN"), "FRAN");
   assert.equal(normalizeWorkoutTitle("NUEVO WOD"), "NUEVO WOD");
 });
+
+test("expands a Ladder catalogue progression into per-round movement prescriptions and loads", () => {
+  const raw = {
+    title: "NUEVO WOD",
+    workout: {
+      format: "ladder",
+      description: "FOR TIME 14 MIN",
+      movements: [
+        { id: "db-bench-press", name: "DB Bench Press", prescription: "30-20-10", load: "25/30/35 kg" },
+        { id: "bar-muscle-ups", name: "Bar Muscle-Ups", prescription: "15-10-5", load: null },
+        { id: "sit-ups", name: "Sit-Ups", prescription: "30-30-30", load: null },
+      ],
+      structure: {
+        type: "ladder",
+        direction: "descending",
+        steps: [
+          { label: "Ronda 1", items: [] },
+          { label: "Ronda 2", items: [] },
+          { label: "Ronda 3", items: [] },
+        ],
+      },
+    },
+  };
+  const result = normalizeExplicitLadderRoundTable(raw, "LADDER\nFOR TIME 14 MIN");
+  assert.equal(result.workout.format, "ladder");
+  assert.equal(result.workout.structure.steps.length, 3);
+  assert.deepEqual(result.workout.structure.steps.map(step => step.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  ]);
+  assert.deepEqual(result.workout.structure.steps.map(step => step.items[0].load), [
+    "25 kg", "30 kg", "35 kg",
+  ]);
+  assert.equal(result.workout.movements[0].prescription, null);
+  assert.equal(result.workout.movements[0].load, null);
+  assert.equal(result.workout.movements[1].prescription, null);
+  assert.equal(result.workout.movements[2].prescription, "30");
+});
+
+test("rebuilds a single flattened Ladder round header from aligned catalogue progressions", () => {
+  const raw = {
+    workout: {
+      format: "ladder",
+      movements: [
+        { id: "db-bench-press", name: "DB Bench Press", prescription: "30-20-10", load: "25/30/35 kg" },
+        { id: "bar-muscle-ups", name: "Bar Muscle-Ups", prescription: "15-10-5", load: null },
+        { id: "sit-ups", name: "Sit-Ups", prescription: "30", load: null },
+      ],
+      structure: {
+        type: "sequence",
+        items: [{ type: "rounds", count: 1, label: "RONDA 1", items: [
+          { type: "movement", movementId: "db-bench-press" },
+          { type: "movement", movementId: "bar-muscle-ups" },
+          { type: "movement", movementId: "sit-ups" },
+        ] }],
+      },
+    },
+  };
+  const result = normalizeExplicitLadderRoundTable(raw, "LADDER");
+  assert.equal(result.workout.structure.type, "ladder");
+  assert.equal(result.workout.structure.steps.length, 3);
+  assert.deepEqual(result.workout.structure.steps.map(step => step.items.map(item => item.prescription)), [
+    ["30", "15", "30"], ["20", "10", "30"], ["10", "5", "30"],
+  ]);
+});
+

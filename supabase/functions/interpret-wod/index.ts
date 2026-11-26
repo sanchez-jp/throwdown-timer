@@ -3,7 +3,7 @@ import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expan
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, shouldFlagUnverifiedMovementCoverage } from "./wod-semantic-review.js";
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
-import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable, normalizeWorkoutTitle } from "./wod-round-table.js";
+import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable, normalizeExplicitLadderRoundTable, normalizeWorkoutTitle } from "./wod-round-table.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1505,6 +1505,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   // Reapply the deterministic table normalization last so no later repair can restore
   // catalog-level progressions into every round.
   raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
+  raw.workout = normalizeExplicitLadderRoundTable(raw.workout, effectiveSourceText);
   const finalRoundGroups = raw.workout?.structure?.type === "sequence"
     ? raw.workout.structure.items?.filter((item: any) => item?.type === "rounds") || []
     : [];
