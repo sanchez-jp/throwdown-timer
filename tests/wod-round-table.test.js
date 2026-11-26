@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, inferWorkoutTitle, normalizeExplicitForTimeRoundTable } from "../supabase/functions/interpret-wod/wod-round-table.js";
+import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, inferWorkoutTitle, normalizeExplicitForTimeRoundTable, normalizeWorkoutTitle } from "../supabase/functions/interpret-wod/wod-round-table.js";
 
 test("turns an explicit descending For Time table into fixed round groups", () => {
   const raw = {
@@ -153,4 +153,14 @@ test("does not treat a bulleted category heading as a WOD title", () => {
   assert.equal(inferWorkoutTitle("-GIMNÁSTICOS\nFOR TIME 14 MIN\n30-20-10 DB BENCH PRESS"), null);
   assert.equal(inferWorkoutTitle("• GIMNÁSTICOS\nFOR TIME 14 MIN"), null);
   assert.equal(inferWorkoutTitle("FOR TIME 14 MIN"), null);
+});
+
+
+test("uses the default title for category headings, not workout names", () => {
+  assert.equal(normalizeWorkoutTitle("GIMNASTICOS"), "NUEVO WOD");
+  assert.equal(normalizeWorkoutTitle("Gimnásticos"), "NUEVO WOD");
+  assert.equal(normalizeWorkoutTitle("-GIMNÁSTICOS"), "NUEVO WOD");
+  assert.equal(normalizeWorkoutTitle("WEIGHTLIFTING"), "NUEVO WOD");
+  assert.equal(normalizeWorkoutTitle("FRAN"), "FRAN");
+  assert.equal(normalizeWorkoutTitle("NUEVO WOD"), "NUEVO WOD");
 });
