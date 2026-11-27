@@ -204,3 +204,42 @@ export function canonicalizeAmrapBlockNodes(workout) {
   }
   return workout;
 }
+
+
+export function normalizeEmomStructure(workout) {
+  if (!["emom", "e2mom", "tabata"].includes(workout?.format)) return workout;
+  const structure = workout.structure;
+  if (!structure || typeof structure !== "object") return workout;
+
+  // An EMOM's duration/interval count belongs to the timer, not a rounds
+  // container. Some model responses incorrectly mirror the timer rounds here.
+  if (structure.type === "rounds" && Array.isArray(structure.items) && structure.items.length) {
+    workout.structure = { type: "sequence", items: structure.items };
+  }
+
+  const removeRestSlots = items => {
+    if (!Array.isArray(items)) return [];
+    return items.flatMap(node => {
+      if (node?.type === "rest") return [];
+      if (node?.type === "rounds") {
+        const nested = removeRestSlots(node.items);
+        return nested.length ? [{ ...node, items: nested }] : [];
+      }
+      if (node?.type === "choice") {
+        const alternatives = (node.alternatives || []).map(option => ({
+          ...option, items: removeRestSlots(option.items),
+        })).filter(option => option.items.length);
+        return alternatives.length ? [{ ...node, alternatives }] : [];
+      }
+      return [node];
+    });
+  };
+
+  if (["sequence", "chipper"].includes(workout.structure?.type)) {
+    workout.structure = {
+      ...workout.structure,
+      items: removeRestSlots(workout.structure.items),
+    };
+  }
+  return workout;
+}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nestFlatMovementsUnderEmptyRoundHeaders, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "../supabase/functions/interpret-wod/wod-structure-normalization.js";
+import { nestFlatMovementsUnderEmptyRoundHeaders, normalizeEmomStructure, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "../supabase/functions/interpret-wod/wod-structure-normalization.js";
 
 const catalogue = [
   { id: "wall-walks", name: "Wall Walks", prescription: "3", load: null },
@@ -114,4 +114,44 @@ test("populates a single empty rounds header and keeps Cash Out outside", () => 
   assert.deepEqual(result.structure.items.map(node => node.type), ["movement", "rounds", "movement"]);
   assert.deepEqual(result.structure.items[1].items.map(node => node.movementId), ["row", "snatch", "pullups", "situps"]);
   assert.equal(result.structure.items[2].movementId, "pushups");
+});
+
+
+test("normalizes an EMOM timer-rounds container to a sequence and keeps rest out of movement structure", () => {
+  const workout = {
+    format: "emom",
+    movements: [
+      { id: "ski", name: "Ski" },
+      { id: "hsw", name: "Handstand Walk" },
+      { id: "burpees", name: "Burpee Box Jump Over" },
+    ],
+    structure: { type: "rounds", count: 20, items: [
+      { type: "movement", movementId: "ski", prescription: "14/11 cal" },
+      { type: "movement", movementId: "hsw", prescription: "15 m" },
+      { type: "movement", movementId: "burpees", prescription: "10" },
+      { type: "rest", label: "REST", movementId: null },
+    ] },
+  };
+  const result = normalizeEmomStructure(workout);
+  assert.equal(result.structure.type, "sequence");
+  assert.deepEqual(result.structure.items.map(item => item.type), ["movement", "movement", "movement"]);
+  assert.deepEqual(result.structure.items.map(item => item.movementId), ["ski", "hsw", "burpees"]);
+  assert.equal(result.structure.count, undefined);
+});
+
+test("normalizes EMOM rest nodes without altering non-EMOM round structures", () => {
+  const emom = { format: "e2mom", structure: { type: "sequence", items: [
+    { type: "movement", movementId: "bike" },
+    { type: "rest", label: "REST", durationSeconds: null },
+  ] } };
+  normalizeEmomStructure(emom);
+  assert.deepEqual(emom.structure.items.map(item => item.type), ["movement"]);
+
+  const forTime = { format: "for_time", structure: { type: "rounds", count: 5, items: [
+    { type: "movement", movementId: "bike" },
+    { type: "rest", label: "REST", durationSeconds: 60 },
+  ] } };
+  normalizeEmomStructure(forTime);
+  assert.equal(forTime.structure.type, "rounds");
+  assert.equal(forTime.structure.items.length, 2);
 });

@@ -4,7 +4,7 @@ import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, sho
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, buildCorrectionCandidates, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
 import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable, normalizeExplicitLadderRoundTable, normalizeWorkoutTitle } from "./wod-round-table.js";
-import { canonicalizeAmrapBlockNodes, nestFlatMovementsUnderEmptyRoundHeaders, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "./wod-structure-normalization.js";
+import { canonicalizeAmrapBlockNodes, nestFlatMovementsUnderEmptyRoundHeaders, normalizeEmomStructure, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "./wod-structure-normalization.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1162,17 +1162,18 @@ function normalizeEmomIntervalLabels(result: any, sourceText: string) {
   const numberedSlots = [...sourceText.matchAll(/(?:^|\s)(\d+)\s*[).:-]\s*([\s\S]*?)(?=\s+\d+\s*[).:-]\s*|$)/g)]
     .map(match => ({ number: Number(match[1]), text: String(match[2] || "").trim() }))
     .filter(slot => slot.number > 0 && slot.text);
-  const movementNodes: any[] = [];
+  const slotNodes: any[] = [];
   const visit = (items: any[]) => {
     for (const item of items || []) {
-      if (item?.type === "movement") movementNodes.push(item);
+      if (item?.type === "movement" || item?.type === "rest") slotNodes.push(item);
       else if (item?.type === "rounds") visit(item.items || []);
       else if (item?.type === "choice") for (const option of item.alternatives || []) visit(option.items || []);
     }
   };
   visit(result.workout?.structure?.items || []);
   const movements = result.workout?.movements || [];
-  const labelsFromStructure = movementNodes.map(node => {
+  const labelsFromStructure = slotNodes.map(node => {
+    if (node?.type === "rest") return "DESCANSO";
     const movement = movements.find((item: any) => item?.id === node.movementId);
     return [node.prescription || movement?.prescription, movement?.name, node.load || movement?.load]
       .filter(Boolean).join(" · ");
@@ -1470,6 +1471,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = omitEmptyRepProgressions(raw.workout);
   raw = normalizeExplicitRunningClockStages(raw, effectiveSourceText);
   raw = normalizeEmomIntervalLabels(raw, effectiveSourceText);
+  raw.workout = normalizeEmomStructure(raw.workout);
   // Reapply the deterministic table normalization last so no later repair can restore
   // catalog-level progressions into every round.
   raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
