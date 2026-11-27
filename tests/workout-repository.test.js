@@ -95,6 +95,21 @@ test("delete returns the record and restore brings it back without changing its 
   assert.equal((await repository.get(created.id)).title, created.title);
 });
 
+test("restore preserves the original position in the library", async () => {
+  const { repository } = setup();
+  const first = await repository.create(wod({ title: "Primero" }));
+  const second = await repository.create(wod({ title: "Segundo" }));
+  const third = await repository.create(wod({ title: "Tercero" }));
+  const originalOrder = (await repository.list()).map(record => record.id);
+
+  const deleted = await repository.delete(second.id);
+  assert.deepEqual((await repository.list()).map(record => record.id), [third.id, first.id]);
+
+  const restored = await repository.restore(deleted);
+  assert.equal(restored.updatedAt, second.updatedAt);
+  assert.deepEqual((await repository.list()).map(record => record.id), originalOrder);
+});
+
 test("restore refuses to overwrite an existing workout", async () => {
   const { repository } = setup();
   const created = await repository.create(wod());

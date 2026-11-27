@@ -158,7 +158,7 @@ export function createWorkoutRepository({
       timer: wod.timer === null ? null : clone(wod.timer),
       interpretation: clone(wod.interpretation),
       createdAt: metadata.createdAt || timestamp,
-      updatedAt: timestamp
+      updatedAt: metadata.updatedAt || timestamp
     };
   }
 
@@ -240,7 +240,11 @@ export function createWorkoutRepository({
       if (await storage.get(record.id)) {
         throw new WorkoutRepositoryError("ALREADY_EXISTS", "El WOD ya existe y no se ha sobrescrito.");
       }
-      const restored = makeRecord(record, { id: record.id, createdAt: record.createdAt });
+      const restored = makeRecord(record, {
+        id: record.id,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt
+      });
       await storage.put(restored);
       return clone(restored);
     }
