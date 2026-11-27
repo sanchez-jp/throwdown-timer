@@ -2,7 +2,7 @@ import { TimerEngine } from "./timer-engine.js";
 import { getCountdownCueSecond } from "./audio-cues.js";
 import { createWorkoutRepository } from "./workout-repository.js";
 import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
-import { getStructureIntervalPhaseGroups } from "./timer-description.js";
+import { getSequencePhaseGroups, getStructureIntervalPhaseGroups } from "./timer-description.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -362,10 +362,16 @@ function renderTimerDescription(workout, timerPlan = null) {
     (items || []).forEach((entry, index) => {
       const item = document.createElement("li");
       if (isEmomSequence) item.dataset.intervalIndex = String(index);
+      const mappedPhases = phaseGroups?.[index] || [];
       if (entry?.type === "rest") {
-        item.className = "timer-description-rest";
+        item.className = "timer-description-rest" + (mappedPhases.length ? " timer-description-stage" : "");
+        if (mappedPhases.length === 1) item.dataset.timerPhaseIndex = String(mappedPhases[0].index);
         item.textContent = [entry.label || "DESCANSO", formatTime(entry.durationSeconds * 1000)].filter(Boolean).join(" · ");
       } else if (entry?.type === "movement") {
+        if (mappedPhases.length === 1) {
+          item.classList.add("timer-description-stage");
+          item.dataset.timerPhaseIndex = String(mappedPhases[0].index);
+        }
         const movement = movementById.get(entry.movementId);
         const movementName = movement?.name || "Movimiento no disponible";
         const prescription = entry.prescription || movement?.prescription;
@@ -374,7 +380,7 @@ function renderTimerDescription(workout, timerPlan = null) {
           .map(note => note.trim()).filter(note => note && !movementName.toLocaleLowerCase().includes(note.toLocaleLowerCase()));
         item.textContent = [visiblePrescription, movementName, entry.load || movement?.load, formatLoadProgression(entry.loadProgression), formatRepProgression(entry.repProgression), ...visibleNotes].filter(Boolean).join(" · ");
       } else if (entry?.type === "rounds") {
-        const phases = phaseGroups?.[index] || [];
+        const phases = mappedPhases;
         const nested = document.createElement("section");
         nested.className = "timer-description-nested-group" + (phases.length ? " timer-description-stage" : "");
         if (phases.length) nested.dataset.timerIntervalIndex = String(index);
@@ -414,7 +420,7 @@ function renderTimerDescription(workout, timerPlan = null) {
     });
     container.append(list);
   };
-  const addStructureGroup = (label, items, stageIndex = null, phases = [], timerPhaseIndex = null) => {
+  const addStructureGroup = (label, items, stageIndex = null, phases = [], timerPhaseIndex = null, nodePhaseGroups = null) => {
     const group = document.createElement("section");
     group.className = "timer-description-structure-group" + (stageIndex === null && timerPhaseIndex === null ? "" : " timer-description-stage");
     if (stageIndex !== null) group.dataset.timerStageIndex = String(stageIndex);
@@ -452,7 +458,7 @@ function renderTimerDescription(workout, timerPlan = null) {
       });
       group.append(list);
     } else {
-      renderStructureNodes(items, group, false, intervalPhaseGroups);
+      renderStructureNodes(items, group, false, nodePhaseGroups || intervalPhaseGroups);
     }
     panel.append(group);
   };
@@ -461,7 +467,10 @@ function renderTimerDescription(workout, timerPlan = null) {
     const label = structure.type === "rounds"
       ? (Number(structure.count) || 1) + " RONDAS"
       : structure.type === "chipper" ? "CHIPPER" : "SECUENCIA";
-    addStructureGroup(label, structure.items);
+    const sequencePhaseGroups = timerPlan && structure.type === "sequence"
+      ? getSequencePhaseGroups(new TimerEngine(timerPlan, { now: () => 0 }).phases.map((phase, index) => ({ ...phase, index })), structure)
+      : null;
+    addStructureGroup(label, structure.items, null, [], null, sequencePhaseGroups);
   } else if (structure?.type === "ladder" && Array.isArray(structure.steps)) {
     const direction = { ascending: "ASCENDENTE", descending: "DESCENDENTE", alternating: "ALTERNANDO", custom: "PERSONALIZADA" }[structure.direction] || "";
     const ladderGroup = document.createElement("section");

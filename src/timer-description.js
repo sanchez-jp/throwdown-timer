@@ -42,6 +42,21 @@ export function getIntervalPhaseGroups(phases, intervalCount) {
   return groups.every(group => group.length) ? groups : null;
 }
 
+/** Maps each top-level semantic sequence item to phases compiled from its matching timer-plan block. */
+export function getSequencePhaseGroups(phases, structure) {
+  if (!Array.isArray(phases) || structure?.type !== "sequence" || !Array.isArray(structure.items) ||
+      !structure.items.length) return null;
+  const groups = Array.from({ length: structure.items.length }, () => []);
+  for (const phase of phases) {
+    const match = String(phase?.sourcePath || "").match(/^blocks\[(\d+)\](?:\.|$)/);
+    if (!match) return null;
+    const index = Number(match[1]);
+    if (index >= groups.length) return null;
+    groups[index].push(phase);
+  }
+  return groups.every(group => group.length) ? groups : null;
+}
+
 export function getStructureIntervalPhaseGroups(phases, structure) {
   const intervalCount = structure?.type === "ladder"
     ? structure.steps?.length
