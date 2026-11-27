@@ -180,3 +180,30 @@ export function nestFlatMovementsUnderEmptyRoundHeaders(workout, sourceText = ""
   });
   return { ...workout, structure: { ...structure, items: result } };
 }
+
+export function canonicalizeAmrapBlockNodes(workout) {
+  const visit = nodes => {
+    if (!Array.isArray(nodes)) return;
+    for (const node of nodes) {
+      if (!node || typeof node !== "object") continue;
+      if (node.type === "amrap" && Array.isArray(node.items) && node.items.length > 0) {
+        const count = Number.isInteger(node.count) && node.count > 0 ? node.count : 1;
+        node.type = "rounds";
+        node.count = count;
+        delete node.movements;
+      }
+      if (node.type === "rounds") visit(node.items);
+      else if (node.type === "choice" && Array.isArray(node.alternatives)) {
+        for (const alternative of node.alternatives) visit(alternative?.items);
+      }
+    }
+  };
+  const structure = workout?.structure;
+  if (["sequence", "rounds", "chipper"].includes(structure?.type)) visit(structure.items);
+  else if (structure?.type === "ladder" && Array.isArray(structure.steps)) {
+    for (const step of structure.steps) visit(step?.items);
+  } else if (structure?.type === "sections" && Array.isArray(structure.sections)) {
+    for (const section of structure.sections) visit(section?.structure?.items);
+  }
+  return workout;
+}
