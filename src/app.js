@@ -1308,6 +1308,26 @@ function createRepProgressionStepper(value) {
 }
 function createStructureItemRow(item = {}) {
   const row = document.createElement("div"); row.className = "structure-item-row"; row.dataset.structureType = item.type || "movement";
+  if (item.type === "rest") {
+    row.classList.add("structure-rest-row");
+    const label = document.createElement("input");
+    label.className = "editor-input";
+    label.name = "restLabel";
+    label.value = item.label || "Descanso";
+    const duration = document.createElement("input");
+    duration.className = "editor-input structure-count";
+    duration.type = "number";
+    duration.name = "restDurationSeconds";
+    duration.min = "1";
+    duration.step = "1";
+    duration.value = Number.isInteger(item.durationSeconds) && item.durationSeconds > 0 ? item.durationSeconds : 180;
+    row.append(
+      structureField("Descanso", label),
+      structureField("Duración (segundos)", duration),
+      structureRemoveButton("Eliminar descanso", () => row.remove())
+    );
+    return row;
+  }
   if (item.type === "rounds") {
     row.classList.add("structure-nested-group");
     row.dataset.structureLabel = typeof item.label === "string" ? item.label : "";
@@ -1347,9 +1367,14 @@ function createStructureItemRow(item = {}) {
 }
 function createStructureNodeActions(container) {
   const actions = document.createElement("div"); actions.className = "structure-node-actions";
-  for (const [label,type] of [["+ MOVIMIENTO","movement"],["+ GRUPO DE RONDAS","rounds"],["+ ELECCIÓN","choice"]]) {
+  for (const [label,type] of [["+ MOVIMIENTO","movement"],["+ GRUPO DE RONDAS","rounds"],["+ ELECCIÓN","choice"],["+ DESCANSO","rest"]]) {
     const button = document.createElement("button"); button.type = "button"; button.className = "structure-add-button"; button.textContent = label;
-    button.addEventListener("click", () => container.append(createStructureItemRow(type === "rounds" ? {type,count:5,items:[{}]} : type === "choice" ? {type,alternatives:[{label:"Row o Ski",items:[{}]},{label:"Bike",items:[{}]}]} : {})));
+    button.addEventListener("click", () => container.append(createStructureItemRow(
+      type === "rounds" ? {type,count:5,items:[{}]}
+        : type === "choice" ? {type,alternatives:[{label:"Row o Ski",items:[{}]},{label:"Bike",items:[{}]}]}
+        : type === "rest" ? {type,label:"Descanso",durationSeconds:180}
+        : {}
+    )));
     actions.append(button);
   }
   return actions;
@@ -1531,6 +1556,14 @@ function collectSemanticStructure() {
   const type = $("structureType").value;
   const collectNodes = container => [...container.querySelectorAll(":scope > .structure-item-row")].map(row => {
     const nodeType = row.dataset.structureType || "movement";
+    if (nodeType === "rest") {
+      const label = row.querySelector('[name="restLabel"]').value.trim();
+      const durationSeconds = Number(row.querySelector('[name="restDurationSeconds"]').value);
+      if (!label || !Number.isInteger(durationSeconds) || durationSeconds < 1) {
+        throw new Error("Cada descanso necesita una etiqueta y una duración válida en segundos.");
+      }
+      return {type:"rest",label,durationSeconds};
+    }
     if (nodeType === "rounds") {
       const count = Number(row.querySelector('[name="nestedRoundCount"]').value);
       const items = collectNodes(row.querySelector(":scope > .structure-items"));
