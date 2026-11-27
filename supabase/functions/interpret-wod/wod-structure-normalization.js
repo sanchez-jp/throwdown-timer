@@ -92,11 +92,55 @@ export function normalizeRestStructureNodes(workout) {
   return workout;
 }
 
-export function nestFlatMovementsUnderEmptyRoundHeaders(workout) {
+export function nestFlatMovementsUnderEmptyRoundHeaders(workout, sourceText = "") {
   const structure = workout?.structure;
   const nodes = structure?.items;
-  if (!["sequence", "chipper"].includes(structure?.type) || !Array.isArray(nodes) ||
-      !nodes.some(node => node?.type === "rounds" && (!Array.isArray(node.items) || !node.items.length))) return workout;
+  const movements = Array.isArray(workout?.movements) ? workout.movements : [];
+  if (!["sequence", "chipper"].includes(structure?.type) || !Array.isArray(nodes)) return workout;
+
+  // Some correction responses repeat the same empty "N ROUNDS" header before
+  // each movement. Rebuild one populated round group only when the source itself
+  // gives an unambiguous Cash Out boundary; keep Cash In and Cash Out outside it.
+  const source = key(sourceText);
+  const cashOutAt = source.indexOf("cashout");
+  if (cashOutAt >= 0) {
+    for (let start = 0; start < nodes.length; start++) {
+      const header = nodes[start];
+      if (header?.type !== "rounds" || !Number.isInteger(header.count) || header.count < 2 ||
+          !Array.isArray(nodes.slice(start, start + 2)).every(node =>
+            node?.type === "rounds" && node.count === header.count &&
+            key(node.label) === key(header.label) && (!Array.isArray(node.items) || !node.items.length))) continue;
+      let end = start;
+      while (end < nodes.length && nodes[end]?.type === "rounds" &&
+          nodes[end].count === header.count && key(nodes[end].label) === key(header.label) &&
+          (!Array.isArray(nodes[end].items) || !nodes[end].items.length)) end++;
+      if (end - start < 2) continue;
+      const trailing = nodes.slice(end);
+      if (!trailing.length || trailing.some(node => node?.type !== "movement")) continue;
+      const positions = trailing.map(node => {
+        const movement = movements.find(item => item?.id === node.movementId);
+        const name = key(movement?.name);
+        return name ? source.indexOf(name) : -1;
+      });
+      if (positions.some(position => position < 0) ||
+          positions.some((position, index) => index > 0 && position <= positions[index - 1])) continue;
+      const cashOutIndex = positions.findIndex(position => position > cashOutAt);
+      if (cashOutIndex <= 0 || positions.slice(cashOutIndex).some(position => position < cashOutAt)) continue;
+      const workItems = trailing.slice(0, cashOutIndex);
+      const cashOutItems = trailing.slice(cashOutIndex);
+      const repaired = [
+        ...nodes.slice(0, start),
+        { ...header, items: workItems },
+        ...cashOutItems,
+      ];
+      console.info("Repeated empty round headers consolidated from source", {
+        rounds: header.count, movementsInRound: workItems.length, cashOutMovements: cashOutItems.length,
+      });
+      return { ...workout, structure: { ...structure, items: repaired } };
+    }
+  }
+
+  if (!nodes.some(node => node?.type === "rounds" && (!Array.isArray(node.items) || !node.items.length))) return workout;
   const result = [];
   let active = null;
   let changed = false;

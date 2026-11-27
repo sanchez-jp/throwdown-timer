@@ -60,3 +60,36 @@ test("preserves already populated round groups", () => {
   ] } };
   assert.equal(nestFlatMovementsUnderEmptyRoundHeaders(workout), workout);
 });
+
+
+test("consolidates duplicate empty round headers and keeps Cash Out outside the rounds", () => {
+  const movements = [
+    { id: "sandbag", name: "Sandbag Carry" },
+    { id: "row", name: "Row" },
+    { id: "snatch", name: "Power Snatches" },
+    { id: "pullups", name: "Pull-Ups" },
+    { id: "situps", name: "AbMat Sit-Ups" },
+    { id: "pushups", name: "Hand-Release Push-Ups" },
+  ];
+  const emptyHeader = () => ({ type: "rounds", count: 5, label: "5 ROUNDS" });
+  const workout = { movements, structure: { type: "sequence", items: [
+    { type: "movement", movementId: "sandbag" },
+    emptyHeader(), emptyHeader(), emptyHeader(), emptyHeader(),
+    ...movements.slice(1).map(movement => ({ type: "movement", movementId: movement.id })),
+  ] } };
+  const source = "CASH IN 60 m Sandbag Carry 5 ROUNDS 400 m Row 8 Power Snatches 12 Pull-Ups 20 AbMat Sit-Ups CASH OUT 30 Hand-Release Push-Ups";
+  const result = nestFlatMovementsUnderEmptyRoundHeaders(workout, source);
+  assert.deepEqual(result.structure.items.map(node => node.type), ["movement", "rounds", "movement"]);
+  assert.equal(result.structure.items[1].count, 5);
+  assert.deepEqual(result.structure.items[1].items.map(node => node.movementId), ["row", "snatch", "pullups", "situps"]);
+  assert.equal(result.structure.items[2].movementId, "pushups");
+});
+
+test("does not consolidate repeated empty round headers without a source Cash Out boundary", () => {
+  const workout = { movements: [{ id: "row", name: "Row" }], structure: { type: "sequence", items: [
+    { type: "rounds", count: 5, label: "5 ROUNDS" },
+    { type: "rounds", count: 5, label: "5 ROUNDS" },
+    { type: "movement", movementId: "row" },
+  ] } };
+  assert.equal(nestFlatMovementsUnderEmptyRoundHeaders(workout), workout);
+});

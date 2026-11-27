@@ -1456,7 +1456,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   canonicalizeAmrapBlockNodes(raw.workout);
   normalizeRoundMovementAliases(raw.workout);
   normalizeRestStructureNodes(raw.workout);
-  raw.workout = nestFlatMovementsUnderEmptyRoundHeaders(raw.workout);
+  raw.workout = nestFlatMovementsUnderEmptyRoundHeaders(raw.workout, effectiveSourceText);
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, effectiveSourceText);
   raw = normalizeSectionRestBlocks(raw);
