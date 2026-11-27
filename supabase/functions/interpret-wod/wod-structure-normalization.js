@@ -243,3 +243,10 @@ export function normalizeEmomStructure(workout) {
   }
   return workout;
 }
+
+export function ensureEmomRestIntervalLabel(labels, sourceText) {
+  if (!Array.isArray(labels) || !labels.length ||
+      !/\b(rest|descanso)\b/i.test(String(sourceText || ""))) return labels;
+  const alreadyIncluded = labels.some(label => /^\s*(?:rest|descanso)\b/i.test(String(label || "")));
+  return alreadyIncluded ? labels : [...labels, "DESCANSO"];
+}

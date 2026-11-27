@@ -155,3 +155,13 @@ test("normalizes EMOM rest nodes without altering non-EMOM round structures", ()
   assert.equal(forTime.structure.type, "rounds");
   assert.equal(forTime.structure.items.length, 2);
 });
+
+test("does not append a second EMOM rest label when the structure already contains it", async () => {
+  const { ensureEmomRestIntervalLabel } = await import("../supabase/functions/interpret-wod/wod-structure-normalization.js");
+  const labels = ["14/11 cal · Ski", "15 m · Handstand Walk", "DESCANSO"];
+  assert.deepEqual(ensureEmomRestIntervalLabel(labels, "1) Ski 2) Handstand Walk 3) Rest"), labels);
+  assert.deepEqual(ensureEmomRestIntervalLabel(labels.slice(0, 2), "1) Ski 2) Handstand Walk 3) Rest"),
+    ["14/11 cal · Ski", "15 m · Handstand Walk", "DESCANSO"]);
+  assert.deepEqual(ensureEmomRestIntervalLabel(labels.slice(0, 2), "1) Ski 2) Handstand Walk"),
+    ["14/11 cal · Ski", "15 m · Handstand Walk"]);
+});

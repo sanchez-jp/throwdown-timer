@@ -4,7 +4,7 @@ import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, sho
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, buildCorrectionCandidates, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
 import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable, normalizeExplicitLadderRoundTable, normalizeWorkoutTitle } from "./wod-round-table.js";
-import { canonicalizeAmrapBlockNodes, nestFlatMovementsUnderEmptyRoundHeaders, normalizeEmomStructure, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "./wod-structure-normalization.js";
+import { canonicalizeAmrapBlockNodes, ensureEmomRestIntervalLabel, nestFlatMovementsUnderEmptyRoundHeaders, normalizeEmomStructure, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "./wod-structure-normalization.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -1191,8 +1191,8 @@ function normalizeEmomIntervalLabels(result: any, sourceText: string) {
       const label = movementLabels[movementIndex++];
       return label || slot.text.replace(/\s+/g, " ").slice(0, 100);
     });
-  } else if (/\b(rest|descanso)\b/i.test(sourceText) && labels.length) {
-    labels = [...labels, "DESCANSO"];
+  } else {
+    labels = ensureEmomRestIntervalLabel(labels, sourceText);
   }
   if (!labels.length) return result;
   for (const block of emomBlocks) block.intervalLabels = labels;
