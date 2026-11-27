@@ -1172,7 +1172,7 @@ function normalizeEmomIntervalLabels(result: any, sourceText: string) {
   };
   visit(result.workout?.structure?.items || []);
   const movements = result.workout?.movements || [];
-  const labelsFromStructure = slotNodes.map(node => {
+  const movementLabels = slotNodes.filter(node => node?.type === "movement").map(node => {
     if (node?.type === "rest") return "DESCANSO";
     const movement = movements.find((item: any) => item?.id === node.movementId);
     return [node.prescription || movement?.prescription, movement?.name, node.load || movement?.load]
@@ -1183,7 +1183,7 @@ function normalizeEmomIntervalLabels(result: any, sourceText: string) {
     let movementIndex = 0;
     labels = numberedSlots.map(slot => {
       if (/\b(rest|descanso)\b/i.test(slot.text)) return "DESCANSO";
-      const label = labelsFromStructure[movementIndex++];
+      const label = movementLabels[movementIndex++];
       return label || slot.text.replace(/\s+/g, " ").slice(0, 100);
     });
   } else if (/\b(rest|descanso)\b/i.test(sourceText) && labels.length) {

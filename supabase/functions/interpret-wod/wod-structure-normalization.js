@@ -207,7 +207,7 @@ export function canonicalizeAmrapBlockNodes(workout) {
 
 
 export function normalizeEmomStructure(workout) {
-  if (!["emom", "e2mom", "tabata"].includes(workout?.format)) return workout;
+  if (!["emom", "e2mom"].includes(workout?.format)) return workout;
   const structure = workout.structure;
   if (!structure || typeof structure !== "object") return workout;
 
