@@ -1,4 +1,3 @@
-import { canonicalizeAmrapBlockNodes } from "../supabase/functions/interpret-wod/wod-structure-normalization.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { nestFlatMovementsUnderEmptyRoundHeaders, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "../supabase/functions/interpret-wod/wod-structure-normalization.js";
@@ -60,30 +59,4 @@ test("preserves already populated round groups", () => {
     { type: "rounds", count: 1, items: [{ type: "movement", movementId: "wall-walks" }] },
   ] } };
   assert.equal(nestFlatMovementsUnderEmptyRoundHeaders(workout), workout);
-});
-
-test("canonicalizes timed AMRAP blocks to the only supported grouped structure node", () => {
-  const workout = { format: "amrap", structure: { type: "sequence", items: [
-    { type: "amrap", label: "AMRAP 6 MINUTES", durationSeconds: 360, items: [
-      { type: "movement", movementId: "wall-walks", prescription: "3" },
-      { type: "movement", movementId: "snatch-40", prescription: "9" },
-    ] },
-    { type: "rest", label: "REST 3 MINUTES", durationSeconds: 180 },
-    { type: "amrap", label: "AMRAP 6 MINUTES", durationSeconds: 360, items: [
-      { type: "movement", movementId: "hspu", prescription: "6" },
-    ] },
-  ] } };
-  canonicalizeAmrapBlockNodes(workout);
-  assert.deepEqual(workout.structure.items.map(node => node.type), ["rounds", "rest", "rounds"]);
-  assert.deepEqual(workout.structure.items.filter(node => node.type === "rounds").map(node => node.count), [1, 1]);
-  assert.deepEqual(workout.structure.items.filter(node => node.type === "rounds").map(node => node.items.length), [2, 1]);
-  assert.equal(workout.format, "amrap");
-});
-
-test("does not fabricate contents for empty AMRAP blocks", () => {
-  const workout = { structure: { type: "sequence", items: [
-    { type: "amrap", label: "AMRAP 6 MINUTES", items: [] },
-  ] } };
-  canonicalizeAmrapBlockNodes(workout);
-  assert.equal(workout.structure.items[0].type, "amrap");
 });

@@ -1633,7 +1633,8 @@ const responseSchema = {
               items: {
                 type: "object",
                 properties: {
-                  type: { type: "string", enum: ["movement", "rounds", "choice"] },
+                  type: { type: "string", enum: ["movement", "rounds", "choice", "rest"] },
+                  durationSeconds: { type: "integer", nullable: true },
                   movementId: { type: "string", nullable: true }, prescription: { type: "string", nullable: true },
                   load: { type: "string", nullable: true },
                   loadProgression: { type: "object", properties: {

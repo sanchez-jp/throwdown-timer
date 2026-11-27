@@ -1,35 +1,3 @@
-/**
- * AMRAP is a workout format, never a structure-node type. Timed AMRAP
- * segments are represented as one grouped round inside the ordered sequence;
- * the timer carries the segment duration and explicit rest nodes separate them.
- */
-export function canonicalizeAmrapBlockNodes(workout) {
-  const visit = nodes => {
-    if (!Array.isArray(nodes)) return;
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      if (node?.type === "amrap") {
-        if (!Array.isArray(node.items) || node.items.length === 0) continue;
-        nodes[i] = {
-          ...node,
-          type: "rounds",
-          count: Number.isInteger(node.count) && node.count > 0 ? node.count : 1,
-        };
-        delete nodes[i].movements;
-        visit(nodes[i].items);
-      } else if (node?.type === "rounds") visit(node.items);
-      else if (node?.type === "choice") {
-        for (const alternative of node.alternatives || []) visit(alternative?.items);
-      }
-    }
-  };
-  const structure = workout?.structure;
-  if (["sequence", "rounds", "chipper"].includes(structure?.type)) visit(structure.items);
-  else if (structure?.type === "ladder") for (const step of structure.steps || []) visit(step?.items);
-  else if (structure?.type === "sections") for (const section of structure.sections || []) visit(section?.structure?.items);
-  return workout;
-}
-
 const key = value => String(value || "").toLocaleLowerCase().normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
 
