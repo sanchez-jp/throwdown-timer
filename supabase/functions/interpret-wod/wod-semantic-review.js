@@ -1,9 +1,9 @@
 export function findUnverifiedMovementCoverage(workout, evidence) {
   const movements = Array.isArray(workout?.movements) ? workout.movements : [];
   const normalize = (value) => String(value || "").toLocaleLowerCase().normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
   const comparable = (value) => normalize(value).replace(/s$/, "");
-  const coveredMovementIds = new Set();
+  const coveredMovementNames = new Set();
   let hasUnmappedSourceMovement = false;
 
   for (const item of Array.isArray(evidence) ? evidence : []) {
@@ -12,23 +12,38 @@ export function findUnverifiedMovementCoverage(workout, evidence) {
       hasUnmappedSourceMovement = true;
       continue;
     }
-    const sourceName = comparable(item.sourceName);
+
     const byId = movements.find((movement) => movement?.id === item.movementId);
-    const matches = byId ? [byId] : movements.filter((movement) => {
+    if (byId) {
+      const name = comparable(byId.name);
+      if (!name) {
+        hasUnmappedSourceMovement = true;
+        continue;
+      }
+      // The same movement can appear several times in the catalogue when
+      // each occurrence has a different load or prescription. One verified
+      // source movement covers every occurrence with that same movement name.
+      coveredMovementNames.add(name);
+      continue;
+    }
+
+    const sourceName = comparable(item.sourceName);
+    const matches = movements.filter((movement) => {
       const name = comparable(movement?.name);
       return name && (sourceName === name || sourceName.endsWith(name) || name.endsWith(sourceName));
     });
-    if (matches.length !== 1 || typeof matches[0]?.id !== "string") {
+    const matchedNames = new Set(matches.map((movement) => comparable(movement?.name)).filter(Boolean));
+    if (matchedNames.size !== 1) {
       hasUnmappedSourceMovement = true;
       continue;
     }
-    coveredMovementIds.add(matches[0].id);
+    coveredMovementNames.add([...matchedNames][0]);
   }
 
   return {
     hasUnmappedSourceMovement,
     uncoveredMovementIds: movements.map((movement) => movement?.id)
-      .filter((id) => id && !coveredMovementIds.has(id)),
+      .filter((id, index) => id && !coveredMovementNames.has(comparable(movements[index]?.name))),
     hasEvidence: Array.isArray(evidence) && evidence.length > 0,
   };
 }
@@ -41,7 +56,7 @@ export function shouldFlagUnverifiedMovementCoverage(reviewStatus, evidence, cov
 export function parseExplicitWorkRestIntervals(sourceText) {
   if (typeof sourceText !== "string") return null;
   const normalized = sourceText.replace(/[’‘′]/g, "'");
-  const match = normalized.match(/\b(\d+)\s*(?:x|×|rounds?\s*(?:of)?|rondas?\s*(?:de)?)\s*(\d+)\s*(?:'|min(?:ute)?s?)\s*(?:amrap)?\s*(?:\/|,|\+)\s*(\d+)\s*(?:'|min(?:ute)?s?)\s*(?:rest|descanso)\b/i);
+  const match = normalized.match(/\\b(\\d+)\\s*(?:x|×|rounds?\\s*(?:of)?|rondas?\\s*(?:de)?)\\s*(\\d+)\\s*(?:'|min(?:ute)?s?)\\s*(?:amrap)?\\s*(?:\\/|,|\\+)\\s*(\\d+)\\s*(?:'|min(?:ute)?s?)\\s*(?:rest|descanso)\\b/i);
   if (!match) return null;
   const [, roundsText, workMinutesText, restMinutesText] = match;
   const rounds = Number(roundsText);

@@ -22,6 +22,61 @@ test("accepts movement coverage when every source movement maps to the candidate
   });
 });
 
+
+test("covers repeated catalogue entries for the same movement when loads differ", () => {
+  const repeatedWorkout = {
+    movements: [
+      { id: "wall-walks", name: "Wall Walks" },
+      { id: "power-snatches-40-24", name: "Power Snatches", load: "40/24 kg" },
+      { id: "wall-facing-hspu", name: "Wall-Facing HSPU" },
+      { id: "power-snatches-50-35", name: "Power Snatches", load: "50/35 kg" },
+      { id: "handstand-walk", name: "Handstand Walk" },
+      { id: "power-snatches-60-40", name: "Power Snatches", load: "60/40 kg" },
+    ],
+  };
+  const evidence = [
+    { sourceName: "Wall Walks", movementId: "wall-walks", sourceEvidence: "3 Wall Walks" },
+    { sourceName: "Power Snatches", movementId: "power-snatches-40-24", sourceEvidence: "9 Power Snatches" },
+    { sourceName: "Wall-Facing HSPU", movementId: "wall-facing-hspu", sourceEvidence: "6 Wall-Facing HSPU" },
+    { sourceName: "Handstand Walk", movementId: "handstand-walk", sourceEvidence: "9-M Handstand Walk" },
+  ];
+  assert.deepEqual(findUnverifiedMovementCoverage(repeatedWorkout, evidence), {
+    hasUnmappedSourceMovement: false,
+    uncoveredMovementIds: [],
+    hasEvidence: true,
+  });
+});
+
+test("maps a repeated movement by source name when its evidence has no catalogue id", () => {
+  const repeatedWorkout = {
+    movements: [
+      { id: "power-snatches-40", name: "Power Snatches" },
+      { id: "power-snatches-50", name: "Power Snatches" },
+    ],
+  };
+  const coverage = findUnverifiedMovementCoverage(repeatedWorkout, [
+    { sourceName: "Power Snatches", movementId: null, sourceEvidence: "9 Power Snatches" },
+  ]);
+  assert.deepEqual(coverage, {
+    hasUnmappedSourceMovement: false,
+    uncoveredMovementIds: [],
+    hasEvidence: true,
+  });
+});
+
+test("still flags a genuinely different movement that has no source evidence", () => {
+  const repeatedWorkout = {
+    movements: [
+      { id: "power-snatches-40", name: "Power Snatches" },
+      { id: "wall-walks", name: "Wall Walks" },
+    ],
+  };
+  const coverage = findUnverifiedMovementCoverage(repeatedWorkout, [
+    { sourceName: "Power Snatches", movementId: "power-snatches-40", sourceEvidence: "9 Power Snatches" },
+  ]);
+  assert.deepEqual(coverage.uncoveredMovementIds, ["wall-walks"]);
+});
+
 test("flags a source movement the candidate has not represented", () => {
   const evidence = [
     { sourceName: "Double Unders", movementId: "double-unders", sourceEvidence: "40 Double Unders" },
