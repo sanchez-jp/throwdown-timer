@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { expandDescendingIntervalProgression, expandProgressiveLoadLadder, expandAlternatingCleanVariants, normalizeLadderDirection, repairEmptyYetiIntervalGroups } from "./wod-progression.js";
 import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, shouldFlagUnverifiedMovementCoverage } from "./wod-semantic-review.js";
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
-import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
+import { buildGroqUserContent, buildCorrectionCandidates, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
 import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable, normalizeExplicitLadderRoundTable, normalizeWorkoutTitle } from "./wod-round-table.js";
 import { canonicalizeAmrapBlockNodes, nestFlatMovementsUnderEmptyRoundHeaders, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "./wod-structure-normalization.js";
 
@@ -2221,12 +2221,16 @@ Contrato: {schemaVersion:2,title,workout:{format,description,movements:[{id,name
       prompt = correctionPrompt;
       // A correction is a narrow repair, not a second full interpretation.
       // Try only the independent provider (one request, no retry storm).
-      const correctionCandidates = selectedProvider === "groq"
-        ? [{ provider: "gemini" as const, model: primaryModel }]
-        : groqApiKey && groqCanInterpretImage
-          ? [{ provider: "groq" as const, model: hasImage ? groqVisionModel : groqModel }]
-          : modelCandidates.filter(model => model !== selectedModel).slice(0, 1)
-            .map(model => ({ provider: "gemini" as const, model }));
+      const correctionCandidates = buildCorrectionCandidates({
+        selectedProvider,
+        selectedModel,
+        geminiModels: modelCandidates,
+        groqAvailable: Boolean(groqApiKey && (!hasImage || groqCanInterpretImage)),
+        groqModel: hasImage ? groqVisionModel : groqModel,
+        // Image repairs should try the independent Gemini model before Groq:
+        // Groq vision has a tighter output-token budget and rejected full-schema corrections.
+        preferGeminiFallback: hasImage,
+      });
       let correctedResponse: Response | null = null;
       let correctionFailureStatus = 503;
       for (const candidate of correctionCandidates) {

@@ -28,3 +28,44 @@ test("only sends supported image types to the Groq vision fallback", () => {
   assert.equal(canUseGroqVision({ mimeType: "image/heic", data: "abc" }), false);
   assert.equal(canUseGroqVision({ mimeType: "image/png", data: "" }), false);
 });
+
+
+test("prefers the independent Gemini model for image corrections before Groq", async () => {
+  const { buildCorrectionCandidates } = await import("../supabase/functions/interpret-wod/provider-retry.js");
+  assert.deepEqual(buildCorrectionCandidates({
+    selectedProvider: "gemini",
+    selectedModel: "gemini-primary",
+    geminiModels: ["gemini-primary", "gemini-fallback"],
+    groqAvailable: true,
+    groqModel: "qwen-vision",
+    preferGeminiFallback: true,
+  }), [
+    { provider: "gemini", model: "gemini-fallback" },
+    { provider: "groq", model: "qwen-vision" },
+  ]);
+});
+
+test("keeps Groq first for text corrections and uses Gemini if it is unavailable", async () => {
+  const { buildCorrectionCandidates } = await import("../supabase/functions/interpret-wod/provider-retry.js");
+  assert.deepEqual(buildCorrectionCandidates({
+    selectedProvider: "gemini",
+    selectedModel: "gemini-primary",
+    geminiModels: ["gemini-primary", "gemini-fallback"],
+    groqAvailable: true,
+    groqModel: "groq-text",
+  }), [
+    { provider: "groq", model: "groq-text" },
+    { provider: "gemini", model: "gemini-fallback" },
+  ]);
+});
+
+test("uses Gemini as the correction fallback when Groq produced the initial result", async () => {
+  const { buildCorrectionCandidates } = await import("../supabase/functions/interpret-wod/provider-retry.js");
+  assert.deepEqual(buildCorrectionCandidates({
+    selectedProvider: "groq",
+    selectedModel: "groq-text",
+    geminiModels: ["gemini-primary", "gemini-fallback"],
+    groqAvailable: true,
+    groqModel: "groq-text",
+  }), [{ provider: "gemini", model: "gemini-primary" }]);
+});

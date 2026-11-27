@@ -31,3 +31,24 @@ export function parseProviderRetryDelayMs(retryAfter, body = "", nowMs = Date.no
   if (!Number.isFinite(amount) || amount < 0) return null;
   return Math.ceil(amount * (/^m/i.test(match[2]) ? 1 : 1000));
 }
+
+export function buildCorrectionCandidates({
+  selectedProvider,
+  selectedModel,
+  geminiModels,
+  groqAvailable,
+  groqModel,
+  preferGeminiFallback = false,
+}) {
+  const geminiCandidates = geminiModels
+    .filter(model => model && model !== selectedModel)
+    .map(model => ({ provider: "gemini", model }));
+  const groqCandidate = groqAvailable && groqModel
+    ? [{ provider: "groq", model: groqModel }]
+    : [];
+
+  if (selectedProvider === "groq") return geminiCandidates.slice(0, 1);
+  return preferGeminiFallback
+    ? [...geminiCandidates, ...groqCandidate]
+    : [...groqCandidate, ...geminiCandidates];
+}
