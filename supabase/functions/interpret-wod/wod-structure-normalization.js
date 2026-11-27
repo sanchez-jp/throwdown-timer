@@ -107,7 +107,7 @@ export function nestFlatMovementsUnderEmptyRoundHeaders(workout, sourceText = ""
     for (let start = 0; start < nodes.length; start++) {
       const header = nodes[start];
       if (header?.type !== "rounds" || !Number.isInteger(header.count) || header.count < 2 ||
-          !Array.isArray(nodes.slice(start, start + 2)).every(node =>
+          !nodes.slice(start, start + 2).every(node =>
             node?.type === "rounds" && node.count === header.count &&
             key(node.label) === key(header.label) && (!Array.isArray(node.items) || !node.items.length))) continue;
       let end = start;
