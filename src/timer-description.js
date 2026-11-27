@@ -1,3 +1,18 @@
+/** Returns the scroll offset needed to bring a highlighted WOD item inside its scroll container. */
+export function getDescriptionScrollDelta(containerRect, targetRect, edgePadding = 12) {
+  const availableHeight = containerRect.height - edgePadding * 2;
+  if (targetRect.height > availableHeight) {
+    return targetRect.top - containerRect.top - edgePadding;
+  }
+  if (targetRect.top < containerRect.top + edgePadding) {
+    return targetRect.top - containerRect.top - edgePadding;
+  }
+  if (targetRect.bottom > containerRect.bottom - edgePadding) {
+    return targetRect.bottom - containerRect.bottom + edgePadding;
+  }
+  return 0;
+}
+
 /**
  * Groups timer work/rest phases against the ordered intervals in a ladder.
  * Work can be represented by either an intervals block or repeated countdown

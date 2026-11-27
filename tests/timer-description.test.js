@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { TimerEngine } from "../src/timer-engine.js";
-import { getIntervalPhaseGroups, getSequencePhaseGroups, getStructureIntervalPhaseGroups } from "../src/timer-description.js";
+import { getDescriptionScrollDelta, getIntervalPhaseGroups, getSequencePhaseGroups, getStructureIntervalPhaseGroups } from "../src/timer-description.js";
 
 test("maps repeated countdown work and rest phases to ladder intervals", () => {
   const engine = new TimerEngine({ type: "sequence", blocks: [
@@ -108,4 +108,16 @@ test("maps every phase in a sequence rest node so the whole rest block can highl
   ]};
   const groups = getSequencePhaseGroups(phases, structure);
   assert.deepEqual(groups.map(group => group.map(phase => phase.index)), [[0], [1, 2], [3]]);
+});
+
+test("keeps the active description item within the scroll viewport", () => {
+  const container = { top: 100, bottom: 400, height: 300 };
+  assert.equal(getDescriptionScrollDelta(container, { top: 80, bottom: 130, height: 50 }), -32);
+  assert.equal(getDescriptionScrollDelta(container, { top: 380, bottom: 430, height: 50 }), 42);
+  assert.equal(getDescriptionScrollDelta(container, { top: 180, bottom: 230, height: 50 }), 0);
+});
+
+test("aligns an active description item taller than the available viewport to its top", () => {
+  const container = { top: 100, bottom: 300, height: 200 };
+  assert.equal(getDescriptionScrollDelta(container, { top: 60, bottom: 340, height: 280 }), -52);
 });

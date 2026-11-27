@@ -2,7 +2,7 @@ import { TimerEngine } from "./timer-engine.js";
 import { getCountdownCueSecond } from "./audio-cues.js";
 import { createWorkoutRepository } from "./workout-repository.js";
 import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
-import { getSequencePhaseGroups, getStructureIntervalPhaseGroups } from "./timer-description.js";
+import { getDescriptionScrollDelta, getSequencePhaseGroups, getStructureIntervalPhaseGroups } from "./timer-description.js";
 import { getImportedWorkoutTitle } from "./workout-title.js";
 
 const $ = (id) => document.getElementById(id);
@@ -77,6 +77,7 @@ let aiReviewRequired = false;
 let importMode = null;
 let selectedImportImage = null;
 let selectedImportObjectUrl = null;
+let lastAutoScrolledDescriptionItem = null;
 
 function formatRepProgression(progression) {
   if (!progression || progression.every !== "round" || !progression.increment) return null;
@@ -544,6 +545,23 @@ function renderTimerDescription(workout, timerPlan = null) {
   panel.classList.remove("hidden");
 }
 
+function keepActiveTimerDescriptionVisible(activeState) {
+  const timerPanel = $("timerPanel");
+  const panel = $("timerDescription");
+  if (!activeState || !timerPanel.classList.contains("timer-immersive") ||
+      !timerPanel.classList.contains("description-open")) {
+    lastAutoScrolledDescriptionItem = null;
+    return;
+  }
+  const activeItems = [...panel.querySelectorAll(".is-active")];
+  const target = activeItems.find(item => !item.querySelector(".is-active")) || activeItems.at(-1);
+  if (!target || target === lastAutoScrolledDescriptionItem) return;
+  lastAutoScrolledDescriptionItem = target;
+  if (panel.clientHeight <= 0 || panel.scrollHeight <= panel.clientHeight) return;
+  const delta = getDescriptionScrollDelta(panel.getBoundingClientRect(), target.getBoundingClientRect());
+  if (delta) panel.scrollTo({ top: Math.max(0, panel.scrollTop + delta), behavior: "smooth" });
+}
+
 function updateTimerDescriptionActive(snapshot) {
   const activeState = ["running", "paused"].includes(snapshot.state);
   document.querySelectorAll(".timer-emom-schedule").forEach(schedule => {
@@ -585,6 +603,7 @@ function updateTimerDescriptionActive(snapshot) {
     item.classList.toggle("is-active", active);
     item.classList.toggle("is-paused", active && snapshot.state === "paused");
   });
+  keepActiveTimerDescriptionVisible(activeState);
 }
 
 function showTimer(w = presets[selected], sourceView = "home") {
@@ -712,6 +731,11 @@ $("soundButton").addEventListener("click", async () => {
 });
 $("fullscreenButton").addEventListener("click",toggleFullscreen);
 $("workoutDetailsButton").addEventListener("click",toggleWorkoutDetails);
+$("timerDescription").addEventListener("transitionend", event => {
+  if (event.target !== $("timerDescription") || !["max-height", "flex-basis"].includes(event.propertyName) || !engine) return;
+  lastAutoScrolledDescriptionItem = null;
+  updateTimerDescriptionActive(engine.snapshot());
+});
 document.addEventListener("fullscreenchange",updateFullscreenButton);
 updateFullscreenButton();
 document.addEventListener("visibilitychange",async()=>{
