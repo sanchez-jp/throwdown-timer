@@ -99,8 +99,8 @@ html{min-width:320px;min-height:100%;-webkit-text-size-adjust:100%;text-size-adj
 }
 .timer-controls>#pauseButton{font-size:23px}
 .timer-controls>#resetButton{font-size:26px}
-.timer-controls>#skipButton{font-size:20px}
 .timer-controls>#finishButton{font-size:19px}
+.timer-control-icon{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .timer-controls>button:disabled{opacity:.35;cursor:default}
 .timer-tools{
   display:flex;align-items:center;justify-content:space-between;
