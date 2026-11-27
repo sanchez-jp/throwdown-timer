@@ -4,6 +4,7 @@ export function findUnverifiedMovementCoverage(workout, evidence) {
     .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
   const comparable = (value) => normalize(value).replace(/s$/, "");
   const coveredMovementNames = new Set();
+  const coveredMovementIds = new Set();
   let hasUnmappedSourceMovement = false;
 
   for (const item of Array.isArray(evidence) ? evidence : []) {
@@ -17,7 +18,7 @@ export function findUnverifiedMovementCoverage(workout, evidence) {
     if (byId) {
       const name = comparable(byId.name);
       if (!name) {
-        hasUnmappedSourceMovement = true;
+        coveredMovementIds.add(byId.id);
         continue;
       }
       // The same movement can appear several times in the catalogue when
@@ -43,7 +44,7 @@ export function findUnverifiedMovementCoverage(workout, evidence) {
   return {
     hasUnmappedSourceMovement,
     uncoveredMovementIds: movements.map((movement) => movement?.id)
-      .filter((id, index) => id && !coveredMovementNames.has(comparable(movements[index]?.name))),
+      .filter((id, index) => id && !coveredMovementIds.has(id) && !coveredMovementNames.has(comparable(movements[index]?.name))),
     hasEvidence: Array.isArray(evidence) && evidence.length > 0,
   };
 }
