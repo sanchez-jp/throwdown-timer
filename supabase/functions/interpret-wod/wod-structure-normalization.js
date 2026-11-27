@@ -107,14 +107,11 @@ export function nestFlatMovementsUnderEmptyRoundHeaders(workout, sourceText = ""
     for (let start = 0; start < nodes.length; start++) {
       const header = nodes[start];
       if (header?.type !== "rounds" || !Number.isInteger(header.count) || header.count < 2 ||
-          !nodes.slice(start, start + 2).every(node =>
-            node?.type === "rounds" && node.count === header.count &&
-            key(node.label) === key(header.label) && (!Array.isArray(node.items) || !node.items.length))) continue;
+          (Array.isArray(header.items) && header.items.length)) continue;
       let end = start;
       while (end < nodes.length && nodes[end]?.type === "rounds" &&
           nodes[end].count === header.count && key(nodes[end].label) === key(header.label) &&
           (!Array.isArray(nodes[end].items) || !nodes[end].items.length)) end++;
-      if (end - start < 2) continue;
       const trailing = nodes.slice(end);
       if (!trailing.length || trailing.some(node => node?.type !== "movement")) continue;
       const positions = trailing.map(node => {
@@ -133,7 +130,7 @@ export function nestFlatMovementsUnderEmptyRoundHeaders(workout, sourceText = ""
         { ...header, items: workItems },
         ...cashOutItems,
       ];
-      console.info("Repeated empty round headers consolidated from source", {
+      console.info("Empty round header populated from source Cash Out boundary", {
         rounds: header.count, movementsInRound: workItems.length, cashOutMovements: cashOutItems.length,
       });
       return { ...workout, structure: { ...structure, items: repaired } };
