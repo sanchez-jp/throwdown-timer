@@ -92,3 +92,20 @@ test("does not map sequence nodes when timer phases do not identify matching top
   const structure = { type: "sequence", items: [{ type: "rest" }, { type: "rounds" }] };
   assert.equal(getSequencePhaseGroups([{ type: "rest", index: 0 }], structure), null);
 });
+
+
+test("maps every phase in a sequence rest node so the whole rest block can highlight", () => {
+  const phases = [
+    { type: "countdown", index: 0, sourcePath: "blocks[0]" },
+    { type: "rest", index: 1, sourcePath: "blocks[1]" },
+    { type: "rest", index: 2, sourcePath: "blocks[1].blocks[0]" },
+    { type: "countdown", index: 3, sourcePath: "blocks[2]" }
+  ];
+  const structure = { type: "sequence", items: [
+    { type: "rounds", label: "AMRAP 1", items: [] },
+    { type: "rest", label: "REST 3 MINUTES", durationSeconds: 180 },
+    { type: "rounds", label: "AMRAP 2", items: [] }
+  ]};
+  const groups = getSequencePhaseGroups(phases, structure);
+  assert.deepEqual(groups.map(group => group.map(phase => phase.index)), [[0], [1, 2], [3]]);
+});

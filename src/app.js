@@ -365,12 +365,12 @@ function renderTimerDescription(workout, timerPlan = null) {
       const mappedPhases = phaseGroups?.[index] || [];
       if (entry?.type === "rest") {
         item.className = "timer-description-rest" + (mappedPhases.length ? " timer-description-stage" : "");
-        if (mappedPhases.length === 1) item.dataset.timerPhaseIndex = String(mappedPhases[0].index);
+        if (mappedPhases.length) item.dataset.timerPhaseIndices = mappedPhases.map(phase => phase.index).join(",");
         item.textContent = [entry.label || "DESCANSO", formatTime(entry.durationSeconds * 1000)].filter(Boolean).join(" · ");
       } else if (entry?.type === "movement") {
-        if (mappedPhases.length === 1) {
+        if (mappedPhases.length) {
           item.classList.add("timer-description-stage");
-          item.dataset.timerPhaseIndex = String(mappedPhases[0].index);
+          item.dataset.timerPhaseIndices = mappedPhases.map(phase => phase.index).join(",");
         }
         const movement = movementById.get(entry.movementId);
         const movementName = movement?.name || "Movimiento no disponible";
@@ -575,6 +575,12 @@ function updateTimerDescriptionActive(snapshot) {
   });
   document.querySelectorAll("[data-timer-phase-index]").forEach(item => {
     const active = activeState && Number(item.dataset.timerPhaseIndex) === snapshot.blockIndex;
+    item.classList.toggle("is-active", active);
+    item.classList.toggle("is-paused", active && snapshot.state === "paused");
+  });
+  document.querySelectorAll("[data-timer-phase-indices]").forEach(item => {
+    const phaseIndexes = item.dataset.timerPhaseIndices.split(",").map(Number);
+    const active = activeState && phaseIndexes.includes(snapshot.blockIndex);
     item.classList.toggle("is-active", active);
     item.classList.toggle("is-paused", active && snapshot.state === "paused");
   });
