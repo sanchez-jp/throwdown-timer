@@ -4,6 +4,7 @@ import { findUnverifiedMovementCoverage, normalizeExplicitWorkRestIntervals, sho
 import { removeUnsupportedCountupStages } from "./wod-timer-normalization.js";
 import { buildGroqUserContent, canUseGroqVision, isTransientProviderStatus, parseProviderRetryDelayMs } from "./provider-retry.js";
 import { inferExplicitWorkoutFormat, inferWorkoutFormatFromStructure, normalizeExplicitForTimeRoundTable, normalizeExplicitLadderRoundTable, normalizeWorkoutTitle } from "./wod-round-table.js";
+import { nestFlatMovementsUnderEmptyRoundHeaders, normalizeRestStructureNodes, normalizeRoundMovementAliases } from "./wod-structure-normalization.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -760,45 +761,6 @@ function repairInterleavedDoubleLadderHeaders(workout: any) {
   return { ...workout, structure: { ...structure, items: repaired } };
 }
 
-function nestFlatMovementsUnderEmptyRoundHeaders(workout: any) {
-  const structure = workout?.structure;
-  const nodes = structure?.items;
-  if (!["sequence", "chipper"].includes(structure?.type) ||
-      !Array.isArray(nodes) || !nodes.some((node: any) =>
-        node?.type === "rounds" && (!Array.isArray(node.items) || node.items.length === 0))) return workout;
-
-  const grouped: any[] = [];
-  let currentRound: any = null;
-  let changed = false;
-  for (const node of nodes) {
-    if (node?.type === "rounds") {
-      if (currentRound) {
-        if (!currentRound.items.length) return workout;
-        grouped.push(currentRound);
-      }
-      if (!Number.isInteger(node.count) || node.count < 1 ||
-          (node.label !== undefined && (typeof node.label !== "string" || !node.label.trim())) ||
-          (Array.isArray(node.items) && node.items.length)) return workout;
-      currentRound = { ...node, items: [] };
-      changed = true;
-      continue;
-    }
-    if (node?.type !== "movement" || !currentRound) return workout;
-    currentRound.items.push(node);
-  }
-  if (currentRound) {
-    if (!currentRound.items.length) return workout;
-    grouped.push(currentRound);
-  }
-  if (!changed || !grouped.length) return workout;
-
-  console.info("Flat movements nested under their preceding round headers", {
-    rounds: grouped.length,
-    movementsPerRound: grouped.map((round: any) => round.items.length),
-  });
-  return { ...workout, structure: { ...structure, items: grouped } };
-}
-
 function repairEmptyRoundGroups(workout: any) {
   let structure = workout?.structure;
   const movements = workout?.movements;
@@ -1043,33 +1005,6 @@ function applyAlignedRoundProgressions(workout: any, sourceText: string) {
     applied++;
   }
   if (applied) console.info("AI round progressions aligned from source", { rounds: groups.length, progressions: applied });
-  return workout;
-}
-
-function normalizeRestStructureNodes(workout: any) {
-  const normalize = (items: any[]) => {
-    if (!Array.isArray(items)) return;
-    for (let index = 0; index < items.length; index++) {
-      const item = items[index];
-      const restAsRounds = item?.type === "rounds" && /^(?:rest|descanso)\\b/i.test(String(item.label || "").trim());
-      if (item?.type === "rest" || restAsRounds) {
-        const label = typeof item.label === "string" && item.label.trim() ? item.label.trim() : "Descanso";
-        const explicitSeconds = Number(item.durationSeconds);
-        const durationMatch = label.match(/(\\d+)\\s*(?:min(?:ute)?s?|m)\\b/i);
-        const durationSeconds = Number.isInteger(explicitSeconds) && explicitSeconds > 0
-          ? explicitSeconds
-          : durationMatch ? Number(durationMatch[1]) * 60 : null;
-        if (durationSeconds) items[index] = { type: "rest", label, durationSeconds };
-      } else if (item?.type === "rounds") normalize(item.items);
-      else if (item?.type === "choice" && Array.isArray(item.alternatives)) {
-        item.alternatives.forEach((option: any) => normalize(option?.items));
-      }
-    }
-  };
-  const structure = workout?.structure;
-  if (["sequence", "rounds", "chipper"].includes(structure?.type)) normalize(structure.items);
-  else if (structure?.type === "ladder") structure.steps?.forEach((step: any) => normalize(step?.items));
-  else if (structure?.type === "sections") structure.sections?.forEach((section: any) => normalize(section?.structure?.items));
   return workout;
 }
 
@@ -1518,6 +1453,8 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairDualLadderBlocks(raw.workout, effectiveSourceText);
   raw.workout = repairFlatDoubleLadderSequence(raw.workout, effectiveSourceText);
   raw.workout = repairInterleavedDoubleLadderHeaders(raw.workout);
+  normalizeRoundMovementAliases(raw.workout);
+  normalizeRestStructureNodes(raw.workout);
   raw.workout = nestFlatMovementsUnderEmptyRoundHeaders(raw.workout);
   raw.workout = repairEmptyRoundGroups(raw.workout);
   raw.workout = repairEmptyTimedWorkHeaders(raw.workout, raw.timer, effectiveSourceText);
@@ -1525,6 +1462,7 @@ function normalizeResult(raw: any, sourceTextForNormalization = "", sourceIsImag
   raw.workout = repairExpandedGeminiDoubleLadder(raw.workout, raw.title, effectiveSourceText);
   raw.workout = applyAlignedRoundProgressions(raw.workout, effectiveSourceText);
   raw = normalizeExplicitForTimeRoundTable(raw, effectiveSourceText);
+  normalizeRoundMovementAliases(raw.workout);
   normalizeRestStructureNodes(raw.workout);
   normalizeMovementReferences(raw.workout);
   raw.workout = repairAmrapRepProgressions(raw.workout, effectiveSourceText, !sourceIsImage);
