@@ -1,7 +1,7 @@
 export function findUnverifiedMovementCoverage(workout, evidence) {
   const movements = Array.isArray(workout?.movements) ? workout.movements : [];
   const normalize = (value) => String(value || "").toLocaleLowerCase().normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "");
   const comparable = (value) => normalize(value).replace(/s$/, "");
   const coveredMovementNames = new Set();
   let hasUnmappedSourceMovement = false;
@@ -56,7 +56,7 @@ export function shouldFlagUnverifiedMovementCoverage(reviewStatus, evidence, cov
 export function parseExplicitWorkRestIntervals(sourceText) {
   if (typeof sourceText !== "string") return null;
   const normalized = sourceText.replace(/[’‘′]/g, "'");
-  const match = normalized.match(/\\b(\\d+)\\s*(?:x|×|rounds?\\s*(?:of)?|rondas?\\s*(?:de)?)\\s*(\\d+)\\s*(?:'|min(?:ute)?s?)\\s*(?:amrap)?\\s*(?:\\/|,|\\+)\\s*(\\d+)\\s*(?:'|min(?:ute)?s?)\\s*(?:rest|descanso)\\b/i);
+  const match = normalized.match(/\b(\d+)\s*(?:x|×|rounds?\s*(?:of)?|rondas?\s*(?:de)?)\s*(\d+)\s*(?:'|min(?:ute)?s?)\s*(?:amrap)?\s*(?:\/|,|\+)\s*(\d+)\s*(?:'|min(?:ute)?s?)\s*(?:rest|descanso)\b/i);
   if (!match) return null;
   const [, roundsText, workMinutesText, restMinutesText] = match;
   const rounds = Number(roundsText);
