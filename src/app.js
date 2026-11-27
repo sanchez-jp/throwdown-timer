@@ -3,6 +3,7 @@ import { getCountdownCueSecond } from "./audio-cues.js";
 import { createWorkoutRepository } from "./workout-repository.js";
 import { buildTimerPlan, copyTimerPlanBlocks, timerPlanRequiredIssue } from "./timer-plan-builder.js";
 import { getSequencePhaseGroups, getStructureIntervalPhaseGroups } from "./timer-description.js";
+import { getImportedWorkoutTitle } from "./workout-title.js";
 
 const $ = (id) => document.getElementById(id);
 const presets = {
@@ -1938,7 +1939,7 @@ $("interpretWithAiButton").addEventListener("click", async () => {
     editingSchemaVersion = 2;
     editingLegacyFormat = null;
     editingStructureSupported = true;
-    $("editTitle").value = result.title;
+    $("editTitle").value = getImportedWorkoutTitle(result.title);
     $("basic-editor-section").open = true;
     $("movement-editor-section").open = true;
     $("editFormat").value = result.workout.format;
